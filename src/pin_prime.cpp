@@ -197,6 +197,8 @@ int32_t Usage()
 
 int main(int argc, char *argv[])
 {
+    
+    printf("[Mahesh] A-Debugged PIN Main Function\n");
     //Link to the OpenMPI library
     dlopen(OPENMPI_PATH, RTLD_NOW | RTLD_GLOBAL);
     int prov, rc;
@@ -251,9 +253,9 @@ int main(int argc, char *argv[])
     PIN_AddThreadFiniFunction(ThreadFini, 0);	
     PIN_AddApplicationStartFunction(Start, 0);
     PIN_AddFiniFunction(Fini, 0);
-
+    printf("[Mahesh] B-Debugged PIN Main Function\n");
     core_manager->startSim(&new_comm);
-
+    printf("[Mahesh] C-Debugged PIN Main Function\n");
     PIN_StartProgram();
     
     return 0;
