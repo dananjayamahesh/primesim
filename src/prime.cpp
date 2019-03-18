@@ -146,7 +146,7 @@ void *msgHandler(void *t)
 int main(int argc, char *argv[])
 {
     //For debugging MPI
-    printf("Enter Main Function");
+    printf("[Mahesh] A-Debugged MPI Main Function\n");
     ///*
     {
         volatile int i = 0;
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
             sleep(5);
     }
     //*/
-    printf("Debugged MPI Main Function");
+    printf("[Mahesh] B-Debugged MPI Main Function\n");
     int rc, prov = 0;
     rc = MPI_Init_thread(&argc,&argv, MPI_THREAD_MULTIPLE, &prov);
     if (rc != MPI_SUCCESS) {
@@ -170,6 +170,7 @@ int main(int argc, char *argv[])
         MPI_Abort(MPI_COMM_WORLD, rc);
     }
 
+    printf("[Mahesh] C-Debugged MPI Main Function\n");
     MPI_Comm   new_comm;
     MPI_Comm_size(MPI_COMM_WORLD,&numtasks);
     MPI_Comm_rank(MPI_COMM_WORLD,&myrank);
