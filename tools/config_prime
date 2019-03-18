@@ -107,7 +107,7 @@ cache = [
             {
             'level' : 2,
             # each L3 is shared by 64 cores
-            'share' : 64,
+            'share' : 4,
             'access_time' : 10,
             #4MB
             'size' : 4194304,
@@ -154,7 +154,7 @@ system = {
             # avarage CPI for non-memory instructions, can be tuned to simulate different types of cores
             'cpi_nonmem' : 1,
             # core count
-            'num_cores' : 64,
+            'num_cores' : 4,
             # 0 -> directory based, 1-> bus based
             'sys_type' : 0,
             # 0 -> full map, 1 -> limited pointer
@@ -193,7 +193,7 @@ simulator = {
             # The extra latency introduced by each system call
             'syscall_cost' : 10000,
             # the # of threads in the uncore process
-            'num_recv_threads': 1,
+            'num_recv_threads': 4,
             'system' : system
 }
 

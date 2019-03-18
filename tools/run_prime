@@ -91,7 +91,9 @@ def run_prime(config_path, output_path, progs):
         f.write('rm -f ' + output_path + '_' + str(i) + '\n')
     f.close()
     os.system('chmod +x ' + cmd_path)
+    print('Before The System Call')
     os.system(cmd_path)
+    print('After The System Call')
 
 
 parsec_path = os.environ.get('PARSEC_PATH')
