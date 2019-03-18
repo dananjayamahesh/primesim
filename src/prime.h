@@ -44,7 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <set>
 #include <vector>
 #include <pthread.h> 
-
+#include <cstring> 
 #include "mpi.h"
 #include "uncore_manager.h"
 #include "xml_parser.h"
