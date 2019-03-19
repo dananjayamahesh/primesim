@@ -27,11 +27,11 @@
 
 
 # home directory for PriME, set it to the correct path
-export PRIME_PATH=/home/mahesh/mahesh/edinburgh/repos/primesim
+export PRIME_PATH=/home/s1797403/repos/primesim
 
 # home directory for Pin, set it to the correct path
-export PINPATH=/home/mahesh/mahesh/edinburgh/repos/softwares/pin/pin-2.14-71313-gcc.4.4.7-linux
-export PATH=/home/mahesh/mahesh/edinburgh/repos/softwares/pin/pin-2.14-71313-gcc.4.4.7-linux:$PATH
+export PINPATH=/home/s1797403/repos/software/pin-2.14-71313-gcc.4.4.7-linux
+export PATH=/home/s1797403/repos/software/pin-2.14-71313-gcc.4.4.7-linux:$PATH
 
 #export PINPATH=/home/mahesh/mahesh/edinburgh/repos/softwares/pin/pin-3.2-81205-gcc-linux
 #export PATH=/home/mahesh/mahesh/edinburgh/repos/softwares/pin/pin-3.2-81205-gcc-linux:$PATH
@@ -48,7 +48,7 @@ export OPENMPI_LIB_PATH=\"\\\"/usr/local/lib/libmpi.so\\\"\"
 export LIBXML2_PATH=/usr/include/libxml2
 
 # path to PARSEC benchmarks, set it to the correct path if you want to run PARSEC
-export PARSEC_PATH=/home/mahesh/mahesh/edinburgh/repos/parsec-3.0
+export PARSEC_PATH=/home/s1797403/repos/parsec-3.0
 
 # set path
 export PATH=$PRIME_PATH/tools:$PATH
