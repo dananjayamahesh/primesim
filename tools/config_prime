@@ -193,7 +193,7 @@ simulator = {
             # The extra latency introduced by each system call
             'syscall_cost' : 10000,
             # the # of threads in the uncore process
-            'num_recv_threads': 2,
+            'num_recv_threads': 1,
             'system' : system
 }
 
