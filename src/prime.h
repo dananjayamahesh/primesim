@@ -49,7 +49,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "uncore_manager.h"
 #include "xml_parser.h"
 #include "common.h"
-
+#include <cstring>  //memset added
 //////////////////////
 // GLOBAL VARIABLES //
 //////////////////////
