@@ -10,3 +10,4 @@ dep/*
 bin/*
 cmd/*
 env.sh
+run_script.sh
