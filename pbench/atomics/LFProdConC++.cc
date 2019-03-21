@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <semaphore.h>
 #include <cstdlib>
-
+#include <atomic>
 #define SHARED 1
 
 void *Producer(void *);  // the two threads
@@ -61,7 +61,7 @@ void *Producer(void *arg) {
     }     
      
      data = produced;
-     prinf("Produced Value : %d and Data : %d \n", produced, data)
+     printf("Producer \t Value \t %d  Data \t %d \n", produced, data);
     // Unlock A
     A.store(0, std::memory_order_release);
 
@@ -77,13 +77,14 @@ void *Consumer(void *arg) {
   printf("Consumer created\n");
   for (consumed = 0; consumed < numIters; consumed++) {
     
-     while (!A.compare_exchange_weak(expected, 1, std::memory_order_acquire)) {
+    int expected = 0;
+    while (!A.compare_exchange_weak(expected, 1, std::memory_order_acquire)) {
         expected = 0;
     }
      
      
      total = total+data;
-     prinf("Total Value : %d and Data : %d \n", total, data)
+     printf("Consumer \t Total \t %d Data \t %d \n", total, data);
     // Unlock A
     A.store(0, std::memory_order_release);
 
