@@ -9,3 +9,4 @@ dep/*
 !/dep/Graphite/.gitkeep
 bin/*
 cmd/*
+env.sh
