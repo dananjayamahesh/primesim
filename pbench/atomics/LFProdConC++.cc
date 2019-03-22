@@ -97,3 +97,8 @@ void *Consumer(void *arg) {
 }
 
 //https://stackoverflow.com/questions/19774778/when-is-it-necessary-to-use-use-the-flag-stdlib-libstdc
+
+
+//How to put barriers in x86 progrm.
+//#C++ x86 Fences
+//https://preshing.com/20130922/acquire-and-release-fences/
