@@ -1,0 +1,114 @@
+              Procedure           Image            Address        Calls Instructions
+  __libc_thread_freeres       libc.so.6       7f7ddebb7120            2           56
+__libc_thread_freeres_fn       libc.so.6       7f7ddebb7030            2           12
+    __libc_dl_error_tsd       libc.so.6       7f7ddeb85d60            1            3
+               _dl_addr       libc.so.6       7f7ddeb851d0            1        56470
+      __register_atfork       libc.so.6       7f7ddeb57210            1           52
+    __libc_pthread_init       libc.so.6       7f7ddeb571b0            1          393
+                __clone       libc.so.6       7f7ddeb493b0            2           54
+              __madvise       libc.so.6       7f7ddeb43800            2           10
+               mprotect       libc.so.6       7f7ddeb43770            2           10
+                 mmap64       libc.so.6       7f7ddeb43680            2           66
+            getpagesize       libc.so.6       7f7ddeb3f3d0            5           25
+                 __sbrk       libc.so.6       7f7ddeb3ee80            2           49
+                    brk       libc.so.6       7f7ddeb3ee10            2           24
+              getrlimit       libc.so.6       7f7ddeb3e960            1            5
+                __write       libc.so.6       7f7ddeb392b0            8          104
+             __fxstat64       libc.so.6       7f7ddeb38c20            1           10
+                  _Exit       libc.so.6       7f7ddeb0e710            1            8
+              strchrnul       libc.so.6       7f7ddead8760           12          312
+                __bzero       libc.so.6       7f7ddead1200            0           88
+                 rindex       libc.so.6       7f7ddeacf400            1           54
+                 strlen       libc.so.6       7f7ddeacd720            4          100
+     __default_morecore       libc.so.6       7f7ddeac98c0            2           14
+                 calloc       libc.so.6       7f7ddeac6d10            2          172
+            __libc_free       libc.so.6       7f7ddeac64f0            2           34
+                 malloc       libc.so.6       7f7ddeac6130            1           12
+     _IO_default_xsputn       libc.so.6       7f7ddeabd630            1          218
+         _IO_doallocbuf       libc.so.6       7f7ddeabd560            1           18
+               _IO_setb       libc.so.6       7f7ddeabd500            1           18
+             __overflow       libc.so.6       7f7ddeabd220            4           24
+      _IO_file_overflow       libc.so.6       7f7ddeabc730           21          694
+           _IO_do_write       libc.so.6       7f7ddeabc390            9          404
+        _IO_file_xsputn       libc.so.6       7f7ddeabb1e0           24         2097
+         _IO_file_write       libc.so.6       7f7ddeabab70            8          296
+          _IO_file_stat       libc.so.6       7f7ddeabab60            1            4
+        _IO_file_setbuf       libc.so.6       7f7ddeaba430            1           15
+          _IO_file_sync       libc.so.6       7f7ddeaba370            1           13
+                   puts       libc.so.6       7f7ddeab1690            4          263
+    _IO_file_doallocate       libc.so.6       7f7ddeaaf180            1           48
+                 printf       libc.so.6       7f7ddea97800            4           84
+           _IO_vfprintf       libc.so.6       7f7ddea8f170            4         2160
+                 strtol       libc.so.6       7f7ddea7d3c0            1            4
+       __call_tls_dtors       libc.so.6       7f7ddea7c5c0            3           33
+         __cxa_finalize       libc.so.6       7f7ddea7c2d0            1           46
+           __cxa_atexit       libc.so.6       7f7ddea7c280            1           22
+                   exit       libc.so.6       7f7ddea7c030            1            4
+                   atoi       libc.so.6       7f7ddea78e80            1            6
+                _setjmp       libc.so.6       7f7ddea77250            3            6
+            __sigsetjmp       libc.so.6       7f7ddea771b0            3           84
+           __ctype_init       libc.so.6       7f7ddea70150            3           48
+      __libc_start_main       libc.so.6       7f7ddea62740            1           58
+                  _init       libc.so.6       7f7ddea625a0            1           98
+                  .text       libc.so.6       7f7ddea618b0            0          163
+               .plt.got       libc.so.6       7f7ddea618a0            1            3
+                   .plt       libc.so.6       7f7ddea617c0            1            5
+                  _fini libpthread.so.0       7f7ddee32ad4            1            3
+           elision_init libpthread.so.0       7f7ddee327e0            1            9
+       __libc_sigaction libpthread.so.0       7f7ddee313a0            2          124
+__pthread_disable_asynccancel libpthread.so.0       7f7ddee301c0            2           24
+__pthread_enable_asynccancel libpthread.so.0       7f7ddee30160            2           22
+_pthread_cleanup_pop_restore libpthread.so.0       7f7ddee2fe50            4           32
+_pthread_cleanup_push_defer libpthread.so.0       7f7ddee2fde0            4           56
+   _pthread_cleanup_pop libpthread.so.0       7f7ddee2fdb0            2           10
+  _pthread_cleanup_push libpthread.so.0       7f7ddee2fd90            2           12
+               sem_init libpthread.so.0       7f7ddee2ee90            2           22
+ __pthread_mutex_unlock libpthread.so.0       7f7ddee2b4c0            2           56
+     pthread_mutex_lock libpthread.so.0       7f7ddee29d40            2           72
+  pthread_attr_setscope libpthread.so.0       7f7ddee29120            1            5
+      pthread_attr_init libpthread.so.0       7f7ddee28f70            1           23
+           pthread_join libpthread.so.0       7f7ddee288d0            2          125
+         pthread_create libpthread.so.0       7f7ddee27990            2          446
+           start_thread libpthread.so.0       7f7ddee275f0            2          168
+             __free_tcb libpthread.so.0       7f7ddee27400            2           92
+          create_thread libpthread.so.0       7f7ddee260e0            2           96
+__pthread_initialize_minimal libpthread.so.0       7f7ddee25d00            1          160
+            frame_dummy libpthread.so.0       7f7ddee25b00            1            4
+  __do_global_dtors_aux libpthread.so.0       7f7ddee25ac0            1           12
+     register_tm_clones libpthread.so.0       7f7ddee25a70            1           13
+   deregister_tm_clones libpthread.so.0       7f7ddee25a30            1            9
+               .plt.got libpthread.so.0       7f7ddee25a10            1            2
+                   .plt libpthread.so.0       7f7ddee25590           14           82
+                  _init libpthread.so.0       7f7ddee25580            1            4
+                realloc ld-linux-x86-64.so.2       7f7df2422100            0         2607
+                   free ld-linux-x86-64.so.2       7f7df2421f50            2           12
+                 calloc ld-linux-x86-64.so.2       7f7df2421f10           11           88
+                 malloc ld-linux-x86-64.so.2       7f7df2421f00           27           81
+        __libc_memalign ld-linux-x86-64.so.2       7f7df2421e00           28          778
+_dl_find_dso_for_object ld-linux-x86-64.so.2       7f7df241cbf0            1           35
+       _dl_allocate_tls ld-linux-x86-64.so.2       7f7df241b880            2           42
+  _dl_allocate_tls_init ld-linux-x86-64.so.2       7f7df241b610            3          282
+_dl_get_tls_static_info ld-linux-x86-64.so.2       7f7df241b540            1            5
+        _dl_debug_state ld-linux-x86-64.so.2       7f7df2419060            2            2
+                  .text ld-linux-x86-64.so.2       7f7df2408ac0            1         8032
+               .plt.got ld-linux-x86-64.so.2       7f7df2408ab0            2            2
+                   .plt ld-linux-x86-64.so.2       7f7df2408a60            0           68
+                  _fini         atomics             400dc4            1            3
+        __libc_csu_init         atomics             400d50            1           41
+    _ZNSt6atomicIiEC1Ev         atomics             400d2e            3           30
+_ZNSt13__atomic_baseIiEC1Ev         atomics             400d22            3           18
+_ZSt23__cmpexch_failure_orderSt12memory_order         atomics             400ce5       268426      5636946
+_ZSt24__cmpexch_failure_order2St12memory_order         atomics             400cbf       268426      2952686
+_ZStanSt12memory_orderSt23__memory_order_modifier         atomics             400cab      1073706      9663354
+   _GLOBAL__sub_I_empty         atomics             400c96            1            7
+_Z41__static_initialization_and_destruction_0ii         atomics             400c58            1           18
+          _Z8ConsumerPv         atomics             400adc            1           96
+          _Z8ProducerPv         atomics             40099e            1     10468616
+                   main         atomics             400886            1           64
+            frame_dummy         atomics             400860            1            4
+  __do_global_dtors_aux         atomics             400840            1            8
+     register_tm_clones         atomics             400800            1           12
+   deregister_tm_clones         atomics             4007c0            1            8
+                 _start         atomics             400790            1           11
+                   .plt         atomics             4006d0            9           54
+                  _init         atomics             4006a8            1            6
