@@ -64,6 +64,7 @@ void *Producer(void *arg) {
      printf("Producer \t Value \t %d  Data \t %d \n", produced, data);
     // Unlock A
     A.store(0, std::memory_order_release);
+    
 
     //sem_wait(&empty);
     //data = produced;
