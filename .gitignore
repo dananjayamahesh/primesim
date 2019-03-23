@@ -11,3 +11,7 @@ bin/*
 cmd/*
 env.sh
 run_script.sh
+ppin/acqrel/obj
+ppin/acqrel/dep
+ppin/acqrel/bin
+
