@@ -237,7 +237,7 @@ void CoreManager::execNonMem(uint32_t ins_count_in, THREADID threadid)
 
 
 // Handle a memory instruction
-void CoreManager::execMem(void * addr, THREADID threadid, uint32_t size, BOOL mem_type)
+void CoreManager::execMem(void * addr, THREADID threadid, uint32_t size, BOOL mem_type, bool is_acquire, bool is_release)
 {
 
     delay[threadid] = 0;
@@ -245,6 +245,8 @@ void CoreManager::execMem(void * addr, THREADID threadid, uint32_t size, BOOL me
     msg_mem[threadid][mpi_pos[threadid]].addr_dmem = (uint64_t) addr;
     msg_mem[threadid][mpi_pos[threadid]].mem_size = size;
     msg_mem[threadid][mpi_pos[threadid]].timer = (int64_t)(cycle[threadid]._count);
+    msg_mem[threadid][mpi_pos[threadid]].is_acquire = is_acquire;
+    msg_mem[threadid][mpi_pos[threadid]].is_release = is_release;
     
     cycle[threadid]._count += 1;
     mpi_pos[threadid]++;
