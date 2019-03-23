@@ -49,7 +49,7 @@ VOID Instruction(INS ins, VOID *v)
             INS_InsertPredicatedCall(
                 ins, IPOINT_BEFORE, (AFUNPTR)RecordMemWrite,
                 IARG_INST_PTR,
-                IARG_MEMORYOP_EA, memOp,
+                IARG_MEMORYOP_EA, memOp, //Type: ADDRINT. Effective address of a memory op (memory op index is next arg); only valid at IPOINT_BEFORE. 
                 IARG_END);
         }
     }
