@@ -50,12 +50,24 @@ void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type)
     //if(threadid > 0) printf("Mem Thread Id : %d %d %s %d \n", threadid, *((int *)addr), (mem_type)?"RD":"WR", size);
 }
 
-void memIns(void * addr, THREADID threadid, uint32_t size, bool mem_type, void *ip, void *ins, uint32_t next_op, bool valid)
+void memIns(void * addr, THREADID threadid, uint32_t size, bool mem_type, void *ip, void *ins, uint32_t next_op, bool valid, bool isrelease, bool isacquire)
 {
    // core_manager->execMem(addr, threadid, size, mem_type);
+   //if(release) printf("RELEASE\n");
+   if((uint32_t)threadid >0){
+        if(isrelease){
+            printf("////////////////////////////////// RELEASE %d ///// THREAD Id - %d /// Addr %p \n", isrelease, (uint32_t)threadid, addr);
+        }
+    
+        if(isacquire){
+            printf("////////////////////////////////// ACQUIRE  %d ///// THREAD ID - %d /// Addr %p \n", isacquire, (uint32_t)threadid, addr);
+        }
+    }
+   //if(acquire) printf("ACQUIRE\n");
+
    if(valid) {
         if(next_op == 0x17a){ //Checkfor Mfence
-            std::cout << next_op << " \n" << std::endl;  //MFENCE
+            //std::cout << next_op << " \n" << std::endl;  //MFENCE
         }
     
    }
@@ -87,24 +99,43 @@ void Trace(TRACE trace, void *v)
 
             //OPCODE opcode = INS_Opcode(ins); //Unused
             //printf("OPCODE - %x \n", (int) opcode);
-            if(INS_IsAtomicUpdate (ins)){
-                std::cout <<  INS_Mnemonic(ins) << std::endl;
-            }
+            
             //std::cout <<  INS_Mnemonic(ins) << std::endl;        
 
             if(INS_IsMemoryRead(ins) || INS_IsMemoryWrite(ins)) {
 
                 uint32_t memOperands = INS_MemoryOperandCount(ins);
                 //uint32_t next_addr = INS_NextAddress (ins); //Unused
+
+                bool isRelease = false;
+                bool isAcquire = false;
+                
                 INS ins_next = INS_Next(ins);
                 //OPCODE opcode_next = INS_Opcode(ins_next);
                 bool isvalid = INS_Valid(ins_next);
                 uint32_t opn = 0;
+                
                 if(isvalid) {
                      opn = (uint32_t)INS_Opcode(ins_next);
-                }                 
-
-                // Iterate over each memory operand of the instruction.
+                        if(opn == 0x17a){ //Checkfor Mfence
+                            std::cout << "MFENCE "<< opn << " \n" << std::endl;  //MFENCE
+                            isRelease = true;
+                        }                   
+                }   
+                
+                if(INS_IsAtomicUpdate (ins)){
+        
+                    isAcquire = true;
+                    std::cout <<  INS_Mnemonic(ins) << " Operands "<< memOperands << " MemOpType "<< (INS_IsMemoryRead(ins) || INS_IsMemoryWrite(ins)) <<std::endl;
+                    if(INS_IsMemoryRead(ins)){
+                        std::cout <<  "READ \n "<< std::endl;
+                    }else{
+                        std::cout <<  "WRITE \n "<< std::endl;
+                    }
+        
+                }
+        
+               // Iterate over each memory operand of the instruction.
                 for (uint32_t memOp = 0; memOp < memOperands; memOp++){
 
                     const uint32_t size = INS_MemoryOperandSize(ins, memOp);
@@ -125,6 +156,8 @@ void Trace(TRACE trace, void *v)
                             IARG_PTR, ins,
                             IARG_UINT32, opn, 
                             IARG_BOOL, isvalid,
+                            IARG_BOOL, isRelease,
+                            IARG_BOOL, isAcquire,
                             IARG_END);
 
                     }
@@ -139,6 +172,8 @@ void Trace(TRACE trace, void *v)
                             IARG_PTR, ins,
                             IARG_UINT32, opn, 
                             IARG_BOOL, isvalid,
+                            IARG_BOOL, isRelease,
+                            IARG_BOOL, isAcquire,
                             IARG_END);
                     }
                 }
