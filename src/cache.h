@@ -69,7 +69,13 @@ typedef enum CacheType
 } CacheType;
 
 
-
+typedef enum AtomicType
+{
+    NON                 = 0,
+    ACQUIRE             = 1,
+    RELEASE             = 2,
+    FULL                = 3,
+} AtomicType;
 
 
 typedef set<int> IntSet;
@@ -96,6 +102,7 @@ typedef struct InsMem
     int         thread_id;
     int         rec_thread_id;
     uint64_t    addr_dmem; 
+    AtomicType  atom_type;
 } InsMem;
 
 
