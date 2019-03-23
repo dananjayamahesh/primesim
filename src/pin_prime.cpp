@@ -47,8 +47,11 @@ void PIN_FAST_ANALYSIS_CALL execNonMem(uint32_t ins_count, THREADID threadid)
 
 
 // Handle a memory instruction
-void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type)
+void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type, bool is_release)
 {
+    if(is_release){
+        printf("MFENCE is DETECTED \n");
+    }
     core_manager->execMem(addr, threadid, size, mem_type);
 }
 
@@ -120,6 +123,17 @@ void Trace(TRACE trace, void *v)
             if(INS_IsMemoryRead(ins) || INS_IsMemoryWrite(ins)) { 
                 uint32_t memOperands = INS_MemoryOperandCount(ins);
 
+                bool isRelease = false;
+                INS ins_next = INS_Next(ins);
+                if(INS_Valid(ins_next)){
+                    uint32_t next_op = (uint32_t)INS_Opcode(ins_next);
+                    if(next_op == 0x17a){
+                        isRelease = true;
+                        //printf("MFENCE is DETECTED %\n");
+                    }else{
+                        isRelease = false;
+                    }
+                }
                 // Iterate over each memory operand of the instruction.
                 for (uint32_t memOp = 0; memOp < memOperands; memOp++) {
                     const uint32_t size = INS_MemoryOperandSize(ins, memOp);
@@ -133,6 +147,7 @@ void Trace(TRACE trace, void *v)
                             IARG_THREAD_ID,
                             IARG_UINT32, size,
                             IARG_BOOL, RD,
+                            IARG_BOOL, isRelease,
                             IARG_END);
 
                     }
@@ -143,6 +158,7 @@ void Trace(TRACE trace, void *v)
                             IARG_THREAD_ID,
                             IARG_UINT32, size,
                             IARG_BOOL, WR,
+                            IARG_BOOL, isRelease,
                             IARG_END);
                     }
                 }
