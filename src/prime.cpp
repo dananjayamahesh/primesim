@@ -126,6 +126,10 @@ void *msgHandler(void *t)
             for(int i = 1; i < msg_len; i++) {
                 ins_mem.mem_type = msg_mem[index_prev][i].mem_type;
                 ins_mem.addr_dmem = msg_mem[index_prev][i].addr_dmem;
+
+                //Trap Acquire and Release
+                //ins_mem = msg_mem[index_prev][i].
+
                 delay += uncore_manager.uncore_access(core_id, &ins_mem, msg_mem[index_prev][i].timer + delay) - 1;
                 if (delay < 0) {
                     cerr<<"Error: negative delay: "<<core_id<<" "<<ins_mem.prog_id<<" "<<thread_id<<" "
