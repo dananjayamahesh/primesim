@@ -57,7 +57,7 @@ void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type, bool 
             printf("ACQUIRE is DETECTED \n");
         }
     }
-    core_manager->execMem(addr, threadid, size, mem_type);
+    core_manager->execMem(addr, threadid, size, mem_type, is_acquire, is_release);
 }
 
 // This routine is executed every time a thread starts.
