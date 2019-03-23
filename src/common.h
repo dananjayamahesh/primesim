@@ -51,11 +51,17 @@ typedef struct MsgMem
     bool        mem_type; //1 means write, 0 means read
     int         mem_size; 
     uint64_t    addr_dmem; 
+
+    //Adding Release Consistency (RC) support to messages
+    bool     is_acquire;
+    bool     is_release;
+    
     union
     {
         int64_t     timer;
         int64_t     message_type;
     };
+
 } MsgMem;
 
 enum MemType
