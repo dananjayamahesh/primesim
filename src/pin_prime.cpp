@@ -47,10 +47,15 @@ void PIN_FAST_ANALYSIS_CALL execNonMem(uint32_t ins_count, THREADID threadid)
 
 
 // Handle a memory instruction
-void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type, bool is_release)
+void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type, bool is_release, bool is_acquire)
 {
-    if(is_release){
-        printf("MFENCE is DETECTED \n");
+    if((uint32_t) threadid > 0){
+        if(is_release){
+            printf("RELEASE is DETECTED \n");
+        }
+        if(is_acquire){
+            printf("ACQUIRE is DETECTED \n");
+        }
     }
     core_manager->execMem(addr, threadid, size, mem_type);
 }
@@ -124,6 +129,7 @@ void Trace(TRACE trace, void *v)
                 uint32_t memOperands = INS_MemoryOperandCount(ins);
 
                 bool isRelease = false;
+                bool isAcquire = false;
                 INS ins_next = INS_Next(ins);
                 if(INS_Valid(ins_next)){
                     uint32_t next_op = (uint32_t)INS_Opcode(ins_next);
@@ -133,6 +139,10 @@ void Trace(TRACE trace, void *v)
                     }else{
                         isRelease = false;
                     }
+                }
+
+                if(INS_IsAtomicUpdate (ins)){
+                    isAcquire = true;
                 }
                 // Iterate over each memory operand of the instruction.
                 for (uint32_t memOp = 0; memOp < memOperands; memOp++) {
@@ -148,6 +158,7 @@ void Trace(TRACE trace, void *v)
                             IARG_UINT32, size,
                             IARG_BOOL, RD,
                             IARG_BOOL, isRelease,
+                            IARG_BOOL, isAcquire,
                             IARG_END);
 
                     }
@@ -159,6 +170,7 @@ void Trace(TRACE trace, void *v)
                             IARG_UINT32, size,
                             IARG_BOOL, WR,
                             IARG_BOOL, isRelease,
+                            IARG_BOOL, isAcquire,
                             IARG_END);
                     }
                 }
