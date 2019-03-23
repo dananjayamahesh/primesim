@@ -54,8 +54,8 @@ void memIns(void * addr, THREADID threadid, uint32_t size, bool mem_type, void *
 {
    // core_manager->execMem(addr, threadid, size, mem_type);
    if(valid) {
-        if(next_op == 0x17a){
-            std::cout << next_op << " \n" << std::endl;
+        if(next_op == 0x17a){ //Checkfor Mfence
+            std::cout << next_op << " \n" << std::endl;  //MFENCE
         }
     
    }
@@ -86,7 +86,10 @@ void Trace(TRACE trace, void *v)
             
 
             //OPCODE opcode = INS_Opcode(ins); //Unused
-            //printf("OPCODE - %x \n", (int) opcode);    
+            //printf("OPCODE - %x \n", (int) opcode);
+            if(INS_IsAtomicUpdate (ins)){
+                std::cout <<  INS_Mnemonic(ins) << std::endl;
+            }
             //std::cout <<  INS_Mnemonic(ins) << std::endl;        
 
             if(INS_IsMemoryRead(ins) || INS_IsMemoryWrite(ins)) {
