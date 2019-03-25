@@ -71,6 +71,11 @@ enum MemType
     WB    = 2   //writeback
 };
 
+typedef enum PersistModel
+{
+    FLLB = 0, //FULL BARRIER
+    RLXB = 1, //RELAXED BARRIER
+} PersistModel;
 
 
 
