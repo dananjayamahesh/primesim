@@ -62,6 +62,7 @@ void System::init(XmlSys* xml_sys_in)
     max_num_sharers = xml_sys->max_num_sharers;
     directory_cache = NULL;
     tlb_cache = NULL;
+    pmodel = FLLB; //FULL BARRIER SEMANTICS
 
     hit_flag = new bool [num_cores];
     delay = new int [num_cores];
@@ -143,6 +144,12 @@ void System::init(XmlSys* xml_sys_in)
 // This function models an access to memory system and returns the delay.
 int System::access(int core_id, InsMem* ins_mem, int64_t timer)
 {
+    if(core_id >0){
+        if(ins_mem->atom_type == RELEASE) printf("[System] Core Id: %d, Atomic Type: Release to Address %lu \n", core_id, (uint64_t) ins_mem->addr_dmem);
+        if(ins_mem->atom_type == ACQUIRE) printf("[System] Core Id: %d, Atomic Type: Acquire to Address %lu \n", core_id, (uint64_t) ins_mem->addr_dmem);
+        //else if(ins_mem->atom_type == ACQUIRE) printf("Core Id: %d, Atomic Type: Acquire...... \n", core_id);
+    }
+
     int cache_id;
     if (core_id >= num_cores) {
         cerr << "Error: Not enough cores!\n";

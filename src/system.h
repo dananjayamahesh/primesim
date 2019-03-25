@@ -126,6 +126,7 @@ class System
         PageTable  page_table;
         Network    network;
         Dram       dram;
+        PersistModel pmodel;
 
 };
 
