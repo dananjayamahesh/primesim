@@ -62,6 +62,7 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
     page_size = page_size_in;
     level = level_in;
     cache_id = cache_id_in;
+    pmodel = FLLB;  //Full barrier semantics by default
 
     if (cache_type == TLB_CACHE) {
         offset_bits = (int) (log2(page_size));

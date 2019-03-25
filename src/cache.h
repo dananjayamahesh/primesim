@@ -169,6 +169,7 @@ class Cache
         int               cache_id;
         uint64_t          offset_mask;
         uint64_t          index_mask;
+        PersistModel      pmodel;
 
 };
 
