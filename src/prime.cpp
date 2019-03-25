@@ -129,6 +129,17 @@ void *msgHandler(void *t)
 
                 //Trap Acquire and Release
                 //ins_mem = msg_mem[index_prev][i].
+                bool acq = msg_mem[index_prev][i].is_acquire;
+                bool rel = msg_mem[index_prev][i].is_release;
+               
+                AtomicType atype = NON;
+
+                if(acq && rel) {atype = FULL;}
+                else if(acq)   {atype = ACQUIRE;}
+                else if(rel)   {atype = RELEASE;}
+                else           {atype = NON;}
+
+                ins_mem.atom_type = atype;
 
                 delay += uncore_manager.uncore_access(core_id, &ins_mem, msg_mem[index_prev][i].timer + delay) - 1;
                 if (delay < 0) {
