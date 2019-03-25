@@ -50,17 +50,27 @@ void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type)
     //if(threadid > 0) printf("Mem Thread Id : %d %d %s %d \n", threadid, *((int *)addr), (mem_type)?"RD":"WR", size);
 }
 
+
+/*
+How to make it work for caches
+increase replacements/evictions
+same address
+multi-words from different epochs to same cache block, chain reactions.
+*/
 void memIns(void * addr, THREADID threadid, uint32_t size, bool mem_type, void *ip, void *ins, uint32_t next_op, bool valid, bool isrelease, bool isacquire)
 {
    // core_manager->execMem(addr, threadid, size, mem_type);
    //if(release) printf("RELEASE\n");
    if((uint32_t)threadid >0){
         if(isrelease){
-            printf("////////////////////////////////// RELEASE %d ///// THREAD Id - %d /// Addr %p \n", isrelease, (uint32_t)threadid, addr);
+            printf("////////////////////////////////// RELEASE %d ///// THREAD Id - %d /// Addr %p Size %d IP %p \n", isrelease, (uint32_t)threadid, addr, size, ip);
+            //Trap address
+            //List
+
         }
     
         if(isacquire){
-            printf("////////////////////////////////// ACQUIRE  %d ///// THREAD ID - %d /// Addr %p \n", isacquire, (uint32_t)threadid, addr);
+            printf("////////////////////////////////// ACQUIRE  %d ///// THREAD ID - %d /// Addr %p Size %d IP %p \n", isacquire, (uint32_t)threadid, addr, size, ip);
         }
     }
    //if(acquire) printf("ACQUIRE\n");
@@ -76,14 +86,44 @@ void memIns(void * addr, THREADID threadid, uint32_t size, bool mem_type, void *
     //if(threadid > 0) printf("Mem Thread Id : %d %d %s %d %s \n", threadid, *((int *)addr), (mem_type)?"RD":"WR", size, INS_Mnemonic(*in).c_str());
 }
 
-// Pin calls this function every time a new basic block is encountered
+//Basic block – A sequence of instructions terminated at a control-flow changing instruction –Single entry, single exit •
+//Trace – A sequence of basic blocks terminated at an unconditional control-flow changing instruction –Single entry, multiple exits 
+// Pin calls this function every time a new basic block is encountered.
+
+
+//Traces - unconditional branching BR, CALL etc.
+/*
+1. An unconditional control transfer: branch (direct and indirect jump instructions), call,or return
+2. A pre-defined number of conditional control transfers, such as theJEinstruction(“jump if equal to”) in x86
+3. A pre-defined number of instructions, which have been included in the trace withoutencountering the above two conditions.
+*/
+
+//BBL - Basic Blocks
+/*
+Basic block 
+–A sequence of instructions terminated at a control-flow changing instruction 
+–Single entry, single exit 
+
+•Trace –A sequence of basic blocks terminated at an unconditional control-flow changing instruction 
+–Single entry, multiple exits (unconditional branches, call, etc.)
+*/
+
+//PIN Control FLow
+/*
+1. Before executing the target program’s first instruction, Pin generates a copy of theprogram’s starting trace that, when executed, will return control to Pin after branching
+2. Pin transfers control to the copy it created, which is now executing
+3. After the copy has exited execution and returned control to Pin, Pin generates a copyfor the next trace, instruments it, and executes the copy
+4. The cycle continues: as more code is discovered, Pin makes a copy of the trace andinstruments the copy while also making sure that the copy will return control to Pinafter the trace ends
+*/
 void Trace(TRACE trace, void *v)
 {
+     
+    std::cout << "//////////////////////////////////// New Trace /////////////////////////////////////" << std::endl ;
      uint32_t nonmem_count;
-
+     
     // Visit every basic block  in the trace
     for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl); bbl = BBL_Next(bbl)) {
-
+        std::cout << "-------------------------new BBL -  Instructions " << BBL_NumIns(bbl) << "-------------------------" << std::endl ;
         // Insert a call to insCount before every bbl, passing the number of instructions
         BBL_InsertCall(bbl, IPOINT_BEFORE, (AFUNPTR)insCount, IARG_FAST_ANALYSIS_CALL, 
                        IARG_UINT32, BBL_NumIns(bbl), IARG_THREAD_ID, IARG_END);
@@ -96,7 +136,7 @@ void Trace(TRACE trace, void *v)
         //for (; INS_Valid(ins); ins = INS_Next(ins)) {
         for (; INS_Valid(ins); ins = INS_Next(ins)) {           
             
-
+            std::cout << std::hex << INS_NextAddress(ins) << "\t"<< INS_Opcode(ins) << " \t " << INS_Disassemble(ins) << std::endl;
             //OPCODE opcode = INS_Opcode(ins); //Unused
             //printf("OPCODE - %x \n", (int) opcode);
             
@@ -127,6 +167,9 @@ void Trace(TRACE trace, void *v)
         
                     isAcquire = true;
                     std::cout <<  INS_Mnemonic(ins) << " Operands "<< memOperands << " MemOpType "<< (INS_IsMemoryRead(ins) || INS_IsMemoryWrite(ins)) <<std::endl;
+                    //Lock prefic of x86 - LOCK the bus
+                    //https://stackoverflow.com/questions/8891067/what-does-the-lock-instruction-mean-in-x86-assembly
+
                     if(INS_IsMemoryRead(ins)){
                         std::cout <<  "READ \n "<< std::endl;
                     }else{
@@ -234,6 +277,13 @@ int main(int argc, char *argv[])
     
     return 0;
 }
+
+        //LOCK prefic over CMPXCHG
+        //https://stackoverflow.com/questions/3339141/x86-lock-question-on-multi-core-cpus/3339380#3339380
+
+        //PIN modififcation API
+        //https://software.intel.com/sites/landingpage/pintool/docs/97619/Pin/html/group__INS__MOD__API__GEN__IA32.html
+
 
         //Intel BIB
         ////BBL lib - https://software.intel.com/sites/landingpage/pintool/docs/97619/Pin/html/group__BBL__BASIC__API.html
