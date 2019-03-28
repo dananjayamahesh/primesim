@@ -420,11 +420,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
     cache_cur->lockUp(ins_mem);
     delay[core_id] += cache_level[level].access_time;
     line_cur = cache_cur->accessLine(ins_mem);
-
-    if(ins_mem->addr_dmem == 0xc90e8){
-        //printf("0xc90e8 is detected -> mem-type %d\n", ins_mem->mem_type);
-    }
-    
+        
     //Cache hit
     if (line_cur != NULL) {
         line_cur->timestamp = timer + delay[core_id];
@@ -450,12 +446,12 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                                           core_id, ins_mem, timer + delay[core_id]);
 
                    //Update atomic type   
-                   line_cur->atom_type = ins_mem->atom_type;
+                   //line_cur->atom_type = ins_mem->atom_type;
                }
                //ERROR: This section addresses the bug mentioned in the cache miss section, but not complete
-
                //Updating atomic type even line is hit with write
-               line_cur->atom_type = ins_mem->atom_type;
+               //if(ins_mem->atom_type != NON) line_cur->atom_type = ins_mem->atom_type;
+               if(ins_mem->atom_type != NON) line_cur->atom_type = ins_mem->atom_type; //Update only when atomic word is inserted.
            }
            else {
                if (line_cur->state == S) {
@@ -487,8 +483,8 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
            }
            cache_cur->unlockUp(ins_mem);
 
-            if(ins_mem->atom_type != NON)printf("[MESI]   Op: %d Type: %d Hits 0x%lx, cache level : %d and Cache Id: %d in State : %d and Line atom: %d \n", 
-                            ins_mem->mem_type, ins_mem->atom_type, ins_mem->addr_dmem, level, cache_id, line_cur->state, line_cur->atom_type);
+            if(ins_mem->atom_type != NON)printf("[MESI]   Op: %d Type: %d Hits 0x%lx, cache level : %d and Cache Id: %d in State : %d and Line atom: %d Line Tag : 0x%lx Line Index Write Ends\n", 
+                            ins_mem->mem_type, ins_mem->atom_type, ins_mem->addr_dmem, level, cache_id, line_cur->state, line_cur->atom_type, line_cur->tag);
             
            return M;
         }
@@ -496,34 +492,46 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
         else {
             //ERROR COHERENCE - MAHESH
             //Can be handled with Exclusive as well
+            //New Error: New Error when level=0
            
                 if (line_cur->state != S) {
                     delay[core_id] += share_children(cache_cur, ins_mem);
-                    //Error: Need to write-back modified data and make state to S. 
-                    line_cur->state = S;
-                     if (level == num_levels-1) {
-                        //Hnadling the error ------------------------ Mahesh
-                        //line_cur->state = S;
-                        id_home = getHomeId(ins_mem);     
-                        delay[core_id] += network.transmit(cache_id, id_home, 0, timer+delay[core_id]);           
-                        if (shared_llc) delay[core_id] += accessSharedCache(cache_id, id_home, ins_mem, timer+delay[core_id], &state_tmp);
-                        else delay[core_id] += accessDirectoryCache(cache_id, id_home, ins_mem, timer+delay[core_id], &state_tmp);
-                        delay[core_id] += network.transmit(id_home, cache_id, 0, timer+delay[core_id]);
-                        //Handling Error----------------------------- Mahesh
-
-            
-                     }   
                     
-                }          
+                    //Error: Need to write-back modified data and make state to S. 
+                    //line_cur->state = S;                      
+                    //Still a Error : Consider level 0;  
+                                      
+                     if (level == num_levels-1) {                        
+                        //Added    
+                        id_home = getHomeId(ins_mem);
+                        delay[core_id] += network.transmit(cache_id, id_home, 0, timer+delay[core_id]);
+                        
+                        if (shared_llc) {
+                            delay[core_id] += accessSharedCache(cache_id, id_home, ins_mem, timer+delay[core_id], &state_tmp);
+                         
+                        }    
+                        else {
+                            delay[core_id] += accessDirectoryCache(cache_id, id_home, ins_mem, timer+delay[core_id], &state_tmp);
+                        }
+                        delay[core_id] += network.transmit(id_home, cache_id, 0, timer+delay[core_id]);
 
-                
+                        line_cur->state = S;
+                        //Added        
+                    }
+                    else if (level == 0) {
+                        //Dont do anything!.
+                    }                   
+                }
+
             cache_cur->unlockUp(ins_mem);
 
-            if(ins_mem->atom_type != NON)printf("[MESI]   Op: %d Type: %d Hits 0x%lx, cache level : %d and Cache Id: %d in State : %d and Line atom: %d \n", 
-                            ins_mem->mem_type, ins_mem->atom_type, ins_mem->addr_dmem, level, cache_id, line_cur->state, line_cur->atom_type);
+            if(ins_mem->atom_type != NON)printf("[MESI]   Op: %d Type: %d Hits 0x%lx, cache level : %d and Cache Id: %d in State : %d and Line atom: %d  Line Tag : 0x%lx Line Index Write Ends\n", 
+                            ins_mem->mem_type, ins_mem->atom_type, ins_mem->addr_dmem, level, cache_id, line_cur->state, line_cur->atom_type, line_cur->tag);
             
             return S;
         }
+
+        //2. Error Where is Writeback ralted to 1.
     }
 
     //Cache miss
@@ -537,11 +545,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
         }
 
         line_cur = cache_cur->replaceLine(&ins_mem_old, ins_mem);
-
-        if(level>=0 && ins_mem_old.atom_type==RELEASE){
-            printf("[MESI-REPLACE] Replacing atomic line 0x%lx from 0x%lx of cache %d in level %d \n", ins_mem_old.addr_dmem, ins_mem->addr_dmem, cache_id,level);
-        }
-        
+   
         if (line_cur->state) {
             cache_cur->incEvictCount();
             delay[core_id] += inval_children(cache_cur, &ins_mem_old);
@@ -560,8 +564,20 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     }
                 }
 
+                else{ //Missing Piece //1. Error
+                    if(cache_id==1 && level==0) printf("Flush 0x%lx \n", ins_mem_old.addr_dmem);
+                    if(cache_id>0 && level==0 && ins_mem_old.atom_type !=NON){
+                        printf("[ERROR] Ohhhhh boy : Flush 0x%lx from cache %d at level %d", ins_mem->addr_dmem, cache_id, level);
+                    }
+
+                    //L2 must be handled
+                }
+
                 //Something is missing here. Intermediate modifided data ust be written-back to memory when the cacheline is replaced?.
                 //Can a cacheline be replaced randomly in the intermediate stage.
+
+                //FINAL ERROR : [MESI-INVAL] Release -> Invalidating address [0x19]/[0xca0e8] of cache [1] in level [1]
+                
             }
         }
         
@@ -605,18 +621,25 @@ int System::share(Cache* cache_cur, InsMem* ins_mem)
     int i, delay = 0, delay_tmp = 0, delay_max = 0;
     Line*  line_cur;
 
+
     if (cache_cur != NULL) {
         cache_cur->lockDown(ins_mem);
         line_cur = cache_cur->accessLine(ins_mem);
         delay += cache_cur->getAccessTime();
+
         if (line_cur != NULL && (line_cur->state == M || line_cur->state == E)) {
             line_cur->state = S;
-
+            
             //need to change here and Line to support release. Need to handle commit and invalidate release.            
-            if(line_cur->atom_type == RELEASE){
+            if(line_cur->atom_type!=NON){                
                 printf("\n[MESI-SHARE] Release -> Downgrading address [0x%lx]/[0x%lx] of cache [%d] in level [%d]\n\n", 
                 line_cur->tag, ins_mem->addr_dmem, cache_cur->getId(), cache_cur->getLevel());
             }
+
+            //Update atomic type
+            line_cur->atom_type = NON;
+
+            //FLUSH INVOCATION
             
             for (i=0; i<cache_cur->num_children; i++) {
                 delay_tmp = share(cache_cur->child[i], ins_mem);
@@ -625,6 +648,8 @@ int System::share(Cache* cache_cur, InsMem* ins_mem)
                 }
             }
             delay += delay_max;
+        }else{
+            //if(line_cur == NULL) printf("Line Cure NULL\n");
         }
         cache_cur->unlockDown(ins_mem);
     }
@@ -664,11 +689,15 @@ int System::inval(Cache* cache_cur, InsMem* ins_mem)
         if (line_cur != NULL) {
             
             //need to change here and Line to support release. Need to handle commit and invalidate release.            
-            if(line_cur->atom_type == RELEASE){
+            if(line_cur->atom_type !=NON){
             printf("\n[MESI-INVAL] Release -> Invalidating address [0x%lx]/[0x%lx] of cache [%d] in level [%d]\n\n", 
                 line_cur->tag, ins_mem->addr_dmem, cache_cur->getId(), cache_cur->getLevel());
-            }            
+            }     
+                   
             line_cur->state = I;
+            //update_atomic
+            line_cur->atom_type = NON;
+            
             for (i=0; i<cache_cur->num_children; i++) {
                 delay_tmp = inval(cache_cur->child[i], ins_mem);
                 if (delay_tmp > delay_max) {
