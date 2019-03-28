@@ -134,10 +134,14 @@ void *msgHandler(void *t)
                
                 AtomicType atype = NON;
 
-                if(acq && rel) {atype = FULL;}
-                else if(acq)   {atype = ACQUIRE;}
-                else if(rel)   {atype = RELEASE;}
-                else           {atype = NON;}
+                if(ins_mem.addr_dmem == 0x6020e8){
+                    if(acq && rel) {atype = FULL;}
+                    else if(acq)   {atype = ACQUIRE;}
+                    else if(rel)   {atype = RELEASE;}
+                    else           {atype = NON;}
+                }else{
+                    atype = NON;
+                }                
 
                 ins_mem.atom_type = atype;
 
