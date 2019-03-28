@@ -90,6 +90,7 @@ typedef struct Line
     int64_t     timestamp;
     uint64_t    ppage_num;  //only for tlb cache
     IntSet      sharer_set; //only for directory cache
+    AtomicType  atom_type; //Atomic data (Acquire/Release)
 } Line;
 
 
@@ -144,6 +145,8 @@ class Cache
         void addrCompose(Addr* addr_in, uint64_t* addr_out);
         int lru(uint64_t index);
         void report(ofstream* result);
+        int getLevel();
+        int getId();
         ~Cache();
     private:
         int reverseBits(int num, int size);

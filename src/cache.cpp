@@ -91,6 +91,7 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
                 line[i][j].tag = 0;
                 line[i][j].ppage_num = 0;
                 line[i][j].timestamp = 0;
+                line[i][j].atom_type = NON;
             }
         }
     }
@@ -187,10 +188,12 @@ Line* Cache::accessLine(InsMem* ins_mem)
     uint64_t i;
     Line* set_cur;
     Addr addr_temp;
+
     addrParse(ins_mem->addr_dmem, &addr_temp);
     set_cur = findSet(addr_temp.index);
     assert(set_cur != NULL);
     for (i = 0; i < num_ways; i++) {
+
         if( (set_cur[i].id == ins_mem->prog_id)
         &&  (set_cur[i].tag == addr_temp.tag)
         &&   set_cur[i].state) {
@@ -216,6 +219,14 @@ Line* Cache::replaceLine(InsMem* ins_mem_old, InsMem* ins_mem)
         if (set_cur[i].state == I) {
            set_cur[i].id = ins_mem->prog_id; 
            set_cur[i].tag = addr_temp.tag;
+           
+           //Add atomic operations support: Acquire and Release
+           set_cur[i].atom_type =ins_mem->atom_type;
+           if(set_cur[i].atom_type == RELEASE){
+            //printf("\n[MESI-REPLACE] Atomic operations 0x%lx \n\n", ins_mem->addr_dmem);
+           }
+           
+           
            return &set_cur[i]; 
         }
     }
@@ -228,9 +239,24 @@ Line* Cache::replaceLine(InsMem* ins_mem_old, InsMem* ins_mem)
     ins_mem_old->prog_id = set_cur[way_rp].id;
     ins_mem_old->addr_dmem = addr_dmem_old;
 
+    //Save old atomic type
+    ins_mem_old->atom_type = set_cur[way_rp].atom_type;
+    //
+
     set_cur[way_rp].id = ins_mem->prog_id; 
     set_cur[way_rp].tag = addr_temp.tag;
 
+    //Set atomic type
+    set_cur[way_rp].atom_type = ins_mem->atom_type;
+    //
+
+    if(level==0 && cache_id>0 && ins_mem_old->atom_type == RELEASE){
+            printf("\n[MESI-REPLACE] replacements 0x%lx : Address 0x%lx by Address 0x%lx cache %d of level %d\n", ins_mem->addr_dmem, ins_mem_old->addr_dmem, ins_mem->addr_dmem, cache_id, level);
+    }
+
+    if(ins_mem_old->atom_type == RELEASE){
+            //printf("\n[MESI-REPLACE] Replaced Atomic operations 0x%lx : Address 0x%lx by Address 0x%lx \n", ins_mem->addr_dmem, ins_mem_old->addr_dmem, ins_mem->addr_dmem);
+    }
 
     return &set_cur[way_rp]; 
 }
@@ -426,6 +452,13 @@ uint64_t Cache::getEvictCount()
     return evict_count;
 }
 
+int Cache::getLevel(){
+    return level;
+}
+
+int Cache::getId(){
+    return cache_id;
+}
 
 
 void Cache::report(ofstream* result)
