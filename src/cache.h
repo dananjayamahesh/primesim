@@ -41,7 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "xml_parser.h"
 #include "bus.h"
 #include "common.h"
-
+#define SYNCMAP_SIZE 8
 typedef struct Addr
 {
     uint64_t    index;
@@ -91,6 +91,10 @@ typedef struct Line
     uint64_t    ppage_num;  //only for tlb cache
     IntSet      sharer_set; //only for directory cache
     AtomicType  atom_type; //Atomic data (Acquire/Release)
+
+    int         min_epoch_id;
+    int         max_epoch_id;
+    bool        dirty;
 } Line;
 
 
@@ -104,8 +108,32 @@ typedef struct InsMem
     int         rec_thread_id;
     uint64_t    addr_dmem; 
     AtomicType  atom_type;
+    int         epoch_id; //timestamp
+    char        mem_op; //2-RMW, 1-Write, 0-Read 
+    //int         min_epoch; //Should be < Byte (only for L1)
+    //int         max_epoch; //Shouls be < Byte (only for L1)
 } InsMem;
 
+
+typedef struct SyncLine{
+    uint64_t    address;
+    AtomicType  atom_type;
+    int         epoch_id;  
+    int         prog_id; //Unwanted, but PRiME can run multiple applications.
+    uint64_t    tag;
+    char        mem_op; 
+    char        mem_type;
+
+    SyncLine * next; // point to next
+} SyncLine;
+
+//Should be a linkedlist
+typedef struct SyncMap{
+    SyncLine sync_lines [SYNCMAP_SIZE]; //Not is use
+    SyncLine * head;    
+    int epoch_id;
+    int size;
+}SyncMap;
 
 class Cache
 {
@@ -147,6 +175,22 @@ class Cache
         void report(ofstream* result);
         int getLevel();
         int getId();
+        void printCache();
+
+        uint64_t getPersistCount();
+        void incPersistCount();
+
+        //SyncMap - Synchrnoization/Atomic Map/Sync Registry
+        int initSyncMap(int size);
+        SyncLine * createSyncLine(InsMem *ins_mem);
+        SyncLine * searchSyncMap(uint64_t addr);
+        void deleteFromSyncMap(uint64_t addr);
+        SyncLine* searchByEpochId(int epoch_id); //SHould returb a map
+        SyncLine * matchSyncLine(Line * line_cur);
+        int addSyncLine(InsMem * ins_mem);
+        void printSyncMap();
+        int replaceSyncLine(SyncLine * syncline, InsMem * ins_mem);
+
         ~Cache();
     private:
         int reverseBits(int num, int size);
@@ -173,7 +217,9 @@ class Cache
         uint64_t          offset_mask;
         uint64_t          index_mask;
         PersistModel      pmodel;
+        SyncMap           syncmap;
 
+        uint64_t          persist_count;
 };
 
 #endif //CACHE_H
