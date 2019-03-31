@@ -143,14 +143,14 @@ void System::init(XmlSys* xml_sys_in)
 
 // This function models an access to memory system and returns the delay.
 int System::access(int core_id, InsMem* ins_mem, int64_t timer)
-{
-    
-    //uint64_t tmp_addr = ins_mem->addr_dmem;
-    
+{    
+    //uint64_t tmp_addr = ins_mem->addr_dmem;    
         if(ins_mem->atom_type == RELEASE) printf("\n[System] Core: %d, Atomic Type: Release to Address 0x%lx Memory Type: %d \n", core_id, (uint64_t) ins_mem->addr_dmem, ins_mem->mem_type);
         else if(ins_mem->atom_type == ACQUIRE) printf("\n[System] Core: %d, Atomic Type: Acquire to Address 0x%lx Memory Type: %d \n", core_id, (uint64_t) ins_mem->addr_dmem, ins_mem->mem_type);
         else if(ins_mem->atom_type == FULL) printf("\n[System] Core: %d, Atomic Type: FULL to Address 0x%lx Memory Type: %d \n", core_id, (uint64_t) ins_mem->addr_dmem, ins_mem->mem_type);
-        else if(ins_mem->addr_dmem == 0x6020e8) printf("\n[System] Core: %d, Atomic Type: Non-Atomic to Address 0x%lx Memory Type: %d \n", core_id, (uint64_t) ins_mem->addr_dmem, ins_mem->mem_type);
+       
+        //if(ins_mem->addr_dmem == 0x6020e8) printf("\n[System] Core: %d, Atomic Type: Non-Atomic to Address 0x%lx Memory Type: %d \n", core_id, (uint64_t) ins_mem->addr_dmem, ins_mem->mem_type);
+        //else if(ins_mem->addr_dmem == 0x602068 || 0x60206c) printf("\n[SYSTEM-ACCESS] Core: %d, Atomic Type: Non-Atomic to Address 0x%lx Memory Type: %d \n", core_id, (uint64_t) ins_mem->addr_dmem, ins_mem->mem_type);
     
     int cache_id;
     if (core_id >= num_cores) {
@@ -398,7 +398,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
     char state_tmp;
     Line*  line_cur;
     InsMem ins_mem_old; 
-  
+    
     if (!cache_init_done[level][cache_id]) {
         printf("\n[Cache] -----------------------Initiating Cache %d of %d --------------------\n", cache_id, level);
         cache_cur = init_caches(level, cache_id);       
@@ -420,19 +420,17 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
     cache_cur->lockUp(ins_mem);
     delay[core_id] += cache_level[level].access_time;
     line_cur = cache_cur->accessLine(ins_mem);
-
+ 
     //Cache hit
     if (line_cur != NULL) {
+        //printf("Messi hit 0x%lx cache %d level %d \n", ins_mem->addr_dmem, cache_id, level);
         line_cur->timestamp = timer + delay[core_id];
         hit_flag[core_id] = true; 
-
+        
         if(ins_mem->atom_type != NON){
         //if(level >=0 && cache_id>=0){
             printf("[MESI]   Op: %d Type: %d Hits 0x%lx, cache level : %d and Cache Id: %d in State : %d and Line atom: %d RMW: %s Memory: %s Epoch: %d \n", 
                 ins_mem->mem_type , ins_mem->atom_type, ins_mem->addr_dmem, level, cache_id, line_cur->state, line_cur->atom_type, (ins_mem->mem_op==2)?"yes":"no", (ins_mem->mem_type==0)?"read":"write", ins_mem->epoch_id);
-            if(ins_mem->atom_type == RELEASE && ins_mem->mem_type==1) {
-                line_cur->atom_type = ins_mem->atom_type;
-            }
         }
 
         //Write
@@ -513,6 +511,11 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                                           core_id, ins_mem, timer + delay[core_id]);
             }
             else{
+
+                    //New Logic
+                    assert (line_cur->state == M || line_cur->state==E);
+                    //delay[core_id] += inval_children(cache_cur, &ins_mem); //Invalidating all S->I, M->I
+
                     id_home = getHomeId(ins_mem);
                     delay[core_id] += network.transmit(cache_id, id_home, 0, timer+delay[core_id]);
                    
@@ -532,9 +535,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //Read
         else {
-            //ERROR COHERENCE - MAHESH
-            //Can be handled with Exclusive as well
-            //New Error: New Error when level=0           
+            //ERROR COHERENCE - MAHESH //Can be handled with Exclusive as well //New Error: New Error when level=0           
                 if (line_cur->state != S) {
                     delay[core_id] += share_children(cache_cur, ins_mem);                    
                     //Error: Need to write-back modified data and make state to S. 
@@ -577,22 +578,22 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
     else {
 
         //Set atomic type of the cache blocks
-
-        if(ins_mem->atom_type != NON){
-        //if(level ==0 && cache_id>0){
-                printf("[MESI] Op: %d Type: %d Miss 0x%lx, cache level : %d  and Cache Id: %d in State : %d and Line atom: %s RMW-%s Memroy %s Epoch: %d \n", 
-                    ins_mem->mem_type, ins_mem->atom_type, ins_mem->addr_dmem, level , cache_id, line_cur->state, "No line", (ins_mem->mem_op==2)?"yes":"no", (ins_mem->mem_type==0)?"read":"write", ins_mem->epoch_id);
-        }
-
+        // printf("Messi miss 0x%lx cache %d level %d \n", ins_mem->addr_dmem, cache_id, level); //printf("Mesi Miss 2\n");
         line_cur = cache_cur->replaceLine(&ins_mem_old, ins_mem);
-   
+        //Cacheline replacement logic. 
+        if(ins_mem->atom_type != NON){
+        //if(level >=0 && cache_id>=0){
+            printf("[MESI]   Op: %d Type: %d Miss 0x%lx, cache level : %d and Cache Id: %d RMW: %s Memory: %s Epoch: %d \n", 
+                ins_mem->mem_type , ins_mem->atom_type, ins_mem->addr_dmem, level, cache_id, (ins_mem->mem_op==2)?"yes":"no", (ins_mem->mem_type==0)?"read":"write", ins_mem->epoch_id);
+        }
+                  
         if (line_cur->state) {
             cache_cur->incEvictCount();
-            delay[core_id] += inval_children(cache_cur, &ins_mem_old);
-            if(line_cur->state == M || line_cur->state == E) {
-                
+            //delay[core_id] += inval_children(cache_cur, &ins_mem_old);
+            if(line_cur->state == M || line_cur->state == E) {                
                 cache_cur->incWbCount();
                 if (level == num_levels-1) {
+                    delay[core_id] += inval_children(cache_cur, &ins_mem_old); //Previous One
                     id_home = getHomeId(&ins_mem_old);
                     ins_mem_old.mem_type = WB; 
                     network.transmit(cache_id, id_home, cache_level[num_levels-1].block_size,  timer+delay[core_id]);
@@ -603,23 +604,42 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                         accessDirectoryCache(cache_id, id_home, &ins_mem_old, timer+delay[core_id], &state_tmp);
                     }
                 }
-
-                else{ //Missing Piece //1. Error
-                    if(cache_id==1 && level==0) printf("Flush 0x%lx \n", ins_mem_old.addr_dmem);
-                    if(cache_id>0 && level==0 && ins_mem_old.atom_type !=NON){
-                        printf("[ERROR] Ohhhhh boy : Flush 0x%lx from cache %d at level %d", ins_mem->addr_dmem, cache_id, level);
+                else{                    
+                    //Missing Piece //1. Error //if(cache_id>=0 && level==0) printf("Flush 0x%lx \n", ins_mem_old.addr_dmem);
+                    if(cache_id>=0 && level==0 && ins_mem_old.atom_type !=NON){
+                        printf("[ERROR] Ohhhhh boy : Flush 0x%lx from cache %d at level %d \n", ins_mem->addr_dmem, cache_id, level);
                     }
+                    //Replacement Logic///////////////////////////////////////////////////////////////////////
+                    //InsMem newMem = ins_mem_old;
 
-                    //L2 must be handled
+                    if(level==0 && (ins_mem_old.atom_type !=NON) ){
+                        printf("Release Persistency in Replacement \n");
+                        delay += releasePersist(cache_cur, &ins_mem_old, line_cur); //Whichline  
+                        printf("C\n");  
+                        printf("D\n");                    
+                    }
+                    
+                    /*
+                    printf("E");
+                    printf("[INSMEM]   Op: %d Type: %d Miss 0x%lx, cache level : %d and Cache Id: %d RMW: %s Memory: %s Epoch: %d \n", 
+                        ins_mem_old.mem_type , ins_mem_old.atom_type, ins_mem_old.addr_dmem, level, cache_id, (ins_mem_old.mem_op==2)?"yes":"no", (ins_mem_old.mem_type==0)?"read":"write", ins_mem_old.epoch_id);
+                     printf("F");
+                    
+                    ins_mem_old.mem_type = WB;//Verify this
+
+                    printf("A");
+                    line_cur->state = mesi_directory(cache_cur->parent, level+1, 
+                                          cache_id*cache_level[level].share/cache_level[level+1].share, 
+                                          core_id, &ins_mem_old, timer + delay[core_id]); printf("B\n");*/
+                    /////////////////////////////////////////////////////////////////////////////////////////// 
                 }
                 //Something is missing here. Intermediate modifided data ust be written-back to memory when the cacheline is replaced?.
-                //Can a cacheline be replaced randomly in the intermediate stage.
-                //FINAL ERROR : [MESI-INVAL] Release -> Invalidating address [0x19]/[0xca0e8] of cache [1] in level [1]
-                
+                //Can a cacheline be replaced randomly in the intermediate stage. //FINAL ERROR : [MESI-INVAL] Release -> Invalidating address [0x19]/[0xca0e8] of cache [1] in level [1]                
             }
         }
-        
+                
         line_cur->timestamp = timer + delay[core_id];
+        
         if (level != num_levels-1) {
             line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                    cache_id*cache_level[level].share/cache_level[level+1].share, core_id, 
@@ -645,6 +665,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
             }
         }
         else {
+
             id_home = getHomeId(ins_mem);
             delay[core_id] += network.transmit(cache_id, id_home, 0,  timer+delay[core_id]);
             if (shared_llc) {
@@ -670,7 +691,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
     } //END of CACHE MISS
 }
 
-int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, int rel_epoch_id){
+int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id){
     //Need to send write-back instruction to all upper level. from M or E state
     //Write-back
     int delay_flush = 0;
@@ -682,7 +703,8 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, int rel_epoch_id
     
     delay[core_id] = 0;
     
-    int level = cache_cur->getLevel();    
+    int level = cache_cur->getLevel(); 
+    int persist_count =0;   
 
     for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {
             
@@ -692,13 +714,12 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, int rel_epoch_id
                 InsMem ins_mem;
                 line_cur = cache_cur->directAccess(i,j,&ins_mem);                
                 //printf("B (%lu,%lu) 0x%lx 0x%lx %d \n", i,j, line_cur->tag, ins_mem.addr_dmem, line_cur->state);                
-                if(line_cur != NULL && (line_cur->state==M || line_cur->state==E )){
-                    printf("[Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
-                        i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
+                if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M || line_cur->state==E )){
+                    //printf("[Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
+                    //    i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
                      //without sync conflicts                    
                     //if(line_cur->min_epoch_id <= rel_epoch_id){
                     if(true){
-                        //printf("inside\n");
                         //Cacheline needs to be written back
                         //uint64_t address_tag = line_cur->tag;
                         ins_mem.mem_type = WB;   
@@ -707,7 +728,10 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, int rel_epoch_id
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
                         
-                        if(line_cur->dirty){                            
+                        cache_cur->incPersistCount();
+                        persist_count++;
+                        
+                        if(line_cur->dirty){   //No difference in prime.                         
                              line_cur->state=I;
                         }else{
                             line_cur->state=I;
@@ -715,7 +739,9 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, int rel_epoch_id
                     }
                 }
         }
-    }    
+    } 
+
+    printf("Number of persists on release : %d \n", persist_count);   
     
     return delay[core_id];
 }
@@ -736,14 +762,15 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur){
         return 0;
     }
       
-    int epoch_id = syncline->epoch_id;
+    int rel_epoch_id = syncline->epoch_id;
 
     printf("----------------------------------- Start Persist ---------------------------------------\n");
-    delay_tmp = releaseFlush(cache_cur, syncline, epoch_id);
+    delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id);
     printf("-----------------------------------  End  Persist ---------------------------------------\n");           
     //Resove conflicts and flush cachelines
     //Can do writebacks or comepletly new flushing. M->I. M->S
-    printf("Release Persistency: Total Delay : %d \n", delay_tmp);    
+    printf("Release Persistency: Total Delay : %d \n", delay_tmp);  
+    //cache_cur->printCache();  //Cache L1 Print      
     //Can do only for persistent data
     //Final: Send a write back message to lower.
     //Wait for Ack.
@@ -762,8 +789,7 @@ int System::share(Cache* cache_cur, InsMem* ins_mem)
         delay += cache_cur->getAccessTime();
 
         if (line_cur != NULL && (line_cur->state == M || line_cur->state == E)) {
-            //Original line_cur->state = S;
-            
+            //Original line_cur->state = S;            
             //need to change here and Line to support release. Need to handle commit and invalidate release.            
             if(line_cur->atom_type!=NON){                
                 printf("[MESI-SHARE] Release -> Downgrading address [0x%lx]/[0x%lx] of cache [%d] in level [%d]\n", 
@@ -771,9 +797,10 @@ int System::share(Cache* cache_cur, InsMem* ins_mem)
             }
 
             //FLUSH INVOCATION - LAZY RELEASE (also check replace and invalidations)
-            if(cache_cur->getLevel()==0 && line_cur->atom_type == RELEASE){ 
+            if(cache_cur->getLevel()==0 && (line_cur->atom_type == RELEASE || line_cur->atom_type == ACQUIRE)){ 
                 //Eviction implement: line_cur->atom_type == RELEASE -> DO not have this information
                 //Before Write-back.
+                printf("Release Persist Starting.... \n");
                 delay += releasePersist(cache_cur, ins_mem, line_cur); // need both Acquire and Releas
             }
 
@@ -787,12 +814,12 @@ int System::share(Cache* cache_cur, InsMem* ins_mem)
                     delay_max = delay_tmp;
                 }
             }
-            delay += delay_max;
-        
+            delay += delay_max;        
 
         }else{
             //if(line_cur == NULL) printf("Line Cure NULL\n");
         }
+        //cache_cur->printCache();
         cache_cur->unlockDown(ins_mem);
     }
     return delay;
@@ -884,19 +911,21 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
     InsMem ins_mem_old;
     IntSet::iterator pos;
     Line* line_cur;
-    home_stat[home_id] = 1;
+    home_stat[home_id] = 1;    
     assert(directory_cache[home_id] != NULL);
     directory_cache[home_id]->lockUp(ins_mem);
     line_cur = directory_cache[home_id]->accessLine(ins_mem);
     directory_cache[home_id]->incInsCount();
     delay += directory_cache[home_id]->getAccessTime();
     //Directory cache miss
+    //printf("Checkpoint 2 address 0x%lx %d %d \n", ins_mem->addr_dmem, ins_mem->mem_type, ins_mem->atom_type);    
+
     if ((line_cur == NULL) && (ins_mem->mem_type != WB)) {
 
         if(ins_mem->atom_type != NON){
-            printf("[MESI-D]   Type: %d Miss 0x%lx, cache level : %d and Cache Id: %d in State : %d and Line atom: %d \n", ins_mem->atom_type, ins_mem->addr_dmem, level, cache_id, line_cur->state, line_cur->atom_type);
+            printf("[MESI-D]  Op:%d Type: %d Miss 0x%lx, cache level : %d and Cache Id: %d \n", ins_mem->mem_type, ins_mem->atom_type, ins_mem->addr_dmem, level, cache_id);
             if(ins_mem->atom_type == RELEASE && ins_mem->mem_type==1) {
-                line_cur->atom_type = ins_mem->atom_type;
+                //line_cur->atom_type = ins_mem->atom_type;
             }
         }
 
@@ -1036,7 +1065,7 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
             line_cur->sharer_set.insert(cache_id);
         } 
         else if(ins_mem->mem_type == WB){ //Write-back
-                //printf("writeback");
+                //printf("writeback 0x%lx \n",ins_mem->addr_dmem);
                 delay += dram.access(ins_mem);
                 line_cur->state = I;
                 line_cur->sharer_set.clear();

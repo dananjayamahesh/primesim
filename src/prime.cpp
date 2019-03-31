@@ -131,12 +131,14 @@ void *msgHandler(void *t)
                 //Trap Acquire and Release
                 //ins_mem = msg_mem[index_prev][i].
                 bool acq = msg_mem[index_prev][i].is_acquire;
-                bool rel = msg_mem[index_prev][i].is_release;
-               
+                bool rel = msg_mem[index_prev][i].is_release;    
+
                 AtomicType atype = NON;
                 char mem_op = 0;
                 //Need to tack all atomic variables
-                if(ins_mem.addr_dmem == 0x6020e8){ //Extend for all atomic variables later
+                //if(ins_mem.addr_dmem == 0x6020e8){ //Extend for all atomic variables later
+                if(ins_mem.addr_dmem == 0x602068 || ins_mem.addr_dmem == 0x60206c){
+
                     if(acq && rel) {atype = FULL; epoch_id++; ins_mem.epoch_id = epoch_id; epoch_id++; mem_op=2;} //Increment epoch id //RMW
                     else if(acq)   {atype = ACQUIRE; ins_mem.epoch_id = epoch_id; epoch_id++; mem_op=2;} //RMW
                     else if(rel)   {atype = RELEASE; epoch_id++; ins_mem.epoch_id = epoch_id; mem_op=ins_mem.mem_type;}
@@ -149,6 +151,10 @@ void *msgHandler(void *t)
                 ins_mem.atom_type = atype;
                 //ins_mem.epoch_id = epoch_id;
                 ins_mem.mem_op = mem_op;
+                //Acquire-Release catch
+                if(ins_mem.atom_type !=NON){
+                    //printf("[PIN] Core : %d Address : 0x%lx in atomic : %d memory op:%d \n", core_id, ins_mem.addr_dmem, ins_mem.atom_type, ins_mem.mem_type);
+                }
 
                 delay += uncore_manager.uncore_access(core_id, &ins_mem, msg_mem[index_prev][i].timer + delay) - 1;
                 if (delay < 0) {

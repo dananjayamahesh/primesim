@@ -250,15 +250,14 @@ Line* Cache::replaceLine(InsMem* ins_mem_old, InsMem* ins_mem)
     //Save old atomic type
     ins_mem_old->atom_type = set_cur[way_rp].atom_type;
     //
-
     set_cur[way_rp].id = ins_mem->prog_id; 
     set_cur[way_rp].tag = addr_temp.tag;
 
     //Set atomic type
-    set_cur[way_rp].atom_type = ins_mem->atom_type;
+    set_cur[way_rp].atom_type = ins_mem->atom_type; //Holy Shit!!
     //
 
-    if(level==0 && cache_id>0 && ins_mem_old->atom_type == RELEASE){
+    if(level==0 && cache_id>=0 && ins_mem_old->atom_type !=NON){
             printf("\n[MESI-REPLACE] replacements 0x%lx : Address 0x%lx by Address 0x%lx cache %d of level %d\n", ins_mem->addr_dmem, ins_mem_old->addr_dmem, ins_mem->addr_dmem, cache_id, level);
     }
 

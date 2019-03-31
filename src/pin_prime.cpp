@@ -49,12 +49,12 @@ void PIN_FAST_ANALYSIS_CALL execNonMem(uint32_t ins_count, THREADID threadid)
 // Handle a memory instruction
 void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type, bool is_release, bool is_acquire)
 {
-    if((uint32_t) threadid > 0){
+    if((uint32_t)threadid >=0){
         if(is_release){
-            //printf(" RELEASE is DETECTED \n");
-        }
+            //printf("////////////////////////////////// RELEASE %d ///// THREAD Id - %d /// Addr %p Size %d mem-type %s\n", is_release, (uint32_t)threadid, addr, size, (!mem_type)?"READ":"WRITE" );
+        }    
         if(is_acquire){
-            //printf("ACQUIRE is DETECTED \n");
+            //printf("////////////////////////////////// ACQUIRE  %d ///// THREAD ID - %d /// Addr %p Size %d mem-type %s \n", is_acquire, (uint32_t)threadid, addr, size, (!mem_type)?"READ":"WRITE");
         }
     }
     core_manager->execMem(addr, threadid, size, mem_type, is_acquire, is_release);
