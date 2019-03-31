@@ -35,6 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define PADSIZE 56  // 64 byte line size: 64-8
 #define THREAD_MAX  1024 // Maximum number of threads in one process
 
+#define RELEASE_PERSISTENCY 1
+
 enum MessageTypes
 {
     MEM_REQUESTS = 0,

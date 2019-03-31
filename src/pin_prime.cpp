@@ -51,10 +51,10 @@ void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type, bool 
 {
     if((uint32_t) threadid > 0){
         if(is_release){
-            printf("RELEASE is DETECTED \n");
+            //printf(" RELEASE is DETECTED \n");
         }
         if(is_acquire){
-            printf("ACQUIRE is DETECTED \n");
+            //printf("ACQUIRE is DETECTED \n");
         }
     }
     core_manager->execMem(addr, threadid, size, mem_type, is_acquire, is_release);

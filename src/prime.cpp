@@ -40,6 +40,7 @@ using namespace std;
 void *msgHandler(void *t)
 {
     //Declare a ping-pong buffer to allow one buffer to receive data while another is being processed
+    int epoch_id = 0;
     MsgMem msg_mem[2][max_msg_size + 1];
     InsMem ins_mem;
     MPI_Status local_status;
@@ -133,17 +134,21 @@ void *msgHandler(void *t)
                 bool rel = msg_mem[index_prev][i].is_release;
                
                 AtomicType atype = NON;
-
-                if(ins_mem.addr_dmem == 0x6020e8){
-                    if(acq && rel) {atype = FULL;}
-                    else if(acq)   {atype = ACQUIRE;}
-                    else if(rel)   {atype = RELEASE;}
-                    else           {atype = NON;}
+                char mem_op = 0;
+                //Need to tack all atomic variables
+                if(ins_mem.addr_dmem == 0x6020e8){ //Extend for all atomic variables later
+                    if(acq && rel) {atype = FULL; epoch_id++; ins_mem.epoch_id = epoch_id; epoch_id++; mem_op=2;} //Increment epoch id //RMW
+                    else if(acq)   {atype = ACQUIRE; ins_mem.epoch_id = epoch_id; epoch_id++; mem_op=2;} //RMW
+                    else if(rel)   {atype = RELEASE; epoch_id++; ins_mem.epoch_id = epoch_id; mem_op=ins_mem.mem_type;}
+                    else           {atype = NON; mem_op=ins_mem.mem_type;}
                 }else{
                     atype = NON;
+                    mem_op=ins_mem.mem_type;
                 }                
 
                 ins_mem.atom_type = atype;
+                //ins_mem.epoch_id = epoch_id;
+                ins_mem.mem_op = mem_op;
 
                 delay += uncore_manager.uncore_access(core_id, &ins_mem, msg_mem[index_prev][i].timer + delay) - 1;
                 if (delay < 0) {

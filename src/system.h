@@ -86,6 +86,8 @@ class System
         int access(int core_id, InsMem* ins_mem, int64_t timer);
         char mesi_bus(Cache* cache_cur, int level, int cache_id, int core_id, InsMem* ins_mem, int64_t timer);
         char mesi_directory(Cache* cache_cur, int level, int cache_id, int core_id, InsMem* ins_mem, int64_t timer);
+        int releaseFlush(Cache *cache_cur, SyncLine * syncline, int rel_epoch_id);
+        int releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur);
         int share(Cache* cache_cur, InsMem* ins_mem);
         int share_children(Cache* cache_cur, InsMem* ins_mem);
         int inval(Cache* cache_cur, InsMem* ins_mem);
