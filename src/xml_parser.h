@@ -87,6 +87,7 @@ typedef struct XmlSys
     XmlCache   directory_cache;
     XmlCache   tlb_cache;
     XmlCache*  cache;
+    int        pmodel;
 } XmlSys;
 
 typedef struct XmlSim

@@ -61,6 +61,7 @@ XmlParser::XmlParser()
     xml_sim.sys.num_cores = 0;
     xml_sim.sys.bus_latency = 0;
     xml_sim.sys.page_miss_delay = 0;
+    xml_sim.sys.pmodel = 0;
 
 
     xml_sim.sys.directory_cache.level = 0;
@@ -349,12 +350,21 @@ bool XmlParser::parseSys()
                 xmlFree(key);
                 item_count++;
  	        }
+            if ((!xmlStrcmp(cur->name, (const xmlChar *)"persist_model"))) {
+                key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+                convert.clear();
+                convert.str("");
+                convert << key;
+                convert >> dec >> xml_sim.sys.pmodel;
+                xmlFree(key);
+                item_count++;
+            }
 	    cur = cur->next;
         }
 	}
     xml_sim.sys.cache = new XmlCache [xml_sim.sys.num_levels]; 
     xmlXPathFreeObject(sys_node);
-    return (item_count == 13);
+    return (item_count == 14);
 }
 
  //Parse the network structure and store the result 
