@@ -75,8 +75,10 @@ enum MemType
 
 typedef enum PersistModel
 {
-    FLLB = 0, //FULL BARRIER
-    RLXB = 1, //RELAXED BARRIER
+    NONB = 0,
+    FLLB = 1, //FULL BARRIER
+    RLXB = 2, //RELAXED BARRIER
+    RLSB = 3, //RELEASE BARRIER
 } PersistModel;
 
 

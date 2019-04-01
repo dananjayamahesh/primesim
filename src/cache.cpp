@@ -246,7 +246,7 @@ Line* Cache::replaceLine(InsMem* ins_mem_old, InsMem* ins_mem)
     
     ins_mem_old->prog_id = set_cur[way_rp].id;
     ins_mem_old->addr_dmem = addr_dmem_old;
-
+    
     //Save old atomic type
     ins_mem_old->atom_type = set_cur[way_rp].atom_type;
     //
@@ -258,7 +258,7 @@ Line* Cache::replaceLine(InsMem* ins_mem_old, InsMem* ins_mem)
     //
 
     if(level==0 && cache_id>=0 && ins_mem_old->atom_type !=NON){
-            printf("\n[MESI-REPLACE] replacements 0x%lx : Address 0x%lx by Address 0x%lx cache %d of level %d\n", ins_mem->addr_dmem, ins_mem_old->addr_dmem, ins_mem->addr_dmem, cache_id, level);
+            printf("\n[MESI-REPLACE] replacements - Address 0x%lx by Address 0x%lx cache %d of level %d\n", ins_mem_old->addr_dmem, ins_mem->addr_dmem, cache_id, level);
     }
 
     if(ins_mem_old->atom_type == RELEASE){
@@ -493,9 +493,9 @@ void Cache::printSyncMap(){
     SyncLine *tmp_line = syncmap.head;
         //bool found = false;
     printf("------------------------------------------------------------[%d, %d]\n", cache_id, level);  
-    printf("Epoch \t Address \t Atom \t Tag \t Op \t Type \n");  
+    printf("ID \t Epoch \t Address \t Atom \t Tag \t Op \t Type \n");  
         while (tmp_line !=NULL){            
-               printf("%d \t 0x%lx \t %d \t 0x%lx \t %d \t %d \n", tmp_line->epoch_id, tmp_line->address, tmp_line->atom_type, tmp_line->tag, tmp_line->mem_op, tmp_line->mem_type);  
+               printf("%d \t %d \t 0x%lx \t %d \t 0x%lx \t %d \t %d \n", tmp_line->sync_id, tmp_line->epoch_id, tmp_line->address, tmp_line->atom_type, tmp_line->tag, tmp_line->mem_op, tmp_line->mem_type);  
                     //Need more logic here           
                 tmp_line = tmp_line->next;
         }
@@ -529,6 +529,7 @@ SyncLine * Cache::createSyncLine(InsMem *ins_mem){
     syncline->tag       = addr_temp.tag;
     syncline->mem_op    = ins_mem->mem_op;
     syncline->mem_type  = ins_mem->mem_type;
+    syncline->sync_id   = syncmap.size % SYNCMAP_SIZE ;
      
     return syncline;
 }
@@ -571,7 +572,7 @@ int Cache::addSyncLine(InsMem * ins_mem){
         syncmap.head = new_line;
         syncmap.size++;
 
-        printf("[SyncMap] Adding Sync Line 0x%lx to cache %d at level %d, atomic-type: %d \n", ins_mem->addr_dmem, cache_id, level, ins_mem->atom_type);  
+        printf("[SyncMap] Adding Sync Line 0x%lx to cache %d at level %d, atomic-type: %d ID:%d \n", ins_mem->addr_dmem, cache_id, level, ins_mem->atom_type, new_line->sync_id);  
     }
     else{
         //Wait. Stall the until something get flushed.//No incident of races to same sync variable. Becuase of Data Race Free execution. 

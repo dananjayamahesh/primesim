@@ -123,6 +123,7 @@ typedef struct SyncLine{
     uint64_t    tag;
     char        mem_op; 
     char        mem_type;
+    int    sync_id;
 
     SyncLine * next; // point to next
 } SyncLine;
