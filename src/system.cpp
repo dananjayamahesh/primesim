@@ -450,8 +450,20 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
         if (ins_mem->mem_type == WR) {
 
            if (level != num_levels-1) {
+
+                if(line_cur->state == M  || line_cur->state == E){ //Cache hit
+                    //Check for buffered epoch persistency - BEP
+                    if(pmodel == BEPB && level==0){
+                        if(line_cur->dirty && ins_mem->epoch_id > line_cur->max_epoch_id){ //Both same address visibility and multi-word block conflicts
+                            //Buffered Epoch Persistency- Intra-thread conflict
+                            delay[core_id] += persist(cache_cur, ins_mem, line_cur, core_id); //BEP
+                            
+                        }   
+                    }
+                }//End of BEP flush
+
                if (line_cur->state != M) {
-                   line_cur->state = I;                     
+                   line_cur->state = I;                 
 
                    line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
@@ -459,35 +471,40 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
 
                }
                
-               //if(ins_mem->atom_type != NON) line_cur->atom_type = ins_mem->atom_type;
-                if(ins_mem->atom_type != NON){
-                    line_cur->atom_type = ins_mem->atom_type; //Update only when atomic word is inserted.
-                    //Can be moved inside                    
+                //if(ins_mem->atom_type != NON) line_cur->atom_type = ins_mem->atom_type;                   
+    
                     if(level==0){
-                        cache_cur->addSyncLine(ins_mem);
-                    }
-                    //Need to insert it to 
-                }
 
-                if(level==0){
-                    
-                    if(line_cur->dirty){
-                       if(ins_mem->epoch_id < line_cur->min_epoch_id){
-                        line_cur->min_epoch_id = ins_mem->epoch_id;
-                         //Release epoch id can be overwritten later.
-                        } 
-                    }else{
-                        line_cur->min_epoch_id = ins_mem->epoch_id;
-                        line_cur->dirty = 1;
-                    }                    
+                        if(ins_mem->atom_type != NON){
+                            line_cur->atom_type = ins_mem->atom_type; //Update only when atomic word is inserted.                                        
+                            cache_cur->addSyncLine(ins_mem);                       
+                        }
+                        
+                        if(line_cur->dirty){
+                           if(ins_mem->epoch_id < line_cur->min_epoch_id){
+                            line_cur->min_epoch_id = ins_mem->epoch_id;
+                             //Release epoch id can be overwritten later.
+                            }
 
-                    //Max counter
-                    if(ins_mem->epoch_id > line_cur->max_epoch_id){
-                        line_cur->max_epoch_id = ins_mem->epoch_id;
-                    }
+                            if(ins_mem->epoch_id > line_cur->max_epoch_id){ //Latest epoch ID.
+                            line_cur->max_epoch_id = ins_mem->epoch_id;
+                            //check dirty bit?
+                            }
+                            
+                        }else{
+                            line_cur->min_epoch_id = ins_mem->epoch_id;
+                            line_cur->max_epoch_id = ins_mem->epoch_id;
+                            line_cur->dirty = 1;
+                        }                    
+    
+                        //Max counter
+                        //if(ins_mem->epoch_id > line_cur->max_epoch_id){
+                        //    line_cur->max_epoch_id = ins_mem->epoch_id;
+                            //check dirty bit?
+                        //}    
+                        //line_cur->dirty = 1;
+                    }                
 
-                    //line_cur->dirty = 1;
-                }
            }
            //LLC Write
            else {
@@ -514,7 +531,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     //printf("ERROR \n");
                }              
                
-               line_cur->atom_type = ins_mem->atom_type;
+               //line_cur->atom_type = ins_mem->atom_type;
                line_cur->state = M; 
                //Modified state does not track owners. 
                //Error: 2 Owners can exist in the same time.
@@ -738,10 +755,48 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
 
 
 //Buffered Epoch Persistence
-int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id){
+int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id){ //calling 
     //Buffered Epoch Persistency on caches
-    
+    int conflict_epoch_id = line_call->max_epoch_id; //Not sure! Check
+    printf("Buffered Epoch Persistency Cache:%d Conflict Epoch:%d \n", req_core_id, conflict_epoch_id);
+    int delay_flush = 0;
+    delay_flush++;
+    int core_id = cache_cur->getId(); int cache_id = cache_cur->getId();
+    Line *line_cur;
+    int timer = 0;
+    //delay[core_id] = 0;    
+    int level = cache_cur->getLevel(); 
+    int persist_count =0;
+
+    for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {            
+            for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) {                
+                //printf("A Epoch %d\n", rel_epoch_id);
+                InsMem ins_mem;
+                line_cur = cache_cur->directAccess(i,j,&ins_mem);    
+                            
+                if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M || line_cur->state==E )){ //Need to think about E here
+                 
+                    if(line_cur->max_epoch_id < conflict_epoch_id){ //Epoch Id < conflictigng epoch id - similar to full flush
+                        ins_mem.mem_type = WB;   
+                        ins_mem.atom_type = NON;                                             
+                        line_cur->state = mesi_directory(cache_cur->parent, level+1, 
+                                          cache_id*cache_level[level].share/cache_level[level+1].share, 
+                                          core_id, &ins_mem, timer + delay[core_id]);
+                        
+                        cache_cur->incPersistCount();
+                        persist_count++;
+                        
+                        line_cur->dirty = 0;
+                        line_cur->state = I;
+                    }
+                }
+        }
+    } 
     //Buffered Eopch Persistence
+    #ifdef DEBUG
+    printf("Number of persists (Buffered Epoch Persistency): %d \n", persist_count); 
+    #endif
+    return delay[core_id];
 }
 
 
@@ -857,12 +912,24 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
 
 //Mist return delay
 
-int System:: persist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id){
-    //Persistence model
+int System::persist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id){
+    //Persistence models
+
     if(pmodel == NONB){
-        //Do nothing
+        //Do nothing - no persist;
         return 0;
-    }else{
+    }
+    //Beffired Epoch Persistency
+    else if(pmodel == BEPB){
+        //cache_cur->printCache(); 
+        printf("\n[BEP] Start Buffered Epoch Persistency\n");
+        int delay_tmp = epochPersist(cache_cur, ins_mem, line_cur, req_core_id);
+        printf("[BEP] End Buffered Epoch Persistency Persist [delay : %d]\n", delay_tmp);    
+        //cache_cur->printCache(); 
+        return delay_tmp;
+    }
+    //Release Persistecy and Full FLush
+    else{
        return releasePersist(cache_cur, ins_mem, line_cur, req_core_id);
     }
 }
