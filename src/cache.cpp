@@ -210,7 +210,6 @@ Line* Cache::accessLine(InsMem* ins_mem)
     }
     return NULL;
 }
-
 // This function replaces the cache line the instruction want to access and returns
 // a pointer to this line, the replaced content is copied to ins_mem_old.
 Line* Cache::replaceLine(InsMem* ins_mem_old, InsMem* ins_mem)
@@ -256,10 +255,11 @@ Line* Cache::replaceLine(InsMem* ins_mem_old, InsMem* ins_mem)
     //Set atomic type
     set_cur[way_rp].atom_type = ins_mem->atom_type; //Holy Shit!!
     //
-
+    #ifdef DEBUG
     if(level==0 && cache_id>=0 && ins_mem_old->atom_type !=NON){
             printf("\n[MESI-REPLACE] replacements - Address 0x%lx by Address 0x%lx cache %d of level %d\n", ins_mem_old->addr_dmem, ins_mem->addr_dmem, cache_id, level);
     }
+    #endif
 
     if(ins_mem_old->atom_type == RELEASE){
             //printf("\n[MESI-REPLACE] Replaced Atomic operations 0x%lx : Address 0x%lx by Address 0x%lx \n", ins_mem->addr_dmem, ins_mem_old->addr_dmem, ins_mem->addr_dmem);
@@ -476,10 +476,17 @@ uint64_t Cache::getPersistCount(){
     return persist_count;
 }
 
+uint64_t Cache::getPersistDelay(){
+    return persist_delay;
+}
+
 void Cache::incPersistCount(){
     persist_count++;
 }
 
+void Cache::incPersistDelay(int delay){
+    persist_delay= persist_delay+delay;
+}
 ////////////////////////////////////////////////////////////////////////////////////////////
 //SyncMap Functions
 int Cache::initSyncMap(int size){
@@ -559,8 +566,11 @@ int Cache::addSyncLine(InsMem * ins_mem){
         //Assmption only 1 sync atomic variable at a time
         while (tmp_line !=NULL){
             if(tmp_line->address == new_line->address){
-                printf("[SyncMap] Overwrite Sync 0x%lx of atomic-type %d/%d in cache %d of Level %d \n", 
+
+                #ifdef DEBUG
+                printf("[SyncMap] Overwrite Sync 0x%lx of atomic-type %d/%d in cache %d of Level %d \n",                
                     tmp_line->address, tmp_line->atom_type, new_line->atom_type, cache_id, level);   
+                #endif
                     //Need more logic here
                     replaceSyncLine(tmp_line,ins_mem);
                     return 0;     
@@ -571,8 +581,9 @@ int Cache::addSyncLine(InsMem * ins_mem){
         new_line->next = syncmap.head;
         syncmap.head = new_line;
         syncmap.size++;
-
+        #ifdef DEBUG
         printf("[SyncMap] Adding Sync Line 0x%lx to cache %d at level %d, atomic-type: %d ID:%d \n", ins_mem->addr_dmem, cache_id, level, ins_mem->atom_type, new_line->sync_id);  
+        #endif
     }
     else{
         //Wait. Stall the until something get flushed.//No incident of races to same sync variable. Becuase of Data Race Free execution. 
@@ -593,43 +604,79 @@ void Cache::deleteFromSyncMap(uint64_t addr){
         while (tmp_line !=NULL){
             
             Addr tmp_addr;
-            addrParse(tmp_line->address, &tmp_addr);    
-                    
-            if(tmp_line->address == addr){
+            addrParse(tmp_line->address, &tmp_addr);                    
+            //if(tmp_line->address == addr){
+            if(tmp_addr.tag == addr_block.tag && tmp_addr.index==addr_block.index){
+
+                #ifdef DEBUG
                 printf("[SyncMap] Deleting 0x%lx of atomic-type %d  0x%lx in cache %d of Level %d Tag: ox%lx SyncTag: ox%lx  \n", 
                     tmp_line->address, tmp_line->atom_type, addr, cache_id, level, addr_block.tag, tmp_line->tag);
+                #endif
+                    
                     if(tmp_line != syncmap.head) prev_line->next = tmp_line->next;
                     else syncmap.head = tmp_line->next;
                     syncmap.size--;
-                    break;          
+                    //break;          
             }    
 
             if(tmp_line != syncmap.head) prev_line = tmp_line;
             tmp_line = tmp_line->next;
         }   
+        
+}
+
+void Cache::deleteLowerFromSyncMap(int epoch_id){
+    
+    SyncLine * tmp_line = syncmap.head;
+    SyncLine *prev_line = syncmap.head;
+
+        while (tmp_line !=NULL){
+            
+            if(tmp_line->epoch_id < epoch_id){
+
+             
+                    if(tmp_line != syncmap.head) prev_line->next = tmp_line->next;
+                    else syncmap.head = tmp_line->next;
+                    syncmap.size--;
+                    //break;          
+            }    
+
+            if(tmp_line != syncmap.head) prev_line = tmp_line;
+            tmp_line = tmp_line->next;
+        }   
+        
 }
 
 SyncLine * Cache::searchSyncMap(uint64_t addr){ //Accurate address is Cachline Tag
     
-    SyncLine *tmp_line = syncmap.head; 
-
+    SyncLine *tmp_line = syncmap.head;
     Addr addr_block;
     addrParse(addr, &addr_block);
     //Only need the cacheline block TAG
+    SyncLine * sync_line = NULL;
        
         while (tmp_line !=NULL){
 
             Addr tmp_addr;
             addrParse(tmp_line->address, &tmp_addr);            
             //if(tmp_line->address == addr){
-            if(tmp_addr.tag == addr_block.tag){
-                printf("[SyncMap] Found Sync 0x%lx of atomic-type %d 0x%lx in cache %d of Level %d  Tag: 0x%lx \n", 
-                    tmp_line->address, tmp_line->atom_type, addr, cache_id, level, tmp_addr.tag);
-                return tmp_line;     
+            if(tmp_addr.tag == addr_block.tag && tmp_addr.index==addr_block.index){
+                
+                #ifdef DEBUG
+                printf("[SyncMap] Found Sync 0x%lx of atomic-type %d 0x%lx in cache %d of Level %d  Tag: 0x%lx Index:0x%lx Call-> Tag:0x%lx  Index: 0x%lx\n", 
+                    tmp_line->address, tmp_line->atom_type, addr, cache_id, level, tmp_addr.tag, tmp_addr.index, addr_block.tag, addr_block.index);
+                #endif
+                //Not necessary for everything
+                if(sync_line ==NULL){
+                    sync_line = tmp_line;
+                }else{
+                    if(sync_line->epoch_id < tmp_line->epoch_id) sync_line = tmp_line;
+                }
+                //return tmp_line;     
             }
                 tmp_line = tmp_line->next;
     }   
-    return NULL;
+    return sync_line; //return NULL
 }
 
 SyncLine* Cache::searchByEpochId(int epoch_id){
@@ -684,7 +731,11 @@ void Cache::report(ofstream* result)
     *result << "The # of evicted instructions: " << evict_count << endl;
     *result << "The # of writeback instructions: " << wb_count << endl;
     *result << "The cache miss rate: " << 100 * (double)miss_count/ (double)ins_count << "%" << endl;
+    *result << "The # of persist counts: " << persist_count << endl;
+    *result << "The # of persist delays: " << persist_delay << endl;
     *result << "=================================================================\n\n";
+
+    if(level==0 and cache_type==DATA_CACHE) printf("Cache ID: %d of Level %d , The # of persist counts: %lu The # of persist delays: %lu \n" , cache_id, level, persist_count, persist_delay);
 }
 
 Cache::~Cache()

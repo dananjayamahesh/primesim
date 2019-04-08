@@ -41,14 +41,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "xml_parser.h"
 #include "bus.h"
 #include "common.h"
-#define SYNCMAP_SIZE 8
+#define SYNCMAP_SIZE 1000
+
 typedef struct Addr
 {
     uint64_t    index;
     uint64_t    tag;
     uint64_t    offset;
 } Addr;
-
 
 
 typedef enum State
@@ -179,13 +179,16 @@ class Cache
         void printCache();
 
         uint64_t getPersistCount();
+        uint64_t getPersistDelay();
         void incPersistCount();
+        void incPersistDelay(int delay);
 
         //SyncMap - Synchrnoization/Atomic Map/Sync Registry
         int initSyncMap(int size);
         SyncLine * createSyncLine(InsMem *ins_mem);
         SyncLine * searchSyncMap(uint64_t addr);
         void deleteFromSyncMap(uint64_t addr);
+        void deleteLowerFromSyncMap(int epoch_id);
         SyncLine* searchByEpochId(int epoch_id); //SHould returb a map
         SyncLine * matchSyncLine(Line * line_cur);
         int addSyncLine(InsMem * ins_mem);
@@ -221,6 +224,7 @@ class Cache
         SyncMap           syncmap;
 
         uint64_t          persist_count;
+        uint64_t          persist_delay;
 };
 
 #endif //CACHE_H
