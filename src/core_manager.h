@@ -94,7 +94,7 @@ class CoreManager
         void finishSim(int32_t code, void *v);
         void insCount(uint32_t ins_count_in, THREADID threadid);
         void execNonMem(uint32_t ins_count_in, THREADID threadid);
-        void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type, bool is_acquire, bool is_release);
+        void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type, bool is_acquire, bool is_release, bool is_rmw);
         void threadStart(THREADID threadid, CONTEXT *ctxt, int32_t flags, void *v);
         void threadFini(THREADID threadid, const CONTEXT *ctxt, int32_t code, void *v);
         void sysBefore(ADDRINT ip, ADDRINT num, ADDRINT arg0, ADDRINT arg1, ADDRINT arg2, 

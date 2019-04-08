@@ -237,7 +237,7 @@ void CoreManager::execNonMem(uint32_t ins_count_in, THREADID threadid)
 
 
 // Handle a memory instruction
-void CoreManager::execMem(void * addr, THREADID threadid, uint32_t size, BOOL mem_type, bool is_acquire, bool is_release)
+void CoreManager::execMem(void * addr, THREADID threadid, uint32_t size, BOOL mem_type, bool is_acquire, bool is_release, bool is_rmw)
 {
 
     delay[threadid] = 0;
@@ -247,6 +247,9 @@ void CoreManager::execMem(void * addr, THREADID threadid, uint32_t size, BOOL me
     msg_mem[threadid][mpi_pos[threadid]].timer = (int64_t)(cycle[threadid]._count);
     msg_mem[threadid][mpi_pos[threadid]].is_acquire = is_acquire;
     msg_mem[threadid][mpi_pos[threadid]].is_release = is_release;
+    msg_mem[threadid][mpi_pos[threadid]]. is_rmw =  is_rmw;
+   
+
     
     cycle[threadid]._count += 1;
     mpi_pos[threadid]++;
@@ -446,6 +449,9 @@ void CoreManager::report(ofstream *result)
     *result << "Total non-memory access cycles: "<< (uint64_t)(total_cycles_nonmem) <<endl;
     *result << "System call count : " << syscall_count <<endl;
     *result << "Sync System call count : " << sync_syscall_count <<endl;
+
+    printf("\nIPC: %f - Total Instructions: %f - Total Cycle:%lu \n", (double)total_ins_counts / total_cycles , (double)total_ins_counts, total_cycles);
+    printf("IPC-Mem: %f - Total Mem Instructions: %f - Total Mem Cycle:%lu \n", (double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(total_cycles - total_cycles_nonmem) , (double)(total_ins_counts - total_nonmem_ins_counts), (uint64_t)(total_cycles - total_cycles_nonmem) );
 
 }
 
