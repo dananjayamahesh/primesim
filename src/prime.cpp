@@ -33,10 +33,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "system.h"
 
 using namespace std;
-
+#define MAX_ADDR_MAP_SIZE 1000000
 class AtomicProgram{
     public:
-      uint64_t addr_map[10];
+      uint64_t addr_map[MAX_ADDR_MAP_SIZE];
       int addr_map_i;  
       void initAddrMap();
       void addToAddrMap(uint64_t addr); //On release call
@@ -56,6 +56,13 @@ void AtomicProgram::addToAddrMap(uint64_t addr){
     }
     addr_map[addr_map_i]=addr;  
     addr_map_i++;
+
+    #ifdef DEBUG
+    printf("Add Sync Address to Map 0x%lx (%d)\n", addr,addr_map_i);
+    #endif
+    
+    if(addr_map_i >= MAX_ADDR_MAP_SIZE) addr_map_i=0;
+    //assert(addr_map_i<MAX_ADDR_MAP_SIZE); for now
 }
 
 bool AtomicProgram::searchAddrMap(uint64_t addr){
@@ -166,13 +173,17 @@ void *msgHandler(void *t)
                 //Trap Acquire and Release
                 //ins_mem = msg_mem[index_prev][i].
                 bool acq = msg_mem[index_prev][i].is_acquire;
-                bool rel = msg_mem[index_prev][i].is_release;    
+                bool rel = msg_mem[index_prev][i].is_release;
+                bool rmw = msg_mem[index_prev][i].is_rmw;
 
                 AtomicType atype = NON;
-                char mem_op = 0;
+                rmw= rmw;
                 //Need to tack all atomic variables
                 //if(ins_mem.addr_dmem == 0x6020e8){ //Extend for all atomic variables later
-                if(rel){
+
+                #ifndef SYNCBENCH
+                char mem_op = 0; //READ, WRITE, RMW
+                if(rel || (acq && ins_mem.mem_type==1)){
                     addr_map.addToAddrMap(ins_mem.addr_dmem);                    
                 }
 
@@ -188,7 +199,7 @@ void *msgHandler(void *t)
                     else if(acq)   {atype = ACQUIRE; ins_mem.epoch_id = epoch_id; epoch_id++; mem_op=2;} //RMW
                     else if(rel)   {atype = RELEASE; epoch_id++; ins_mem.epoch_id = epoch_id; mem_op=ins_mem.mem_type;}
                     else           {atype = NON; mem_op=ins_mem.mem_type;}*/
-                    
+
                 }else{
                     atype = NON;
                     mem_op=ins_mem.mem_type;
@@ -200,7 +211,36 @@ void *msgHandler(void *t)
                 //Acquire-Release catch
                 if(ins_mem.atom_type !=NON){
                     //printf("[PIN] Core : %d Address : 0x%lx in atomic : %d memory op:%d \n", core_id, ins_mem.addr_dmem, ins_mem.atom_type, ins_mem.mem_type);
-                }
+                }                
+                #else //IF SENCBENCH
+                        //char mem_op = 0; //READ, WRITE, RMW
+                        if(rel || acq){
+
+                            //printf("[PIN-SYNCBENCH] Core : %d Address : 0x%lx mem-type: %d is release: %s is acquire: %s\n", core_id, ins_mem.addr_dmem, ins_mem.mem_type, (rel)?"Release":"No",(acq)?"Acquire":"No");
+                            addr_map.addToAddrMap(ins_mem.addr_dmem);
+                            //assert(addr_map.addr_map_i < MAX_ADDR_MAP_SIZE);
+                        }
+        
+                        //if(ins_mem.addr_dmem == 0x602068 || ins_mem.addr_dmem == 0x60206c){
+                        if(addr_map.searchAddrMap(ins_mem.addr_dmem)){
+                            
+                            if(acq && rel) {atype = FULL; epoch_id[core_id]++; ins_mem.epoch_id = epoch_id[core_id]; epoch_id[core_id]++;} //Increment epoch id //RMW
+                            else if(acq)   {atype = ACQUIRE; ins_mem.epoch_id = epoch_id[core_id]; epoch_id[core_id]++;} //RMW
+                            else if(rel)   {atype = RELEASE; epoch_id[core_id]++; ins_mem.epoch_id = epoch_id[core_id];}
+                            else           {atype = NON; ins_mem.epoch_id = epoch_id[core_id];}
+            
+                        }else{
+                            atype = NON;
+                            //mem_op=ins_mem.mem_type;
+                        }                
+        
+                        ins_mem.atom_type = atype;
+                        ins_mem.mem_op = (rmw)?2:ins_mem.mem_type;
+
+                        if(ins_mem.atom_type !=NON){
+                            //printf("[PIN-SYNCBENCH] Core : %d Address : 0x%lx in atomic : %d memory op:%d \n", core_id, ins_mem.addr_dmem, ins_mem.atom_type, ins_mem.mem_type);
+                        } 
+                #endif
 
                 delay += uncore_manager.uncore_access(core_id, &ins_mem, msg_mem[index_prev][i].timer + delay) - 1;
                 if (delay < 0) {
@@ -306,8 +346,12 @@ int main(int argc, char *argv[])
     }
       
     uncore_manager.getSimFinishTime();
+    
     uncore_manager.report(&result);
+
+    printf("Uncore Print");
     result.close();
+    printf("Uncore Print");
     MPI_Finalize();
     pthread_mutex_destroy(&mutex);
     pthread_exit(NULL);

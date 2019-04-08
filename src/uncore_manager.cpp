@@ -95,6 +95,7 @@ void UncoreManager::report(ofstream *result)
     
     thread_sched.report(result);
     sys.report(result);
+    printf("sys report\n");
 }
 
 
