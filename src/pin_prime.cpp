@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using namespace std;
 
+int ins_count=0;
 // This function is called before every instruction is executed to calculate the instruction count
 void PIN_FAST_ANALYSIS_CALL insCount(uint32_t ins_count, THREADID threadid)
 {
@@ -46,9 +47,27 @@ void PIN_FAST_ANALYSIS_CALL execNonMem(uint32_t ins_count, THREADID threadid)
 }
 
 
-// Handle a memory instruction
-void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type, bool is_release, bool is_acquire)
+
+
+#ifdef ACQREL
+
+void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type, void *ip, void *ins, uint32_t next_op, bool valid, bool isrelease, bool isacquire, bool isrmw)
 {
+   // core_manager->execMem(addr, threadid, size, mem_type);
+   //if(release) printf("RELEASE\n");
+    if(isrelease || isacquire) printf("[AR]--- Instruction Trap --- %d ///// THREAD Id - %d /// Addr %p Size %d IP %p mem-type %s isRMW: %s isRelease: %s isAcquire: %s  \n", isrelease, (uint32_t)threadid, addr, size, ip, (!mem_type)?"READ":"WRITE", (isrmw)?"true":"false", (isrelease)?"true":"false", (isacquire)?"true":"false");
+    //if(isrmw) printf("[AR]--- Instruction Trap RMW %p \n", addr);
+}
+
+#else
+// Handle a memory instruction
+void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type, bool is_release, bool is_acquire, bool is_rmw)
+{
+    
+    //if(is_release || is_acquire) printf("--- Instruction Trap --- %d ///// THREAD Id - %d /// Addr %p Size %d mem-type %s isRMW: %s isRelease: %s isAcquire: %s  \n", is_release, (uint32_t)threadid, addr, size, (!mem_type)?"READ":"WRITE", (is_rmw)?"true":"false", (is_release)?"true":"false", (is_acquire)?"true":"false");
+
+    //if(is_release || is_acquire)printf("[MEM-EXEC]] %d %d %d ///// THREAD Id - %d /// Addr %p Size %d mem-type %s\n", is_release, is_acquire, is_rmw, (uint32_t)threadid, addr, size, (!mem_type)?"READ":"WRITE" );
+/*
     if((uint32_t)threadid >=0){
         if(is_release){
             //printf("////////////////////////////////// RELEASE %d ///// THREAD Id - %d /// Addr %p Size %d mem-type %s\n", is_release, (uint32_t)threadid, addr, size, (!mem_type)?"READ":"WRITE" );
@@ -57,15 +76,17 @@ void execMem(void * addr, THREADID threadid, uint32_t size, bool mem_type, bool 
             //printf("////////////////////////////////// ACQUIRE  %d ///// THREAD ID - %d /// Addr %p Size %d mem-type %s \n", is_acquire, (uint32_t)threadid, addr, size, (!mem_type)?"READ":"WRITE");
         }
     }
-    core_manager->execMem(addr, threadid, size, mem_type, is_acquire, is_release);
+
+*/
+    core_manager->execMem(addr, threadid, size, mem_type, is_acquire, is_release, is_rmw);
 }
 
+#endif
 // This routine is executed every time a thread starts.
 void ThreadStart(THREADID threadid, CONTEXT *ctxt, int32_t flags, void *v)
 {
     core_manager->threadStart(threadid, ctxt, flags, v);
 }
-
 
 // This routine is executed every time a thread is destroyed.
 void ThreadFini(THREADID threadid, const CONTEXT *ctxt, int32_t code, void *v)
@@ -101,15 +122,199 @@ void SyscallExit(THREADID threadIndex, CONTEXT *ctxt, SYSCALL_STANDARD std, void
 }
 
 
+#ifdef ACQREL
+
+void Trace(TRACE trace, void *v)
+{
+     
+    std::cout << "//////////////////////////////////// New Trace [AR] /////////////////////////////////////" << std::endl ;
+     uint32_t nonmem_count;
+     
+    // Visit every basic block  in the trace
+    for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl); bbl = BBL_Next(bbl)) {
+        std::cout << "-------------------------new BBL -  Instructions " << BBL_NumIns(bbl) << "-------------------------" << std::endl ;
+        // Insert a call to insCount before every bbl, passing the number of instructions
+        BBL_InsertCall(bbl, IPOINT_BEFORE, (AFUNPTR)insCount, IARG_FAST_ANALYSIS_CALL, 
+                       IARG_UINT32, BBL_NumIns(bbl), IARG_THREAD_ID, IARG_END);
+
+        nonmem_count = 0;
+        INS ins = BBL_InsHead(bbl);
+        //INS ins_next =BBL_InsHead(bbl);
+        //BBL lib - https://software.intel.com/sites/landingpage/pintool/docs/97619/Pin/html/group__BBL__BASIC__API.html
+
+        //for (; INS_Valid(ins); ins = INS_Next(ins)) {
+        for (; INS_Valid(ins); ins = INS_Next(ins)) {           
+            
+            std::cout << std::hex << INS_NextAddress(ins) << "\t"<< INS_Opcode(ins) << " \t " << INS_Disassemble(ins) << std::endl;
+            //OPCODE opcode = INS_Opcode(ins); //Unused
+            //printf("OPCODE - %x \n", (int) opcode);
+            
+            //std::cout <<  INS_Mnemonic(ins) << std::endl;        
+
+            if(INS_IsMemoryRead(ins) || INS_IsMemoryWrite(ins)) {
+
+                uint32_t memOperands = INS_MemoryOperandCount(ins);
+                //uint32_t next_addr = INS_NextAddress (ins); //Unused
+
+                bool isRelease = false;
+                bool isAcquire = false;
+
+                bool isRMW = false;
+                
+                INS ins_next = INS_Next(ins);
+                //OPCODE opcode_next = INS_Opcode(ins_next);
+                bool isvalid = INS_Valid(ins_next);
+                uint32_t opn = 0;
+                
+                if(isvalid) {
+                     opn = (uint32_t)INS_Opcode(ins_next);
+                        if(opn == 0x17a){ //Checkfor Mfence
+                            std::cout << "MFENCE "<< opn << " \n" << std::endl;  //MFENCE
+                            isRelease = true;
+                        }                   
+                }   
+                
+                if(INS_IsAtomicUpdate (ins)){
+                    
+                    //Check cmpxchg - 64
+                     uint32_t rmwop= (uint32_t)INS_Opcode(ins);
+                    if(rmwop==0x064){
+                        isRMW = true;                    
+                        //isAcquire = true;
+                        if(foundSFence && foundLFence){
+                            isAcquire = true; isRelease = true;
+                            foundSFence = false; sfence_delay=0; sfence_count=0;
+                            foundLFence = false; lfence_delay=0; lfence_count=0;
+                            std::cout << "FULL Barrier "<< opn << " \n" << std::endl;  //MFENCE
+                        }
+                        else if(foundSFence){
+                            isRelease = true;
+                            foundSFence = false; sfence_delay=0; sfence_count=0;
+                             std::cout << "Release Barrier "<< opn << " \n" << std::endl;  //MFENCE
+                        }
+                        else if(foundLFence){
+                            isAcquire = true;
+                            foundLFence = false; lfence_delay=0; lfence_count=0;
+                             std::cout << "Acquire Barrier "<< opn << " \n" << std::endl;  //MFENCE
+                        }else{
+                            foundSFence = false; sfence_delay=0; sfence_count=0;
+                            foundLFence = false; lfence_delay=0; lfence_count=0;
+                        }
+                            
+                        std::cout <<  INS_Mnemonic(ins) << " Operands "<< memOperands << " MemOpType "<< (INS_IsMemoryRead(ins) || INS_IsMemoryWrite(ins)) <<std::endl;
+                        //Lock prefic of x86 - LOCK the bus
+                        //https://stackoverflow.com/questions/8891067/what-does-the-lock-instruction-mean-in-x86-assembly
+    
+                        if(INS_IsMemoryRead(ins)){
+                            std::cout <<  "READ \n "<< std::endl;
+                        }else{
+                            std::cout <<  "WRITE \n "<< std::endl;
+                        }
+                    }
+        
+                }
+        
+               // Iterate over each memory operand of the instruction.
+                for (uint32_t memOp = 0; memOp < memOperands; memOp++){
+
+                    const uint32_t size = INS_MemoryOperandSize(ins, memOp);
+
+                    // Note that in some architectures a single memory operand can be 
+                    // both read and written (for instance incl (%eax) on IA-32)
+                    // In that case we instrument it once for read and once for write.
+
+                    if (INS_MemoryOperandIsRead(ins, memOp))
+                    {
+                        INS_InsertPredicatedCall(
+                            ins, IPOINT_BEFORE, (AFUNPTR)execMem,
+                            IARG_MEMORYOP_EA, memOp,
+                            IARG_THREAD_ID,
+                            IARG_UINT32, size,
+                            IARG_BOOL, RD,
+                            IARG_INST_PTR,
+                            IARG_PTR, ins,
+                            IARG_UINT32, opn, 
+                            IARG_BOOL, isvalid,
+                            IARG_BOOL, isRelease,
+                            IARG_BOOL, isAcquire,
+                            IARG_BOOL, isRMW,
+                            IARG_END);
+
+                    }
+                    if (INS_MemoryOperandIsWritten(ins, memOp)) {
+                        INS_InsertPredicatedCall(
+                            ins, IPOINT_BEFORE, (AFUNPTR)execMem,
+                            IARG_MEMORYOP_EA, memOp,
+                            IARG_THREAD_ID,
+                            IARG_UINT32, size,
+                            IARG_BOOL, WR,
+                            IARG_INST_PTR,
+                            IARG_PTR, ins,
+                            IARG_UINT32, opn, 
+                            IARG_BOOL, isvalid,
+                            IARG_BOOL, isRelease,
+                            IARG_BOOL, isAcquire,
+                            IARG_BOOL, isRMW,
+                            IARG_END);
+                    }
+                }
+            
+            }
+            
+            else {
+                    uint32_t op=0;
+                    op = (uint32_t)INS_Opcode(ins);
+                    if(op == 0x17a){ //MFENCE
+                            std::cout << "MFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            foundMFence = true;
+                            mfence_count = 1;
+                            mfence_delay = 0;
+                    } 
+                    else if(op==0x2a1){
+                            std::cout << "SFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            foundSFence = true;
+                            sfence_count = 1;
+                            sfence_delay = 0;
+                    }   
+                    else if(op==0x15f){
+                            std::cout << "LFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            foundLFence = true;
+                            lfence_count = 1;
+                            lfence_delay = 0;
+                    }else{
+                            if(foundMFence) mfence_delay++;
+                            if(foundSFence) sfence_delay++;
+                            if(foundLFence) lfence_delay++;
+                    }
+                    nonmem_count++;
+            }
+
+                    //ins=ins_next;
+
+        } //END INS LOOP
+            
+        
+        // Insert a call to execNonMem before every bbl, passing the number of nonmem instructions
+        BBL_InsertCall(bbl, IPOINT_BEFORE, (AFUNPTR)execNonMem, IARG_FAST_ANALYSIS_CALL, 
+                       IARG_UINT32, nonmem_count, IARG_THREAD_ID, IARG_END);
+
+    } // End Ins For
+
+}
+
+#else
 
 
 // Pin calls this function every time a new basic block is encountered
 void Trace(TRACE trace, void *v)
 {
+        //std::cout << "//////////////////////////////////// New Trace /////////////////////////////////////" << std::endl ;
+
      uint32_t nonmem_count;
 
     // Visit every basic block  in the trace
     for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl); bbl = BBL_Next(bbl)) {
+        //std::cout << "-------------------------new BBL -  Instructions " << BBL_NumIns(bbl) << "-------------------------" << std::endl ;
 
         // Insert a call to insCount before every bbl, passing the number of instructions
         BBL_InsertCall(bbl, IPOINT_BEFORE, (AFUNPTR)insCount, IARG_FAST_ANALYSIS_CALL, 
@@ -118,7 +323,9 @@ void Trace(TRACE trace, void *v)
         nonmem_count = 0;
         INS ins = BBL_InsHead(bbl);
         for (; INS_Valid(ins); ins = INS_Next(ins)) {
+            //std::cout << std::hex << INS_NextAddress(ins) << "\t"<< INS_Opcode(ins) << " \t " << INS_Disassemble(ins) << std::endl;
 
+            ins_count++;
             // Instruments memory accesses using a predicated call, i.e.
             // the instrumentation is called iff the instruction will actually be executed.
             //
@@ -130,19 +337,62 @@ void Trace(TRACE trace, void *v)
 
                 bool isRelease = false;
                 bool isAcquire = false;
+                bool isRMW = false;
                 INS ins_next = INS_Next(ins);
+
                 if(INS_Valid(ins_next)){
                     uint32_t next_op = (uint32_t)INS_Opcode(ins_next);
                     if(next_op == 0x17a){
                         isRelease = true;
-                        //printf("MFENCE is DETECTED %\n");
+                        printf("Ins Id %d MFENCE is DETECTED \n", ins_count);
                     }else{
                         isRelease = false;
                     }
                 }
 
                 if(INS_IsAtomicUpdate (ins)){
-                    isAcquire = true;
+                    //isAcquire = true;
+                    //#ifdef SYNCBENCH
+                    //Check cmpxchg - 64
+                    uint32_t rmwop= (uint32_t)INS_Opcode(ins);
+                    #ifdef SYNCBENCH                    
+                    if(rmwop==0x064){
+                        isRMW = true;                    
+                        //isAcquire = true;
+                        if(foundSFence && foundLFence){
+                            isAcquire = true; isRelease = true;
+                            foundSFence = false; sfence_delay=0; sfence_count=0;
+                            foundLFence = false; lfence_delay=0; lfence_count=0;
+                            std::cout<<" Ins Id: "<<ins_count;
+                            std::cout << "FULL Barrier "<< rmwop << " \n" << std::endl;  //MFENCE
+                        }
+                        else if(foundSFence){
+                            isRelease = true;
+                            foundSFence = false; sfence_delay=0; sfence_count=0;
+                            std::cout<<" Ins Id: "<<ins_count;
+                             std::cout << "Release Barrier "<< rmwop << " \n" << std::endl;  //MFENCE
+                        }
+                        else if(foundLFence){
+                            isAcquire = true;
+                            foundLFence = false; lfence_delay=0; lfence_count=0;
+                            std::cout<<" Ins Id: "<<ins_count;
+                             std::cout << "Acquire Barrier "<< rmwop << " \n" << std::endl;  //MFENCE
+                        }else{
+                            foundSFence = false; sfence_delay=0; sfence_count=0;
+                            foundLFence = false; lfence_delay=0; lfence_count=0;
+                        }
+                        //isAcquire = isRMW;
+                    }
+
+                    #else
+                        if(rmwop==0x064){
+                            isAcquire = true;
+                            isRMW = true;
+                        }
+                    #endif
+                    //#else
+                    //    isAcquire = true;
+                    //#endif
                 }
                 // Iterate over each memory operand of the instruction.
                 for (uint32_t memOp = 0; memOp < memOperands; memOp++) {
@@ -159,6 +409,7 @@ void Trace(TRACE trace, void *v)
                             IARG_BOOL, RD,
                             IARG_BOOL, isRelease,
                             IARG_BOOL, isAcquire,
+                            IARG_BOOL, isRMW,
                             IARG_END);
 
                     }
@@ -171,11 +422,42 @@ void Trace(TRACE trace, void *v)
                             IARG_BOOL, WR,
                             IARG_BOOL, isRelease,
                             IARG_BOOL, isAcquire,
+                            IARG_BOOL, isRMW,
                             IARG_END);
                     }
                 }
             }
             else {
+
+                #ifdef SYNCBENCH
+
+                uint32_t op=0;
+                    op = (uint32_t)INS_Opcode(ins);
+                    if(op == 0x17a){ //MFENCE
+                            std::cout << "MFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            foundMFence = true;
+                            mfence_count = 1;
+                            mfence_delay = 0;
+                    } 
+                    else if(op==0x2a1){
+                            std::cout << "SFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            foundSFence = true;
+                            sfence_count = 1;
+                            sfence_delay = 0;
+                    }   
+                    else if(op==0x15f){
+                            std::cout << "LFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            foundLFence = true;
+                            lfence_count = 1;
+                            lfence_delay = 0;
+                    }else{
+                            if(foundMFence) mfence_delay++;
+                            if(foundSFence) sfence_delay++;
+                            if(foundLFence) lfence_delay++;
+                    }
+
+                #endif    
+
                 nonmem_count++;
             }
         }
@@ -187,7 +469,7 @@ void Trace(TRACE trace, void *v)
 
 }
 
-
+#endif
 
 void Start(void *v)
 {
@@ -269,7 +551,15 @@ int main(int argc, char *argv[])
     core_manager->init(xml_sim, num_tasks-1, myrank);
     core_manager->getSimStartTime();
 
- 
+     foundMFence = false;
+     mfence_count = 0; //Number of mfence found
+     mfence_delay = 0; //Instructions since last mfence.
+     foundSFence = false;
+     sfence_count = 0; 
+     sfence_delay = 0;
+     foundLFence = false;
+     lfence_count = 0;
+     lfence_delay = 0;
    // Register Instruction to be called to instrument instructions
     TRACE_AddInstrumentFunction(Trace, 0);
 

@@ -47,7 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "common.h"
 #include "core_manager.h"
 
-
+//#define ACQREL
 int myrank, new_rank, num_tasks;
 MPI_Status status;          /* MPI receive routine parameter */
 MPI_Group  orig_group, new_group;
@@ -55,7 +55,15 @@ MPI_Comm   new_comm;
 ofstream result;
 CoreManager *core_manager;
 
-
+bool foundMFence = false;
+int mfence_count = 0; //Number of mfence found
+int mfence_delay = 0; //Instructions since last mfence.
+bool foundSFence = false;
+int sfence_count = 0; 
+int sfence_delay = 0;
+bool foundLFence = false;
+int lfence_count = 0;
+int lfence_delay = 0;
 
 KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
     "o", "result", "specify output file name");
