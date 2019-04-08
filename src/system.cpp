@@ -740,6 +740,8 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
 //Buffered Epoch Persistence
 int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id){
     //Buffered Epoch Persistency on caches
+    
+    //Buffered Eopch Persistence
 }
 
 
