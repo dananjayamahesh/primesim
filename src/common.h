@@ -57,6 +57,7 @@ typedef struct MsgMem
     //Adding Release Consistency (RC) support to messages
     bool     is_acquire;
     bool     is_release;
+    bool    is_rmw;
     
     union
     {
@@ -81,6 +82,10 @@ typedef enum PersistModel
     RLSB = 3, //RELEASE BARRIER
 } PersistModel;
 
+#define SYNCBENCH
+#define DEBUG
 
+#define LOWER_EPOCH_FLUSH
+//#define ACQREL
 
 #endif  // COMMON_H
