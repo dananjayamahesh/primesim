@@ -457,7 +457,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                         if(line_cur->dirty && ins_mem->epoch_id > line_cur->max_epoch_id){ //Both same address visibility and multi-word block conflicts
                             //Buffered Epoch Persistency- Intra-thread conflict
                             delay[core_id] += persist(cache_cur, ins_mem, line_cur, core_id); //BEP
-                            
+                            //also need to write back this cache line                            
                         }   
                     }
                 }//End of BEP flush
@@ -497,14 +497,10 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             line_cur->dirty = 1;
                         }                    
     
-                        //Max counter
                         //if(ins_mem->epoch_id > line_cur->max_epoch_id){
-                        //    line_cur->max_epoch_id = ins_mem->epoch_id;
-                            //check dirty bit?
-                        //}    
-                        //line_cur->dirty = 1;
-                    }                
-
+                        //    line_cur->max_epoch_id = ins_mem->epoch_id;                           
+                        //}                         
+                    } 
            }
            //LLC Write
            else {
@@ -662,9 +658,15 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     if(level==0 && (ins_mem_old.atom_type !=NON) ){
                         //printf("Release Persistency in Replacement \n");
                         //delay[core_id] += releasePersist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline  
-                         delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline  
-                        //printf("C\n");  
-                        //printf("D\n");                    
+                        if(pmodel != BEPB){
+                            if(ins_mem_old.atom_type !=NON) 
+                                delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline  
+                        }else{
+                            //Check if epoch id is overwritten in replace - NO
+                            printf("Buffered Epoch Peristency on replace");
+                            delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //BEP-on repacement
+                        }
+                 
                     }                                       
                     //printf("E");
                     //printf("[INSMEM]   Op: %d Type: %d Miss 0x%lx, cache level : %d and Cache Id: %d RMW: %s Memory: %s Epoch: %d \n", 
@@ -796,6 +798,7 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
     #ifdef DEBUG
     printf("Number of persists (Buffered Epoch Persistency): %d \n", persist_count); 
     #endif
+    cache_cur->incPersistDelay(delay[core_id]);
     return delay[core_id];
 }
 
@@ -966,13 +969,13 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
         //printf("Release Persistence \n");
         delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id); 
         cache_cur->incPersistDelay(delay_tmp); //Counters
-        //delay_tmp =  delay_tmp;
+        //delay_tmp =  delay_tmp/2;
     }
     else if(pmodel == FLLB){
         //printf("Epoch Persistence \n");
         delay_tmp = fullFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id); //Full barrier
         cache_cur->incPersistDelay(delay_tmp); //Counters
-        
+        //delay_tmp =  delay_tmp/2;
     }
     else
     {
@@ -1030,12 +1033,14 @@ int System::share(Cache* cache_cur, InsMem* ins_mem, int core_id)
             }
             #endif
             //FLUSH INVOCATION - LAZY RELEASE (also check replace and invalidations)
-            if(cache_cur->getLevel()==0 && (line_cur->atom_type == RELEASE || line_cur->atom_type == ACQUIRE ||line_cur->atom_type == FULL)){ 
+            //if(cache_cur->getLevel()==0 && (line_cur->atom_type == RELEASE || line_cur->atom_type == ACQUIRE ||line_cur->atom_type == FULL)){ 
+            if(cache_cur->getLevel()==0){ 
                 //Eviction implement: line_cur->atom_type == RELEASE -> DO not have this information
                 //Before Write-back.
                 //printf("[Share] Release Persist Starting.... \n");
                 //delay += releasePersist(cache_cur, ins_mem, line_cur,core_id); // need both Acquire and Releas
-                delay += persist(cache_cur, ins_mem, line_cur,core_id); // need both Acquire and Release // Persistence Model
+                if(pmodel == BEPB) delay += persist(cache_cur, ins_mem, line_cur,core_id); // need both Acquire and Release // Persistence Model
+                else if(line_cur->atom_type !=NON) delay += persist(cache_cur, ins_mem, line_cur,core_id);
             }
 
             line_cur->state = S; //Check this
@@ -1101,13 +1106,16 @@ int System::inval(Cache* cache_cur, InsMem* ins_mem, int core_id)
             } 
             #endif
 
-            if(cache_cur->getLevel()==0 && (line_cur->atom_type == RELEASE || line_cur->atom_type == ACQUIRE || line_cur->atom_type == FULL)){ 
+            //if(cache_cur->getLevel()==0 && (line_cur->atom_type == RELEASE || line_cur->atom_type == ACQUIRE || line_cur->atom_type == FULL)){ 
+            if(cache_cur->getLevel()==0){ 
+
                 //Eviction implement: line_cur->atom_type == RELEASE -> DO not have this information
                 //Before Write-back.
                 if((line_cur->state == M || line_cur->state == E)){
                     //printf("[Inval] Release Persist Starting.... \n");
                     //delay += releasePersist(cache_cur, ins_mem, line_cur, core_id); // need both Acquire and Releas
-                    delay += persist(cache_cur, ins_mem, line_cur, core_id); // need both Acquire and Release
+                    if (pmodel == BEPB) delay += persist(cache_cur, ins_mem, line_cur, core_id); // need both Acquire and Release
+                    else if (line_cur->atom_type != NON) delay += persist(cache_cur, ins_mem, line_cur, core_id); 
 
                 }
                 
