@@ -15,3 +15,4 @@ ppin/acqrel/obj
 ppin/acqrel/dep
 ppin/acqrel/bin
 
+pbench/syncbench/bin
