@@ -62,7 +62,7 @@ void AtomicProgram::addToAddrMap(uint64_t addr){
     #endif
     
     if(addr_map_i >= MAX_ADDR_MAP_SIZE) addr_map_i=0;
-    //assert(addr_map_i<MAX_ADDR_MAP_SIZE); for now
+    assert(addr_map_i<MAX_ADDR_MAP_SIZE);
 }
 
 bool AtomicProgram::searchAddrMap(uint64_t addr){
@@ -73,7 +73,6 @@ bool AtomicProgram::searchAddrMap(uint64_t addr){
     }
    return false;
 }
-
 
 // Handle receiving MPI messages and send back responses
 void *msgHandler(void *t)

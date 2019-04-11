@@ -760,7 +760,9 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
 int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id){ //calling 
     //Buffered Epoch Persistency on caches
     int conflict_epoch_id = line_call->max_epoch_id; //Not sure! Check
+    #ifdef DEBUG
     printf("Buffered Epoch Persistency Cache:%d Conflict Epoch:%d \n", req_core_id, conflict_epoch_id);
+    #endif
     int delay_flush = 0;
     delay_flush++;
     int core_id = cache_cur->getId(); int cache_id = cache_cur->getId();
@@ -812,7 +814,9 @@ int System::fullFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, in
     int cache_id = cache_cur->getId();
     Line *line_cur;
     int timer = 0;
+    #ifdef DEBUG
     printf("Delay on flush %d of core %d by core %d \n", delay[core_id], core_id, req_core_id);
+    #endif
     //delay[core_id] = 0;
     
     int level = cache_cur->getLevel(); 
@@ -867,7 +871,9 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
     int cache_id = cache_cur->getId();
     Line *line_cur;
     int timer = 0;
+    #ifdef DEBUG
     printf("Delay on flush %d of core %d by core %d \n", delay[core_id], core_id, req_core_id);
+    #endif
     //delay[core_id] = 0;
     
     int level = cache_cur->getLevel(); 
@@ -925,9 +931,13 @@ int System::persist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_c
     //Beffired Epoch Persistency
     else if(pmodel == BEPB){
         //cache_cur->printCache(); 
+        #ifdef DEBUG
         printf("\n[BEP] Start Buffered Epoch Persistency\n");
-        int delay_tmp = epochPersist(cache_cur, ins_mem, line_cur, req_core_id);
-        printf("[BEP] End Buffered Epoch Persistency Persist [delay : %d]\n", delay_tmp);    
+        #endif
+        int delay_tmp = epochPersist(cache_cur, ins_mem, line_cur, req_core_id); //need to add calling cacheline
+        #ifdef DEBUG
+        printf("[BEP] End Buffered Epoch Persistency Persist [delay : %d]\n", delay_tmp);  
+        #endif
         //cache_cur->printCache(); 
         return delay_tmp;
     }

@@ -415,14 +415,17 @@ void CoreManager::getSimFinishTime()
 
 void CoreManager::report(ofstream *result)
 {
-    uint64_t total_cycles = 0, total_ins_counts = 0,  total_nonmem_ins_counts = 0;
+    uint64_t total_cycles = 0, total_ins_counts = 0,  total_nonmem_ins_counts = 0, dimp_cycles=0;
     double total_cycles_nonmem = 0;
     total_cycles = (uint64_t)(cycle[0]._count);
+    dimp_cycles = (uint64_t)(cycle[0]._count);
     int i;
     for (i = 0; i < max_threads; i++) {
         total_ins_counts += ins_count[i]._count;
         total_nonmem_ins_counts += (uint64_t)ins_nonmem[i]._count;
-        cout << "[PriME] Thread " <<i<< " runs " << (uint64_t)ins_count[i]._count <<" instructions\n";
+        dimp_cycles += (uint64_t)(cycle[i]._count);
+        //cout << "[PriME] Thread " <<i<< " runs " << (uint64_t)ins_count[i]._count <<" instructions\n";
+        cout << "[PriME] Thread " <<i<< " runs " << (uint64_t)ins_count[i]._count <<" instructions, Non-mem Ins"<< (uint64_t)ins_nonmem[i]._count << "So Mem Ins : "<< (uint64_t)(ins_count[i]._count -  ins_nonmem[i]._count )<<"\n";
     }
     total_cycles_nonmem = total_nonmem_ins_counts * cpi_nonmem;
     sim_time = (sim_finish_time.tv_sec - sim_start_time.tv_sec) + (double) (sim_finish_time.tv_nsec - sim_start_time.tv_nsec) / 1000000000.0; 
@@ -450,8 +453,30 @@ void CoreManager::report(ofstream *result)
     *result << "System call count : " << syscall_count <<endl;
     *result << "Sync System call count : " << sync_syscall_count <<endl;
 
-    printf("\nIPC: %f - Total Instructions: %f - Total Cycle:%lu \n", (double)total_ins_counts / total_cycles , (double)total_ins_counts, total_cycles);
-    printf("IPC-Mem: %f - Total Mem Instructions: %f - Total Mem Cycle:%lu \n", (double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(total_cycles - total_cycles_nonmem) , (double)(total_ins_counts - total_nonmem_ins_counts), (uint64_t)(total_cycles - total_cycles_nonmem) );
+    printf("Execution time : %f \n", total_cycles/(freq*pow(10.0,9)));
+/*
+    printf("\nDIMP IPC-Tot \t %f \t Total Instructions \t %f \t Dimp Cycle \t %lu \n", (double)total_ins_counts / dimp_cycles , (double)total_ins_counts, dimp_cycles);
+    printf("DIMP IPC-Mem \t %f \t Total Mem Ins \t %f \t Mem Cycle %lu \n", (double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(dimp_cycles - total_cycles_nonmem) , (double)(total_ins_counts - total_nonmem_ins_counts), (uint64_t)(dimp_cycles - total_cycles_nonmem) );
+
+  printf("\nIPC/Core \t %f \t Total Instructions \t %f \t Total Cycle \t %lu \n", (double)total_ins_counts / total_cycles , (double)total_ins_counts, total_cycles);
+    printf("IPC-NMem \t 1.000000  \t Total Non Mem Instructions \t %lu \t Total Cycle \t:%lu \n", (uint64_t)total_nonmem_ins_counts , (uint64_t)total_cycles_nonmem);
+    printf("IPC-Mem  \t %f \t Total Mem Instructions \t: %f \t Total Mem Cycle \t %lu \n", (double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(total_cycles - total_cycles_nonmem) , (double)(total_ins_counts - total_nonmem_ins_counts), (uint64_t)(total_cycles - total_cycles_nonmem) );
+*/
+    //std::ofstream file;
+    //file.open(filepath, std::ios::out | std::ios::app);
+    FILE * dimp_file = fopen ("/home/s1797403/repos/primesim/output/syncbench-fixed/stat.txt","w");
+
+    fprintf(dimp_file, "%f,%f,%f,%lu,%lu\n",(double)total_ins_counts / dimp_cycles,(double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(dimp_cycles - total_cycles_nonmem),(double)total_ins_counts / total_cycles ,total_ins_counts,dimp_cycles);
+
+    //fprintf(dimp_file, "%f,%f,%f\n",(double)total_ins_counts / dimp_cycles,(double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(dimp_cycles - total_cycles_nonmem),(double)total_ins_counts / total_cycles);
+    fclose (dimp_file);
+
+    printf("\nDIMP IPC-Tot \t %f \t %lu\t %lu \n", (double)total_ins_counts / dimp_cycles , total_ins_counts, dimp_cycles);
+    printf("DIMP IPC-Mem \t %f \t %lu \t %lu \n", (double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(dimp_cycles - total_cycles_nonmem) , (uint64_t)(total_ins_counts - total_nonmem_ins_counts), (uint64_t)(dimp_cycles - total_cycles_nonmem) );
+
+    printf("\nIPC/Core \t %f \t %lu \t %lu \n", (double)total_ins_counts / total_cycles , (uint64_t)total_ins_counts, total_cycles);
+    printf("IPC-NMem \t 1.000000  \t %lu \t %lu \n", (uint64_t)total_nonmem_ins_counts , (uint64_t)total_cycles_nonmem);
+    printf("IPC-Mem  \t %f \t %lu \t %lu \n", (double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(total_cycles - total_cycles_nonmem) , (uint64_t)(total_ins_counts - total_nonmem_ins_counts), (uint64_t)(total_cycles - total_cycles_nonmem) );
 
 }
 

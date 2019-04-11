@@ -559,6 +559,7 @@ int Cache::replaceSyncLine(SyncLine * syncline, InsMem * ins_mem){
 int Cache::addSyncLine(InsMem * ins_mem){    
     
     assert(ins_mem->atom_type != NON);
+    assert(syncmap.size < SYNCMAP_SIZE);
     if(syncmap.size < SYNCMAP_SIZE){       
         SyncLine * new_line = createSyncLine(ins_mem);
         //check and overwrite syncs to same address from previous epochs
@@ -588,8 +589,10 @@ int Cache::addSyncLine(InsMem * ins_mem){
     else{
         //Wait. Stall the until something get flushed.//No incident of races to same sync variable. Becuase of Data Race Free execution. 
         //FLUSH-with conflicts
+
         printf("[SyncMap] overflow %d %d", cache_id, level);       
-    }    
+    }  
+      
     return 0;
 }
 

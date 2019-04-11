@@ -344,7 +344,9 @@ void Trace(TRACE trace, void *v)
                     uint32_t next_op = (uint32_t)INS_Opcode(ins_next);
                     if(next_op == 0x17a){
                         isRelease = true;
+                        #ifdef PDEBUG
                         printf("Ins Id %d MFENCE is DETECTED \n", ins_count);
+                        #endif
                     }else{
                         isRelease = false;
                     }
@@ -356,27 +358,33 @@ void Trace(TRACE trace, void *v)
                     //Check cmpxchg - 64
                     uint32_t rmwop= (uint32_t)INS_Opcode(ins);
                     #ifdef SYNCBENCH                    
-                    if(rmwop==0x064){
+                    if(rmwop==0x064 || rmwop==0x3a){
                         isRMW = true;                    
                         //isAcquire = true;
                         if(foundSFence && foundLFence){
                             isAcquire = true; isRelease = true;
                             foundSFence = false; sfence_delay=0; sfence_count=0;
                             foundLFence = false; lfence_delay=0; lfence_count=0;
-                            std::cout<<" Ins Id: "<<ins_count;
-                            std::cout << "FULL Barrier "<< rmwop << " \n" << std::endl;  //MFENCE
+                            #ifdef PDEBUG
+                                std::cout<<" Ins Id: "<<ins_count;
+                                std::cout << "FULL Barrier "<< rmwop << " \n" << std::endl;  //MFENCE
+                            #endif
                         }
                         else if(foundSFence){
                             isRelease = true;
                             foundSFence = false; sfence_delay=0; sfence_count=0;
-                            std::cout<<" Ins Id: "<<ins_count;
-                             std::cout << "Release Barrier "<< rmwop << " \n" << std::endl;  //MFENCE
+                            #ifdef PDEBUG
+                                std::cout<<" Ins Id: "<<ins_count;
+                                std::cout << "Release Barrier "<< rmwop << " \n" << std::endl;  //MFENCE
+                             #endif
                         }
                         else if(foundLFence){
                             isAcquire = true;
                             foundLFence = false; lfence_delay=0; lfence_count=0;
-                            std::cout<<" Ins Id: "<<ins_count;
-                             std::cout << "Acquire Barrier "<< rmwop << " \n" << std::endl;  //MFENCE
+                            #ifdef PDEBUG
+                                std::cout<<" Ins Id: "<<ins_count;
+                                std::cout << "Acquire Barrier "<< rmwop << " \n" << std::endl;  //MFENCE
+                             #endif
                         }else{
                             foundSFence = false; sfence_delay=0; sfence_count=0;
                             foundLFence = false; lfence_delay=0; lfence_count=0;
@@ -385,7 +393,7 @@ void Trace(TRACE trace, void *v)
                     }
 
                     #else
-                        if(rmwop==0x064){
+                        if(rmwop==0x064){ //think about bts as well
                             isAcquire = true;
                             isRMW = true;
                         }
@@ -434,19 +442,25 @@ void Trace(TRACE trace, void *v)
                 uint32_t op=0;
                     op = (uint32_t)INS_Opcode(ins);
                     if(op == 0x17a){ //MFENCE
-                            std::cout << "MFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            #ifdef PDEBUG
+                                std::cout << "MFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            #endif
                             foundMFence = true;
                             mfence_count = 1;
                             mfence_delay = 0;
                     } 
                     else if(op==0x2a1){
-                            std::cout << "SFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            #ifdef PDEBUG
+                                std::cout << "SFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            #endif
                             foundSFence = true;
                             sfence_count = 1;
                             sfence_delay = 0;
                     }   
                     else if(op==0x15f){
-                            std::cout << "LFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            #ifdef PDEBUG
+                                std::cout << "LFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            #endif
                             foundLFence = true;
                             lfence_count = 1;
                             lfence_delay = 0;

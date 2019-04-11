@@ -80,11 +80,12 @@ typedef enum PersistModel
     FLLB = 1, //FULL BARRIER
     RLXB = 2, //RELAXED BARRIER
     RLSB = 3, //RELEASE BARRIER
+    BEPB = 4, //BEP BARRIER - ARPIT
 } PersistModel;
 
 #define SYNCBENCH
-#define DEBUG
-
+//#define DEBUG
+//#define PDEBUG
 #define LOWER_EPOCH_FLUSH
 //#define ACQREL
 

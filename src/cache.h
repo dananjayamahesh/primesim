@@ -41,7 +41,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "xml_parser.h"
 #include "bus.h"
 #include "common.h"
-#define SYNCMAP_SIZE 1000
+//#define SYNCMAP_SIZE 1000
+#define SYNCMAP_SIZE 10000
+
 
 typedef struct Addr
 {
