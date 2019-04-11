@@ -65,7 +65,6 @@ void *Producer(void *arg) {
     // Unlock A
     A.store(0, std::memory_order_release);
     
-
     //sem_wait(&empty);
     //data = produced;
     //sem_post(&full);
