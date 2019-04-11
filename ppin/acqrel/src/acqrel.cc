@@ -17,6 +17,16 @@ enum MemType
 FILE * trace;
 int ins_count=0;
 
+bool foundMFence = false;
+int mfence_count = 0; //Number of mfence found
+int mfence_delay = 0; //Instructions since last mfence.
+bool foundSFence = false;
+int sfence_count = 0; 
+int sfence_delay = 0;
+bool foundLFence = false;
+int lfence_count = 0;
+int lfence_delay = 0;
+
 // Print a memory read record
 VOID RecordMemRead(VOID * ip, VOID * addr)
 {
@@ -57,20 +67,22 @@ increase replacements/evictions
 same address
 multi-words from different epochs to same cache block, chain reactions.
 */
-void memIns(void * addr, THREADID threadid, uint32_t size, bool mem_type, void *ip, void *ins, uint32_t next_op, bool valid, bool isrelease, bool isacquire)
+void memIns(void * addr, THREADID threadid, uint32_t size, bool mem_type, void *ip, void *ins, uint32_t next_op, bool valid, bool isrelease, bool isacquire, bool isrmw)
 {
    // core_manager->execMem(addr, threadid, size, mem_type);
    //if(release) printf("RELEASE\n");
-   if((uint32_t)threadid >0){
+    if(isrelease || isacquire) printf("--- Instruction Trap --- %d ///// THREAD Id - %d /// Addr %p Size %d IP %p mem-type %s isRMW: %s isRelease: %s isAcquire: %s  \n", isrelease, (uint32_t)threadid, addr, size, ip, (!mem_type)?"READ":"WRITE", (isrmw)?"true":"false", (isrelease)?"true":"false", (isacquire)?"true":"false");
+
+  /*
+   if((uint32_t)threadid >=0){
         if(isrelease){
-            printf("////////////////////////////////// RELEASE %d ///// THREAD Id - %d /// Addr %p Size %d IP %p \n", isrelease, (uint32_t)threadid, addr, size, ip);
+            printf("////////////////////////////////// RELEASE %d ///// THREAD Id - %d /// Addr %p Size %d IP %p mem-type %s isRMW: %s \n", isrelease, (uint32_t)threadid, addr, size, ip, (!mem_type)?"READ":"WRITE", (isrmw)?"true":"false");
             //Trap address
             //List
-
         }
     
         if(isacquire){
-            printf("////////////////////////////////// ACQUIRE  %d ///// THREAD ID - %d /// Addr %p Size %d IP %p \n", isacquire, (uint32_t)threadid, addr, size, ip);
+            printf("////////////////////////////////// ACQUIRE  %d ///// THREAD ID - %d /// Addr %p Size %d IP %p mem-type isRMW: %s %s \n", isacquire, (uint32_t)threadid, addr, size, ip, (!mem_type)?"READ":"WRITE", (isrmw)?"true":"false");
         }
     }
    //if(acquire) printf("ACQUIRE\n");
@@ -80,7 +92,7 @@ void memIns(void * addr, THREADID threadid, uint32_t size, bool mem_type, void *
             //std::cout << next_op << " \n" << std::endl;  //MFENCE
         }
     
-   }
+   }*/
     //std::cout << INS_Mnemonic(*in) << std::endl;    
 
     //if(threadid > 0) printf("Mem Thread Id : %d %d %s %d %s \n", threadid, *((int *)addr), (mem_type)?"RD":"WR", size, INS_Mnemonic(*in).c_str());
@@ -149,6 +161,8 @@ void Trace(TRACE trace, void *v)
 
                 bool isRelease = false;
                 bool isAcquire = false;
+
+                bool isRMW = false;
                 
                 INS ins_next = INS_Next(ins);
                 //OPCODE opcode_next = INS_Opcode(ins_next);
@@ -164,16 +178,41 @@ void Trace(TRACE trace, void *v)
                 }   
                 
                 if(INS_IsAtomicUpdate (ins)){
-        
-                    isAcquire = true;
-                    std::cout <<  INS_Mnemonic(ins) << " Operands "<< memOperands << " MemOpType "<< (INS_IsMemoryRead(ins) || INS_IsMemoryWrite(ins)) <<std::endl;
-                    //Lock prefic of x86 - LOCK the bus
-                    //https://stackoverflow.com/questions/8891067/what-does-the-lock-instruction-mean-in-x86-assembly
-
-                    if(INS_IsMemoryRead(ins)){
-                        std::cout <<  "READ \n "<< std::endl;
-                    }else{
-                        std::cout <<  "WRITE \n "<< std::endl;
+                    
+                    //Check cmpxchg - 64
+                     uint32_t rmwop= (uint32_t)INS_Opcode(ins);
+                    if(rmwop==0x064){
+                        isRMW = true;                    
+                        //isAcquire = true;
+                        if(foundSFence && foundLFence){
+                            isAcquire = true; isRelease = true;
+                            foundSFence = false; sfence_delay=0; sfence_count=0;
+                            foundLFence = false; lfence_delay=0; lfence_count=0;
+                            std::cout << "FULL Barrier "<< opn << " \n" << std::endl;  //MFENCE
+                        }
+                        else if(foundSFence){
+                            isRelease = true;
+                            foundSFence = false; sfence_delay=0; sfence_count=0;
+                             std::cout << "Release Barrier "<< opn << " \n" << std::endl;  //MFENCE
+                        }
+                        else if(foundLFence){
+                            isAcquire = true;
+                            foundLFence = false; lfence_delay=0; lfence_count=0;
+                             std::cout << "Acquire Barrier "<< opn << " \n" << std::endl;  //MFENCE
+                        }else{
+                            foundSFence = false; sfence_delay=0; sfence_count=0;
+                            foundLFence = false; lfence_delay=0; lfence_count=0;
+                        }
+                            
+                        std::cout <<  INS_Mnemonic(ins) << " Operands "<< memOperands << " MemOpType "<< (INS_IsMemoryRead(ins) || INS_IsMemoryWrite(ins)) <<std::endl;
+                        //Lock prefic of x86 - LOCK the bus
+                        //https://stackoverflow.com/questions/8891067/what-does-the-lock-instruction-mean-in-x86-assembly
+    
+                        if(INS_IsMemoryRead(ins)){
+                            std::cout <<  "READ \n "<< std::endl;
+                        }else{
+                            std::cout <<  "WRITE \n "<< std::endl;
+                        }
                     }
         
                 }
@@ -201,6 +240,7 @@ void Trace(TRACE trace, void *v)
                             IARG_BOOL, isvalid,
                             IARG_BOOL, isRelease,
                             IARG_BOOL, isAcquire,
+                            IARG_BOOL, isRMW,
                             IARG_END);
 
                     }
@@ -217,6 +257,7 @@ void Trace(TRACE trace, void *v)
                             IARG_BOOL, isvalid,
                             IARG_BOOL, isRelease,
                             IARG_BOOL, isAcquire,
+                            IARG_BOOL, isRMW,
                             IARG_END);
                     }
                 }
@@ -224,6 +265,30 @@ void Trace(TRACE trace, void *v)
             }
             
             else {
+                    uint32_t op=0;
+                    op = (uint32_t)INS_Opcode(ins);
+                    if(op == 0x17a){ //MFENCE
+                            std::cout << "MFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            foundMFence = true;
+                            mfence_count = 1;
+                            mfence_delay = 0;
+                    } 
+                    else if(op==0x2a1){
+                            std::cout << "SFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            foundSFence = true;
+                            sfence_count = 1;
+                            sfence_delay = 0;
+                    }   
+                    else if(op==0x15f){
+                            std::cout << "LFENCE "<< op << " \n" << std::endl;  //MFENCE
+                            foundLFence = true;
+                            lfence_count = 1;
+                            lfence_delay = 0;
+                    }else{
+                            if(foundMFence) mfence_delay++;
+                            if(foundSFence) sfence_delay++;
+                            if(foundLFence) lfence_delay++;
+                    }
                     nonmem_count++;
             }
 
@@ -267,6 +332,15 @@ int main(int argc, char *argv[])
 
     trace = fopen("acqrel.out", "w");
 
+     foundMFence = false;
+     mfence_count = 0; //Number of mfence found
+     mfence_delay = 0; //Instructions since last mfence.
+     foundSFence = false;
+     sfence_count = 0; 
+     sfence_delay = 0;
+     foundLFence = false;
+     lfence_count = 0;
+     lfence_delay = 0;
     //INS_AddInstrumentFunction(Instruction, 0);
     TRACE_AddInstrumentFunction(Trace, 0);
 
