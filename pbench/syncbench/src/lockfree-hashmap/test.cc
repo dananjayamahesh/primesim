@@ -111,6 +111,7 @@ typedef struct thread_data {
 	int unit_tx;
 	int alternate;
 	int effective;
+	int operations;
 	unsigned long nb_add;
 	unsigned long nb_added;
 	unsigned long nb_remove;
@@ -160,7 +161,7 @@ void *test(void *data) {
 	
 
 	//while (stop == 0) {
-	for (int i=0; i<d->range;i++) {
+	for (int i=0; i<d->operations;i++) {
 		
 	  if (unext) { // update
 	    
@@ -370,6 +371,7 @@ int main(int argc, char **argv)
 		{"move-rate",                 required_argument, NULL, 'a'},
 		{"snapshot-rate",             required_argument, NULL, 's'},
 		{"elasticity",                required_argument, NULL, 'x'},
+		{"operations",                required_argument, NULL, 'o'},
 		{NULL, 0, NULL, 0}
 	};
 	
@@ -400,11 +402,12 @@ int main(int argc, char **argv)
 	int unit_tx = DEFAULT_ELASTICITY;
 	int alternate = DEFAULT_ALTERNATE;
 	int effective = DEFAULT_EFFECTIVE;
+	int operations = 100;
 	sigset_t block_set;
 	
 	while(1) {
 		i = 0;
-		c = getopt_long(argc, argv, "hAf:d:i:t:r:S:u:a:s:l:x:", long_options, &i);
+		c = getopt_long(argc, argv, "hAf:d:i:t:r:S:u:a:s:l:x:o:", long_options, &i);
 		
 		if(c == -1)
 			break;
@@ -494,6 +497,9 @@ int main(int argc, char **argv)
 				case 'x':
 					unit_tx = atoi(optarg);
 					break;
+				case 'o':
+					operations = atoi(optarg);
+					break;
 				case '?':
 					printf("Use -h or --help for help\n");
 					exit(0);
@@ -525,6 +531,7 @@ int main(int argc, char **argv)
 	printf("Elasticity   : %d\n", unit_tx);
 	printf("Alternate    : %d\n", alternate);	
 	printf("Effective    : %d\n", effective);
+	printf("Operations    : %d\n", operations);
 	printf("Type sizes   : int=%d/long=%d/ptr=%d/word=%d\n",
 				 (int)sizeof(int),
 				 (int)sizeof(long),
@@ -591,6 +598,7 @@ int main(int argc, char **argv)
 		data[i].unit_tx = unit_tx;
 		data[i].alternate = alternate;
 		data[i].effective = effective;
+		data[i].operations = operations;
 		data[i].nb_add = 0;
 		data[i].nb_added = 0;
 		data[i].nb_remove = 0;

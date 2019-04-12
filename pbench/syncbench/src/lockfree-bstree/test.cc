@@ -38,6 +38,7 @@
 #define DEFAULT_ELASTICITY              4
 #define DEFAULT_ALTERNATE               0
 #define DEFAULT_EFFECTIVE               1
+#define DEFAULT_OPERATIONS               100
 
 #define XSTR(s)                         STR(s)
 #define STR(s)                          #s
@@ -193,7 +194,7 @@ void *test(void *data) {
 
   //#ifdef ICC
   //while (stop == 0) { - Mahesh //////////////////////////////////////
-  for (int i=0; i<d->range;i++) {
+  for (int i=0; i<d->operations;i++) {
      //printf("Thread : %d Transaction : %d \n", d->id, i);
     //#else
     //while (AO_load_full(&stop) == 0) {
@@ -365,6 +366,7 @@ void *test2(void *data)
       {"seed",                      required_argument, NULL, 'S'},
       {"update-rate",               required_argument, NULL, 'u'},
       {"unit-tx",                   required_argument, NULL, 'x'},
+      {"operations",                required_argument, NULL, 'o'},
       {NULL, 0, NULL, 0}
     };
 
@@ -391,6 +393,7 @@ void *test2(void *data)
     int unit_tx = DEFAULT_ELASTICITY;
     int alternate = DEFAULT_ALTERNATE;
     int effective = DEFAULT_EFFECTIVE;
+    int operations = DEFAULT_OPERATIONS;
     sigset_t block_set;
 		
     while(1) {
@@ -470,6 +473,9 @@ void *test2(void *data)
 	break;
       case 'x':
 	unit_tx = atoi(optarg);
+  break;
+      case 'o':
+  operations = atoi(optarg);
 	break;
       case '?':
 	printf("Use -h or --help for help\n");
@@ -495,6 +501,7 @@ void *test2(void *data)
     printf("Lock alg.    : %d\n", unit_tx);
     printf("Alternate    : %d\n", alternate);
     printf("Effective    : %d\n", effective);
+     printf("Operations    : %d\n", operations);
     printf("Type sizes   : int=%d/long=%d/ptr=%d/word=%d\n",
 	   (int)sizeof(int),
 	   (int)sizeof(long),
@@ -531,6 +538,7 @@ void *test2(void *data)
       data[i].update = update;
       data[i].alternate = alternate;
       data[i].effective = effective;
+      data[i].operations = operations;
       data[i].nb_add = 0;
       data[i].nb_added = 0;
       data[i].nb_remove = 0;
@@ -575,6 +583,7 @@ void *test2(void *data)
       data[i].update = update;
       data[i].alternate = alternate;
       data[i].effective = effective;
+      data[i].operations = operations;
       data[i].nb_add = 0;
       data[i].nb_added = 0;
       data[i].nb_remove = 0;
