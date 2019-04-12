@@ -193,7 +193,8 @@ class Cache
         void deleteLowerFromSyncMap(int epoch_id);
         SyncLine* searchByEpochId(int epoch_id); //SHould returb a map
         SyncLine * matchSyncLine(Line * line_cur);
-        int addSyncLine(InsMem * ins_mem);
+        //int addSyncLine(InsMem * ins_mem);
+        SyncLine * addSyncLine(InsMem * ins_mem);
         void printSyncMap();
         int replaceSyncLine(SyncLine * syncline, InsMem * ins_mem);
 

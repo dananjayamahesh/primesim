@@ -477,7 +477,14 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
 
                         if(ins_mem->atom_type != NON){
                             line_cur->atom_type = ins_mem->atom_type; //Update only when atomic word is inserted.                                        
-                            cache_cur->addSyncLine(ins_mem);                       
+                            
+                            SyncLine * new_line =  cache_cur->addSyncLine(ins_mem); //Can write isFull();
+                            if(new_line == NULL) {
+                                syncConflict(cache_cur, new_line, line_cur);
+                                cache_cur->addSyncLine(ins_mem); //Dont erase the first line
+                            } //dont erase new write
+                            assert(new_line !=NULL);
+                            //Need to check the overflow- Then flush both cache and sync reg                       
                         }
                         
                         if(line_cur->dirty){
@@ -663,7 +670,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                                 delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline  
                         }else{
                             //Check if epoch id is overwritten in replace - NO
-                            printf("Buffered Epoch Peristency on replace");
+                            //printf("Buffered Epoch Peristency on replace");
                             delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //BEP-on repacement
                         }
                  
@@ -704,8 +711,12 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
             // line_cur->state == M 3 modified
             if(level==0 && ins_mem->atom_type!=NON && ins_mem->mem_type==WR){ //in Modified State
                         line_cur->atom_type = ins_mem->atom_type; //Acquire or Release write.RMW
-                        cache_cur->addSyncLine(ins_mem); //Add word
-                        
+                        SyncLine * new_line = cache_cur->addSyncLine(ins_mem); //Add word
+                        if(new_line == NULL){
+                            syncConflict(cache_cur, new_line, line_cur);
+                            cache_cur->addSyncLine(ins_mem);
+                        } //Dont erase the added line
+                        assert(new_line !=NULL);    //Sync line                    
             }
 
             // line_cur->state == M 3 modified
@@ -774,6 +785,46 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
     } //END of CACHE MISS
 }
 
+//SyncMap conflicts syncConflict
+int System::syncConflict(Cache * cache_cur, SyncLine * syncline, Line* line_call){
+        
+    int core_id = cache_cur->getId();
+    int cache_id = core_id;
+    printf("syncmap conflicts need to resolved %d \n", core_id);
+    int level = 0;
+    Line * line_cur;
+    int timer =0;
+    int persist_count =0;
+    //fullFlush(cache_cur, syncline, line_cur, syncline->epo)
+    for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {            
+            for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) {                
+                //printf("A Epoch %d\n", rel_epoch_id);
+                InsMem ins_mem;
+                line_cur = cache_cur->directAccess(i,j,&ins_mem);    
+                            
+                if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M)){ //|| line_cur->state==E  //Need to think about E here
+                 
+                    if(true){ //Epoch Id < conflictigng epoch id - similar to full flush
+                        ins_mem.mem_type = WB;   
+                        ins_mem.atom_type = NON;                                             
+                        line_cur->state = mesi_directory(cache_cur->parent, level+1, 
+                                          cache_id*cache_level[level].share/cache_level[level+1].share, 
+                                          core_id, &ins_mem, timer + delay[core_id]);
+                        
+                        cache_cur->incPersistCount();
+                        persist_count++;
+                        
+                        line_cur->dirty = 0;
+                        line_cur->state = I;
+                    }
+                }
+        }
+    }
+    
+    cache_cur->initSyncMap(0);
+    return 0;
+    
+}
 
 //Buffered Epoch Persistence
 int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id){ //calling 

@@ -556,12 +556,15 @@ int Cache::replaceSyncLine(SyncLine * syncline, InsMem * ins_mem){
     return 0;
  }
 
-int Cache::addSyncLine(InsMem * ins_mem){    
+SyncLine * Cache::addSyncLine(InsMem * ins_mem){    
     
     assert(ins_mem->atom_type != NON);
-    assert(syncmap.size < SYNCMAP_SIZE);
-    if(syncmap.size < SYNCMAP_SIZE){       
-        SyncLine * new_line = createSyncLine(ins_mem);
+    //assert(syncmap.size < SYNCMAP_SIZE);
+    SyncLine * new_line = NULL;
+    //Before- syncmap.size < SYNCMAP_SIZE
+    if(true){       
+        //SyncLine * 
+        new_line = createSyncLine(ins_mem);
         //check and overwrite syncs to same address from previous epochs
         SyncLine *tmp_line = syncmap.head;
         //Assmption only 1 sync atomic variable at a time
@@ -574,26 +577,32 @@ int Cache::addSyncLine(InsMem * ins_mem){
                 #endif
                     //Need more logic here
                     replaceSyncLine(tmp_line,ins_mem);
-                    return 0;     
+                    return tmp_line; // Existing line    
             }
                 tmp_line = tmp_line->next;
-        }   
+        }
+
+        if(syncmap.size < SYNCMAP_SIZE){  
         
-        new_line->next = syncmap.head;
-        syncmap.head = new_line;
-        syncmap.size++;
-        #ifdef DEBUG
-        printf("[SyncMap] Adding Sync Line 0x%lx to cache %d at level %d, atomic-type: %d ID:%d \n", ins_mem->addr_dmem, cache_id, level, ins_mem->atom_type, new_line->sync_id);  
-        #endif
+            new_line->next = syncmap.head;
+            syncmap.head = new_line;
+            syncmap.size++;
+            return new_line;
+            #ifdef DEBUG
+            printf("[SyncMap] Adding Sync Line 0x%lx to cache %d at level %d, atomic-type: %d ID:%d \n", ins_mem->addr_dmem, cache_id, level, ins_mem->atom_type, new_line->sync_id);  
+            #endif
+        }else{
+            printf("[SyncMap] overflow %d %d", cache_id, level); 
+            return new_line;     
+        }
     }
     else{
         //Wait. Stall the until something get flushed.//No incident of races to same sync variable. Becuase of Data Race Free execution. 
         //FLUSH-with conflicts
-
-        printf("[SyncMap] overflow %d %d", cache_id, level);       
-    }  
-      
-    return 0;
+        printf("[SyncMap] NULL MAP %d %d", cache_id, level); 
+        return new_line;      
+    }      
+    //return 0;
 }
 
 void Cache::deleteFromSyncMap(uint64_t addr){
