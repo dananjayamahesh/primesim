@@ -1,5 +1,5 @@
-DIMP_FILE=/home/s1797403/repos/primesim/output/syncbench-fixed/stat.txt
-DATA_FILE=/home/s1797403/repos/primesim/output/syncbench-fixed/data.txt
+DIMP_FILE=${HOME}/repos/primesim/output/stat.txt
+DATA_FILE=${HOME}/repos/primesim/output/syncbench-fixed/data.txt
 
 #echo "" > ${DIMP_FILE}
 > ${DIMP_FILE}
@@ -7,9 +7,13 @@ DATA_FILE=/home/s1797403/repos/primesim/output/syncbench-fixed/data.txt
 
 make -B
 #SyncMap is 10000
-for threads in 2 4 8 16 32 48
+
+for upd in 50 100
 do
-	for rate in 100 200 500 1000
+
+for threads in 8 16 32 48
+do
+	for rate in 100 500 1000
 	do
 		#for rate2 in 200 400 600 800 1000 1200 1400 1600 1800 2000 10000
 		for rate2 in 200 500 1000 2000 5000
@@ -29,32 +33,32 @@ do
 					#echo "$pmodel" >> ${DATA_FILE}
 					
 					mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 \
-					-np 1 /home/s1797403/repos/primesim/bin/prime \
-					/home/s1797403/repos/primesim/xml/config_${pmodel}.xml \
-					/home/s1797403/repos/primesim/output/syncbench-fixed/config.out : \
-					-np 1 pin.sh -ifeellucky -t /home/s1797403/repos/primesim/bin/prime.so \
-					-c /home/s1797403/repos/primesim/xml/config_${pmodel}.xml \
-					-o /home/s1797403/repos/primesim/output/syncbench-fixed/config.out \
-					-- /home/s1797403/repos/primesim/pbench/syncbench/bin/${bench} -t ${threads} -i ${rate} -r ${rate2} -d 10 -x 6 -u 50
+					-np 1 ${HOME}/repos/primesim/bin/prime \
+					${HOME}/repos/primesim/xml/config_${pmodel}.xml \
+					${HOME}/repos/primesim/output/syncbench-fixed/config.out : \
+					-np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so \
+					-c ${HOME}/repos/primesim/xml/config_${pmodel}.xml \
+					-o ${HOME}/repos/primesim/output/syncbench-fixed/config.out \
+					-- ${HOME}/repos/primesim/pbench/syncbench/bin/${bench} -t ${threads} -i ${rate} -r ${rate2} -d 10 -x 6 -u ${upd}
 					
 					cat ${DIMP_FILE} >> ${DATA_FILE}
 					
-					cat /home/s1797403/repos/primesim/output/syncbench-fixed/config.out_1 \
-					/home/s1797403/repos/primesim/output/syncbench-fixed/config.out_0 \
-					> /home/s1797403/repos/primesim/output/syncbench-fixed/config.out
+					cat ${HOME}/repos/primesim/output/syncbench-fixed/config.out_1 \
+					${HOME}/repos/primesim/output/syncbench-fixed/config.out_0 \
+					> ${HOME}/repos/primesim/output/syncbench-fixed/config.out
 					
-					cp  /home/s1797403/repos/primesim/output/syncbench-fixed/config.out \
-					 /home/s1797403/repos/primesim/output/syncbench-fixed/config_p.out
+					cp  ${HOME}/repos/primesim/output/syncbench-fixed/config.out \
+					 ${HOME}/repos/primesim/output/syncbench-fixed/config_p.out
 					
-					rm -f  /home/s1797403/repos/primesim/output/syncbench-fixed/config.out_0
+					rm -f  ${HOME}/repos/primesim/output/syncbench-fixed/config.out_0
 					
-					rm -f  /home/s1797403/repos/primesim/output/syncbench-fixed/config.out_1
+					rm -f  ${HOME}/repos/primesim/output/syncbench-fixed/config.out_1
 				done
 			   
 			done
 		done
 	done
 done
-
+done
 
 
