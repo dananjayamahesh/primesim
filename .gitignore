@@ -23,3 +23,4 @@ ppin/acqrel/bin/acqrel.so
 ppin/acqrel/dep/acqrel.d
 ppin/acqrel/obj/acqrel.o
 xml/*
+run_script.sh
