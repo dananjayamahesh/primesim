@@ -711,6 +711,8 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
             // line_cur->state == M 3 modified
             if(level==0 && ins_mem->mem_type==WR){ //in SModified State
                 
+                    
+                    /*
                      if(line_cur->dirty){
                        if(ins_mem->epoch_id < line_cur->min_epoch_id){
                         line_cur->min_epoch_id = ins_mem->epoch_id;
@@ -724,6 +726,23 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     if(ins_mem->epoch_id > line_cur->max_epoch_id){
                         line_cur->max_epoch_id = ins_mem->epoch_id;
                     }
+                    */
+                    if(line_cur->dirty){
+                           if(ins_mem->epoch_id < line_cur->min_epoch_id){
+                            line_cur->min_epoch_id = ins_mem->epoch_id;
+                             //Release epoch id can be overwritten later.
+                            }
+
+                            if(ins_mem->epoch_id > line_cur->max_epoch_id){ //Latest epoch ID.
+                            line_cur->max_epoch_id = ins_mem->epoch_id;
+                            //check dirty bit?
+                            }
+                            
+                    }else{
+                            line_cur->min_epoch_id = ins_mem->epoch_id;
+                            line_cur->max_epoch_id = ins_mem->epoch_id;
+                            line_cur->dirty = 1;
+                    } 
             }
         }
         else {
@@ -778,7 +797,7 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
                 InsMem ins_mem;
                 line_cur = cache_cur->directAccess(i,j,&ins_mem);    
                             
-                if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M || line_cur->state==E )){ //Need to think about E here
+                if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M)){ //|| line_cur->state==E  //Need to think about E here
                  
                     if(line_cur->max_epoch_id < conflict_epoch_id){ //Epoch Id < conflictigng epoch id - similar to full flush
                         ins_mem.mem_type = WB;   

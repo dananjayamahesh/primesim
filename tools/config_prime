@@ -173,7 +173,7 @@ system = {
             'freq' : 2.5,
             # bus latency between different cache levels
             'bus_latency' : 2,
-            'persist_model' : 4,
+            'persist_model' : 3,
             # latency upon a page miss
             'page_miss_delay' : 200,
             'network': network,

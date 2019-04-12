@@ -464,7 +464,7 @@ void CoreManager::report(ofstream *result)
 */
     //std::ofstream file;
     //file.open(filepath, std::ios::out | std::ios::app);
-    FILE * dimp_file = fopen ("/home/s1797403/repos/primesim/output/syncbench-fixed/stat.txt","w");
+    FILE * dimp_file = fopen ("/afs/inf.ed.ac.uk/user/s17/s1797403/repos/primesim/output/stat.txt","w");
 
     fprintf(dimp_file, "%f,%f,%f,%lu,%lu\n",(double)total_ins_counts / dimp_cycles,(double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(dimp_cycles - total_cycles_nonmem),(double)total_ins_counts / total_cycles ,total_ins_counts,dimp_cycles);
 
