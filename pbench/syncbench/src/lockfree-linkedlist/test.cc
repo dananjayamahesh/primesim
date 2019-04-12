@@ -382,7 +382,7 @@ int main(int argc, char **argv) {
 		val = rand_range(range);
 		if (set_add(set, val, 0)) {
 			last = val;
-			printf("i %d and val %d \n",i, val);
+			//printf("i %d and val %d \n",i, val);
 			i++;
 		}
 	}
