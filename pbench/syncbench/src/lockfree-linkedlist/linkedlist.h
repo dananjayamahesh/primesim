@@ -51,7 +51,7 @@ static volatile AO_t stop;
 #define TRANSACTIONAL                   d->unit_tx
 
 #define MAX_PARITY_LOAD 100
-#define EPOCH_PARITY
+//#define EPOCH_PARITY
 
 typedef intptr_t val_t;
 #define VAL_MIN                         INT_MIN
