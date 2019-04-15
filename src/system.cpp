@@ -666,7 +666,9 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     #endif
                     //Replacement Logic///////////////////////////////////////////////////////////////////////
                     //InsMem newMem = ins_mem_old;
-                    if(level==0 && (ins_mem_old.atom_type !=NON) ){
+                    //if(level==0 && (ins_mem_old.atom_type !=NON) ){ ///BIg Wrong Wronnnnnnnnnng 2019/04/15
+                    if(level==0){ //Fixed
+                        
                         //printf("Release Persistency in Replacement \n");
                         //delay[core_id] += releasePersist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline  
                         if(pmodel == BEPB){
@@ -689,8 +691,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             //printf("Buffered Epoch Peristency on replace");
                             delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //BEP-on repacement
                         }
-                        */
-                 
+                        */                 
                     }                                       
                     //printf("E");
                     //printf("[INSMEM]   Op: %d Type: %d Miss 0x%lx, cache level : %d and Cache Id: %d RMW: %s Memory: %s Epoch: %d \n", 
@@ -698,6 +699,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     assert(line_cur !=NULL);
                     assert(ins_mem !=NULL);   
                     assert(cache_cur!=NULL);
+                    
                     //printf("E\n");                          
                     ins_mem_old.mem_type = WB;
                     //printf("F\n");
