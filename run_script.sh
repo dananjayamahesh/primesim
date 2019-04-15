@@ -146,3 +146,12 @@ mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 
 mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_4.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_4.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/linkedlist -t 31 -i 500 -r 1000 -o 1000 -u 80 -x 6 \
 && \
 mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/linkedlist -t 31 -i 500 -r 1000 -o 1000 -u 80 -x 6
+
+
+mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/linkedlist -t 31 -i 500 -r 1000 -o 1000 -u 80 -x 6
+
+
+
+Skiplist segmentation faults
+500, 5000: 1000, 5000
+ mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_0.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_0.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/skiplist-rotating-c -t 16 -i 500 -r 5000 -o 5000 -u 50 -x 6
