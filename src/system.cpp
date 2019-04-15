@@ -667,7 +667,19 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     if(level==0 && (ins_mem_old.atom_type !=NON) ){
                         //printf("Release Persistency in Replacement \n");
                         //delay[core_id] += releasePersist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline  
-                        if(pmodel != BEPB){
+                        if(pmodel == BEPB){
+                            delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //BEP-on repacement
+                        }
+                        else if(pmodel == RLSB){
+                            if(ins_mem_old.atom_type !=NON)
+                                delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline
+                        }
+                        else{
+                            //NOP do nothing.
+                        }
+
+                        /*
+                        if(pmodel != BEPB){ //Need to change 2019-04-15
                             if(ins_mem_old.atom_type !=NON) 
                                 delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline  
                         }else{
@@ -675,6 +687,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             //printf("Buffered Epoch Peristency on replace");
                             delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //BEP-on repacement
                         }
+                        */
                  
                     }                                       
                     //printf("E");
