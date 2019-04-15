@@ -398,7 +398,7 @@ void *test2(void *data)
 		
     while(1) {
       i = 0;
-      c = getopt_long(argc, argv, "hAf:d:i:t:r:S:u:x:"
+      c = getopt_long(argc, argv, "hAf:d:i:t:r:S:u:x:o:"
 		      , long_options, &i);
 			
       if(c == -1)
