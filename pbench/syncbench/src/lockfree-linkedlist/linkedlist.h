@@ -50,12 +50,15 @@ static volatile AO_t stop;
 
 #define TRANSACTIONAL                   d->unit_tx
 
+#define MAX_PARITY_LOAD 100
+
 typedef intptr_t val_t;
 #define VAL_MIN                         INT_MIN
 #define VAL_MAX                         INT_MAX
 
 typedef struct node {
 	val_t val;
+	int parity[MAX_PARITY_LOAD];
 	struct node *next;
 } node_t;
 

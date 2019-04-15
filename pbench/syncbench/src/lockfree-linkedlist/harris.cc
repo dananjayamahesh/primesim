@@ -131,6 +131,12 @@ int harris_insert(intset_t *set, val_t val) {
 		if (right_node->val == val)
 			return 0;
 		newnode = new_node(val, right_node, 0);
+
+		//Parity Epoch
+		int load=0;
+		for(load=0;load<MAX_PARITY_LOAD;load++){
+			newnode->parity[load]=(int)val;
+		}//Additional Loads
 		/* mem-bar between node creation and insertion */
 		AO_nop_full(); 
 		//__asm__ __volatile__("sfence" : : : "memory");
