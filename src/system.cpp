@@ -480,7 +480,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                         if(ins_mem->atom_type != NON){
                             line_cur->atom_type = ins_mem->atom_type; //Update only when atomic word is inserted.                                        
                             
-                            if(pmodel!=NONB){
+                            if(pmodel==RLSB){
                                 SyncLine * new_line =  cache_cur->addSyncLine(ins_mem); //Can write isFull();
                                 if(new_line == NULL) {
                                     syncConflict(cache_cur, new_line, line_cur);
@@ -729,7 +729,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
             if(level==0 && ins_mem->atom_type!=NON && ins_mem->mem_type==WR){ //in Modified State
                         line_cur->atom_type = ins_mem->atom_type; //Acquire or Release write.RMW
 
-                        if(pmodel !=NONB){
+                        if(pmodel == RLSB){ //No need to NOP and BEP
                             SyncLine * new_line = cache_cur->addSyncLine(ins_mem); //Add word
                             if(new_line == NULL){
                                 syncConflict(cache_cur, new_line, line_cur);
@@ -853,8 +853,8 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
                 line_cur = cache_cur->directAccess(i,j,&ins_mem);    
                             
                 if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M)){ //|| line_cur->state==E  //Need to think about E here
-                 
-                    if(line_cur->max_epoch_id < conflict_epoch_id){ //Epoch Id < conflictigng epoch id - similar to full flush
+                    //Only dirty data
+                    if(line_cur->max_epoch_id <= conflict_epoch_id){ //Epoch Id < conflictigng epoch id - similar to full flush
                         ins_mem.mem_type = WB;   
                         ins_mem.atom_type = NON;                                             
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
@@ -870,6 +870,8 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
                 }
         }
     } 
+    //Check. Need to flush the calling line as well
+
     //Buffered Eopch Persistence
     #ifdef DEBUG
     printf("Number of persists (Buffered Epoch Persistency): %d \n", persist_count); 
