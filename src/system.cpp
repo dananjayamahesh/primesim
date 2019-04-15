@@ -244,10 +244,12 @@ void System::init_directories(int home_id)
     pthread_mutex_lock(&directory_cache_lock[home_id]);
     if (directory_cache[home_id] == NULL) {
         directory_cache[home_id] = new Cache();
-        directory_cache[home_id]->init(&(xml_sys->directory_cache), DIRECTORY_CACHE, xml_sys->bus_latency, page_size, 0, home_id);
+        //BUGGGG//directory_cache[home_id]->init(&(xml_sys->directory_cache), DIRECTORY_CACHE, xml_sys->bus_latency, page_size, 0, home_id);
+        directory_cache[home_id]->init(&(xml_sys->directory_cache), DIRECTORY_CACHE, xml_sys->bus_latency, page_size, num_levels, home_id);
+
     }
     directory_cache_init_done[home_id] = true;
-    printf("Directory is created : Home Id - %d \n\n", home_id);
+    printf("Directory is created : Home Id - %d of level %d \n\n", home_id, num_levels);
     pthread_mutex_unlock(&directory_cache_lock[home_id]);
 }
 
@@ -1572,6 +1574,11 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
                 line_cur->state = E;
             } 
             line_cur->sharer_set.insert(cache_id);
+        }
+        else if((ins_mem->mem_type == WB)){
+            line_cur->state = I;
+            line_cur->sharer_set.clear();
+            dram.access(ins_mem);
         }
         //Writeback 
         else {
