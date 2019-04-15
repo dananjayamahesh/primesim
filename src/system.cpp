@@ -473,17 +473,19 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                
                 //if(ins_mem->atom_type != NON) line_cur->atom_type = ins_mem->atom_type;                   
     
-                    if(level==0){
+                    if(level==0){ //Changed only for RP, BEP
 
                         if(ins_mem->atom_type != NON){
                             line_cur->atom_type = ins_mem->atom_type; //Update only when atomic word is inserted.                                        
                             
-                            SyncLine * new_line =  cache_cur->addSyncLine(ins_mem); //Can write isFull();
-                            if(new_line == NULL) {
-                                syncConflict(cache_cur, new_line, line_cur);
-                                cache_cur->addSyncLine(ins_mem); //Dont erase the first line
-                            } //dont erase new write
-                            assert(new_line !=NULL);
+                            if(pmodel!=NONB){
+                                SyncLine * new_line =  cache_cur->addSyncLine(ins_mem); //Can write isFull();
+                                if(new_line == NULL) {
+                                    syncConflict(cache_cur, new_line, line_cur);
+                                    cache_cur->addSyncLine(ins_mem); //Dont erase the first line
+                                } //dont erase new write
+                                assert(new_line !=NULL);
+                            }
                             //Need to check the overflow- Then flush both cache and sync reg                       
                         }
                         
@@ -711,33 +713,20 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
             // line_cur->state == M 3 modified
             if(level==0 && ins_mem->atom_type!=NON && ins_mem->mem_type==WR){ //in Modified State
                         line_cur->atom_type = ins_mem->atom_type; //Acquire or Release write.RMW
-                        SyncLine * new_line = cache_cur->addSyncLine(ins_mem); //Add word
-                        if(new_line == NULL){
-                            syncConflict(cache_cur, new_line, line_cur);
-                            cache_cur->addSyncLine(ins_mem);
-                        } //Dont erase the added line
-                        assert(new_line !=NULL);    //Sync line                    
+
+                        if(pmodel !=NONB){
+                            SyncLine * new_line = cache_cur->addSyncLine(ins_mem); //Add word
+                            if(new_line == NULL){
+                                syncConflict(cache_cur, new_line, line_cur);
+                                cache_cur->addSyncLine(ins_mem);
+                            } //Dont erase the added line
+                            assert(new_line !=NULL);    //Sync line  
+                        }                  
             }
 
             // line_cur->state == M 3 modified
             if(level==0 && ins_mem->mem_type==WR){ //in SModified State
                 
-                    
-                    /*
-                     if(line_cur->dirty){
-                       if(ins_mem->epoch_id < line_cur->min_epoch_id){
-                        line_cur->min_epoch_id = ins_mem->epoch_id;
-                         //Release epoch id can be overwritten later.
-                        } 
-                    }else{
-                        line_cur->min_epoch_id = ins_mem->epoch_id;
-                        line_cur->dirty = 1;
-                    }
-                    
-                    if(ins_mem->epoch_id > line_cur->max_epoch_id){
-                        line_cur->max_epoch_id = ins_mem->epoch_id;
-                    }
-                    */
                     if(line_cur->dirty){
                            if(ins_mem->epoch_id < line_cur->min_epoch_id){
                             line_cur->min_epoch_id = ins_mem->epoch_id;
