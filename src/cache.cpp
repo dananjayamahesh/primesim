@@ -492,7 +492,8 @@ void Cache::incPersistDelay(int delay){
 int Cache::initSyncMap(int size){
     syncmap.size = 0;
     syncmap.head = NULL;    
-    syncmap.epoch_id = 0;    
+    syncmap.epoch_id = 0;  
+    printf("Initialized Sync Map with size %d", SYNCMAP_SIZE);  
     return 0;
 }
 

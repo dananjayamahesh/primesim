@@ -1017,7 +1017,7 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
 
     SyncLine *syncline = cache_cur->searchSyncMap(ins_mem->addr_dmem); //Caclculate constant delay here.
     
-    assert(syncline != NULL);
+    //assert(syncline != NULL); - Mahesh 2019/04/15 Becuase of exclusive state
     if(syncline !=NULL){
         #ifdef DEBUG
         printf("[Persist] Match found 0x%lx Tag- 0x%lx of cache: %d epoch : %d\n", 
