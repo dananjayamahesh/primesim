@@ -1,5 +1,5 @@
 DIMP_FILE=${HOME}/repos/primesim/output/stat.txt
-DATA_FILE=${HOME}/repos/primesim/output/syncbench-fixed/data.txt
+DATA_FILE=${HOME}/repos/primesim/output/syncbench-fixed/data_2.txt
 
 #echo "" > ${DIMP_FILE}
 > ${DIMP_FILE}
@@ -8,10 +8,10 @@ DATA_FILE=${HOME}/repos/primesim/output/syncbench-fixed/data.txt
 make -B
 #SyncMap is 10000
 
-for upd in 50 100
-do
+#for upd in 50 100
+#do
 
-for threads in 8 16 32 48
+for threads in 16 31 61
 do
 	for rate in 100 500 1000
 	do
@@ -39,7 +39,7 @@ do
 					-np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so \
 					-c ${HOME}/repos/primesim/xml/config_${pmodel}.xml \
 					-o ${HOME}/repos/primesim/output/syncbench-fixed/config.out \
-					-- ${HOME}/repos/primesim/pbench/syncbench/bin/${bench} -t ${threads} -i ${rate} -r ${rate2} -d 10 -x 6 -u ${upd}
+					-- ${HOME}/repos/primesim/pbench/syncbench/bin/${bench} -t ${threads} -i ${rate} -r ${rate2} -o ${rate2} -d 10 -x 6 -u 50
 					
 					cat ${DIMP_FILE} >> ${DATA_FILE}
 					
@@ -59,6 +59,6 @@ do
 		done
 	done
 done
-done
+#done
 
 

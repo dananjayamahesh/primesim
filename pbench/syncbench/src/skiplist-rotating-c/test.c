@@ -368,7 +368,7 @@ int main(int argc, char **argv)
 
 	while(1) {
 		i = 0;
-		c = getopt_long(argc, argv, "hAmvf:d:i:t:r:S:u:U:x:", long_options, &i);
+		c = getopt_long(argc, argv, "hAmvf:d:i:t:r:S:u:U:x:o:", long_options, &i);
 
 		if(c == -1)
 			break;
