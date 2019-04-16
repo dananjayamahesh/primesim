@@ -84,7 +84,7 @@ typedef enum PersistModel
 } PersistModel;
 
 #define SYNCBENCH
-#define DEBUG
+//#define DEBUG
 //#define PDEBUG
 #define LOWER_EPOCH_FLUSH
 //#define ACQREL
