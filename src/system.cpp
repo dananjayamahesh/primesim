@@ -672,7 +672,9 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                         //printf("Release Persistency in Replacement \n");
                         //delay[core_id] += releasePersist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline  
                         if(pmodel == BEPB){
-                            delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //BEP-on repacement
+                            //delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //BEP-on repacement
+                            //Update 2019/05/16 - Delay 
+                            persist(cache_cur, &ins_mem_old, line_cur, core_id); //BEP-on repacement
                         }
                         else if(pmodel == RLSB){
                             if(ins_mem_old.atom_type !=NON)
@@ -844,7 +846,7 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
     int core_id = cache_cur->getId(); int cache_id = cache_cur->getId();
     Line *line_cur;
     int timer = 0;
-    //delay[core_id] = 0;    
+    //delay[core_id] = 0;   //Check this. Need to chaneg.  
     int level = cache_cur->getLevel(); 
     int persist_count =0;
 
