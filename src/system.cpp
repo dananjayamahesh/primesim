@@ -458,7 +458,8 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     if(pmodel == BEPB && level==0){
                         if(line_cur->dirty && ins_mem->epoch_id > line_cur->max_epoch_id){ //Both same address visibility and multi-word block conflicts
                             //Buffered Epoch Persistency- Intra-thread conflict
-                            delay[core_id] += persist(cache_cur, ins_mem, line_cur, core_id); //BEP
+                            //delay[core_id] += persist(cache_cur, ins_mem, line_cur, core_id); //BEP
+                              persist(cache_cur, ins_mem, line_cur, core_id);
                             //also need to write back this cache line                            
                         }   
                     }
