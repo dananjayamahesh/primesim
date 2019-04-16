@@ -199,3 +199,10 @@ mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 
 
 Segmentation fault- Skiplist, 32, 1000, 5000
 mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_0.xml ${HOME}/repos/primesim/output/syncben-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_0.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/skiplist-rotating-c -t 31 -i 1000 -r 5000 -o 5000 -u 50 -x 6
+
+
+
+
+
+2019/04/16 fixed delay probelm
+mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_0.xml ${HOME}/repos/primesim/output/syncben-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_0.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/skiplist-rotating-c -t 31 -i 100 -r 200 -o 200 -u 50 -x 6
