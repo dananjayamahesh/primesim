@@ -5,7 +5,7 @@ DATA_FILE=${HOME}/repos/primesim/output/${CONF_NAME}/data_2.txt
 DATA_FILE3=${HOME}/repos/primesim/output/${CONF_NAME}/data_3.txt
 
 #echo "" > ${DIMP_FILE}
-> ${DIMP_FILE}
+#> ${DIMP_FILE}
 > ${DATA_FILE}
 
 make -B
@@ -29,7 +29,7 @@ do
 			for bench in linkedlist
 			do	
 				echo "$bench,$threads,$rate,$rate2" >> ${DATA_FILE}
-				for pmodel in 0 3 4
+				for pmodel in 3 4 0
 				do
 					echo "Executing $pmodel"
 					#echo "$bench,$pmodel," >> ${DIMP_FILE}

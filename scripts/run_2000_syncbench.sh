@@ -14,7 +14,7 @@ make -B
 #for upd in 50 100
 #do
 
-for threads in 2 31
+for threads in 31
 do
 	for rate in 2000
 	do
@@ -26,7 +26,7 @@ do
 				continue 
 			fi
 			
-			for bench in hashmap bstree skiplist-rotating-c
+			for bench in linkedlist hashmap bstree skiplist-rotating-c
 			do	
 				echo "$bench,$threads,$rate,$rate2" >> ${DATA_FILE}
 				for pmodel in 0 3 4

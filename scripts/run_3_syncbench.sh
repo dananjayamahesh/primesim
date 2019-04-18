@@ -12,12 +12,12 @@ make -B
 #for upd in 50 100
 #do
 
-for threads in 16 31
+for threads in 8
 do
-	for rate in 2000
+	for rate in 100 500 1000 2000
 	do
 		#for rate2 in 200 400 600 800 1000 1200 1400 1600 1800 2000 10000
-		for rate2 in 4000
+		for rate2 in 200 1000 2000 4000
 		do
 			
 			if [ $rate2 -lt $rate ] ; then 
