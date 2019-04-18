@@ -65,6 +65,16 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
     pmodel = FLLB;  //Full barrier semantics by default
     persist_count = 0;
 
+        intra_conflicts         = 0;
+        intra_persists          = 0;
+        intra_persist_cycles    = 0;
+        inter_conflicts         = 0;
+        inter_persists          = 0;
+        inter_persist_cycles    = 0;
+        rmw_acq_count           = 0;
+        rmw_rel_count           = 0;
+        wrt_rel_count           = 0;
+
     if (cache_type == TLB_CACHE) {
         offset_bits = (int) (log2(page_size));
         offset_mask = (uint64_t)(page_size - 1);
@@ -746,9 +756,12 @@ void Cache::report(ofstream* result)
     *result << "The cache miss rate: " << 100 * (double)miss_count/ (double)ins_count << "%" << endl;
     *result << "The # of persist counts: " << persist_count << endl;
     *result << "The # of persist delays: " << persist_delay << endl;
+    *result << "Intra-thread Conflicts : " << intra_conflicts <<endl;   
+    *result << "Inter-thread Conflicts : " << inter_conflicts <<endl;  
+    *result << "Inter/Intra Conflict Ratio : " << (double)inter_conflicts/(intra_conflicts+inter_conflicts) <<endl;  
     *result << "=================================================================\n\n";
 
-    if(level==0 and cache_type==DATA_CACHE) printf("Cache ID: %d of Level %d , The # of persist counts: %lu The # of persist delays: %lu \n" , cache_id, level, persist_count, persist_delay);
+    if(level==0 and cache_type==DATA_CACHE) printf("Cache ID: %d of Level %d , The # of persist counts: %lu The # of persist delays: %lu, Inter: %lu Intra: %lu Ratio %f \n" , cache_id, level, persist_count, persist_delay, inter_conflicts, intra_conflicts, (double)inter_conflicts/(intra_conflicts+inter_conflicts));
 }
 
 Cache::~Cache()

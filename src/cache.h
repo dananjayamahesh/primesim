@@ -199,6 +199,20 @@ class Cache
         int replaceSyncLine(SyncLine * syncline, InsMem * ins_mem);
 
         ~Cache();
+        //Intra thread conflicts
+        uint64_t          intra_conflicts;
+        uint64_t          intra_persists;
+        uint64_t          intra_persist_cycles;
+        //Inter thread conflicts
+        uint64_t          inter_conflicts;
+        uint64_t          inter_persists;
+        int64_t           inter_persist_cycles;
+
+        uint64_t        rmw_acq_count; //Write acquire as well
+        uint64_t        rmw_rel_count;
+        uint64_t        wrt_rel_count;
+        //Epoch Size?
+
     private:
         int reverseBits(int num, int size);
         Line              **line;
@@ -228,6 +242,8 @@ class Cache
 
         uint64_t          persist_count;
         uint64_t          persist_delay;
+
+
 };
 
 #endif //CACHE_H

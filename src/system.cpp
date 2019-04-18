@@ -877,6 +877,19 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
     } 
     //Check. Need to flush the calling line as well
 
+            //Counts
+    if(core_id == req_core_id){
+        cache_cur->intra_conflicts++;
+        cache_cur->intra_persists += persist_count;
+        cache_cur->intra_persist_cycles += delay[core_id]; //Not correct, but not effects the core
+        
+    }else{
+        cache_cur->inter_conflicts++;
+        cache_cur->inter_persists += persist_count;
+        cache_cur->inter_persist_cycles += delay[core_id]; 
+    }
+
+
     //Buffered Eopch Persistence
     #ifdef DEBUG
     printf("Number of persists (Buffered Epoch Persistency): %d \n", persist_count); 
@@ -956,7 +969,7 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
     printf("Delay on flush %d of core %d by core %d \n", delay[core_id], core_id, req_core_id);
     #endif
     //delay[core_id] = 0;
-    
+
     int level = cache_cur->getLevel(); 
     int persist_count =0;   
 
@@ -992,6 +1005,18 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
                 }
         }
     } 
+
+        //Counts
+    if(core_id == req_core_id){
+        cache_cur->intra_conflicts++;
+        cache_cur->intra_persists += persist_count;
+        cache_cur->intra_persist_cycles += delay[core_id]; //Not correct, but not effects the core
+        
+    }else{
+        cache_cur->inter_conflicts++;
+        cache_cur->inter_persists += persist_count;
+        cache_cur->inter_persist_cycles += delay[core_id]; 
+    }
 
     #ifdef DEBUG
     printf("Number of persists on release : %d \n", persist_count);    
@@ -1669,8 +1694,9 @@ int System::getCoreCount()
 void System::report(ofstream* result)
 {
     int i, j;
-    uint64_t ins_count = 0, miss_count = 0, evict_count = 0, wb_count = 0, persist_count=0, persist_delay=0;
+    uint64_t ins_count = 0, miss_count = 0, evict_count = 0, wb_count = 0, persist_count=0, persist_delay=0, intra_tot =0, inter_tot=0;
     double miss_rate = 0;
+    //double conflict_rate=0.0;
    
     network.report(result); 
     dram.report(result); 
@@ -1746,6 +1772,9 @@ void System::report(ofstream* result)
                 wb_count += cache[i][j]->getWbCount();
                 persist_count += cache[i][j]->getPersistCount();
                 persist_delay += cache[i][j]->getPersistDelay();
+                inter_tot += cache[i][j]->inter_conflicts;
+                intra_tot += cache[i][j]->intra_conflicts;
+
             }
         }
         miss_rate = (double)miss_count / (double)ins_count; 
@@ -1759,6 +1788,11 @@ void System::report(ofstream* result)
         *result << "The # of writeback instructions: " << wb_count << endl;
         *result << "The cache miss rate: " << 100 * miss_rate << "%" << endl;
         *result << "=================================================================\n\n";
+        *result << "Inter-thread conflicts: " <<  inter_tot << endl;
+        *result << "Intra-thread conflicts: " <<  intra_tot << endl;
+        *result << "Inter-Intra ratio: " << (double)inter_tot/(inter_tot+intra_tot) << endl;
+        *result << "=================================================================\n\n";
+
     }
     
     ins_count =0;   

@@ -457,6 +457,11 @@ void CoreManager::report(ofstream *result)
     *result << "System call count : " << syscall_count <<endl;
     *result << "Sync System call count : " << sync_syscall_count <<endl;
 
+    *result << "\nExecution Time : " << total_cycles/(freq*pow(10.0,9)) <<endl;
+    *result << "IPC : " << (double)total_ins_counts / dimp_cycles <<endl;
+    *result << "Total Instns : " << total_ins_counts <<endl;   
+    *result << "Total Cycles : " << dimp_cycles <<endl;       
+
     printf("Execution time : %f \n", total_cycles/(freq*pow(10.0,9)));
 /*
     printf("\nDIMP IPC-Tot \t %f \t Total Instructions \t %f \t Dimp Cycle \t %lu \n", (double)total_ins_counts / dimp_cycles , (double)total_ins_counts, dimp_cycles);
