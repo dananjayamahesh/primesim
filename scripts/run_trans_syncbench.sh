@@ -1,4 +1,4 @@
-CONF_NAME=syncbench-2000_31-linkedlist
+CONF_NAME=syncbench-trans
 CONF_PATH=${HOME}/repos/primesim/output/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/stat.txt
 DATA_FILE=${HOME}/repos/primesim/output/${CONF_NAME}/data_2.txt
@@ -12,29 +12,20 @@ make -B
 #SyncMap is 10000
 
 #for upd in 50 100
-#do
-
+#dorate 
+rate=1000
+rate2=2000
 for threads in 8 16 31
 do
-	for rate in 1000
+	for operations in 100 500 1000 2000 4000 10000
 	do
-		#for rate2 in 200 400 600 800 1000 1200 1400 1600 1800 2000 10000
-		for rate2 in 4000 16000 32000 64000
-		do
-			
-			if [ $rate2 -lt $rate ] ; then 
-				continue 
-			fi
 
-			operations=2000
-			
-			for bench in linkedlist
+			for bench in linkedlist hashmap bstree skiplist-rotating-c
 			do	
-				echo "$bench,$threads,$rate,$rate2" >> ${DATA_FILE}
-				for pmodel in 3 4 0
+				echo "$bench,$threads,$rate,$rate2,$operations" >> ${DATA_FILE}
+				for pmodel in 0 3 4
 				do
 					echo "Executing $pmodel"
-					operations=${rate2}
 					#echo "$bench,$pmodel," >> ${DIMP_FILE}
 					#echo "$pmodel" >> ${DATA_FILE}
 					
@@ -49,18 +40,18 @@ do
 					
 					#cat ${DIMP_FILE} >> ${DATA_FILE3}
 					cat ${DIMP_FILE} >> ${DATA_FILE}
+
 					
 					cat ${HOME}/repos/primesim/output/${CONF_NAME}/config_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out_1 \
 					${HOME}/repos/primesim/output/${CONF_NAME}/config_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out_0 \
 					> ${HOME}/repos/primesim/output/${CONF_NAME}/config_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out
-										
+					
 					rm -f  ${HOME}/repos/primesim/output/${CONF_NAME}/config_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out_0
 					
 					rm -f  ${HOME}/repos/primesim/output/${CONF_NAME}/config_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out_1
 				done
 			   
 			done
-		done
 	done
 done
 #done

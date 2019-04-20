@@ -1,4 +1,4 @@
-CONF_NAME=syncbench-2000_31-linkedlist
+CONF_NAME=syncbench-range
 CONF_PATH=${HOME}/repos/primesim/output/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/stat.txt
 DATA_FILE=${HOME}/repos/primesim/output/${CONF_NAME}/data_2.txt
@@ -13,6 +13,7 @@ make -B
 
 #for upd in 50 100
 #do
+operations=2000
 
 for threads in 8 16 31
 do
@@ -34,7 +35,7 @@ do
 				for pmodel in 3 4 0
 				do
 					echo "Executing $pmodel"
-					operations=${rate2}
+					#operations=${rate2}
 					#echo "$bench,$pmodel," >> ${DIMP_FILE}
 					#echo "$pmodel" >> ${DATA_FILE}
 					
