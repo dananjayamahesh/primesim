@@ -8,19 +8,19 @@ DATA_FILE3=${HOME}/repos/primesim/output/${CONF_NAME}/data_3.txt
 #> ${DIMP_FILE}
 > ${DATA_FILE}
 
-make -B
+#make -B
 #SyncMap is 10000
 
 #for upd in 50 100
 #do
-operations=2000
+operations=1000
 
-for threads in 8 16 31
+for threads in 48
 do
-	for rate in 1000
+	for rate in 500
 	do
 		#for rate2 in 200 400 600 800 1000 1200 1400 1600 1800 2000 10000
-		for rate2 in 4000 8000 16000 32000
+		for rate2 in 1000 4000 8000 16000 32000
 		do
 			
 			if [ $rate2 -lt $rate ] ; then 
