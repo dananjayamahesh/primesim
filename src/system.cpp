@@ -1466,6 +1466,9 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
 //Access distributed shared LLC with embedded directory cache
 int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_t timer, char* state, int core_id)
 {
+    int level;
+    level = 3;
+    level = level;
     if (!directory_cache_init_done[home_id]) {
         init_directories(home_id); 
     }
@@ -1608,9 +1611,9 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
             line_cur->sharer_set.insert(cache_id);
         }
         else if((ins_mem->mem_type == WB)){
+            delay += dram.access(ins_mem);
             line_cur->state = I;
-            line_cur->sharer_set.clear();
-            dram.access(ins_mem);
+            line_cur->sharer_set.clear();            
         }
         //Writeback 
         else {
