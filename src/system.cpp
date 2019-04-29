@@ -432,7 +432,19 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
 
     cache_cur->lockUp(ins_mem);
     delay[core_id] += cache_level[level].access_time;
+
+    //Full barrier flush in reelase persistency - Special case   
+    //Full flush - Full barrier Release Persistency (on the critical path)
+    if(pmodel == FBRP && level==0){
+        //Nedd to flush all cachelines with epoch id > min epoch id
+        //Need to free the syncmap
+        fullBarrierFlush(cache_cur, ins_mem->epoch_id, core_id);
+        //Full barrier semantics on Release persistency
+    }
+
+
     line_cur = cache_cur->accessLine(ins_mem);
+
  
     //Cache hit
     if (line_cur != NULL) {
@@ -793,6 +805,66 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
         
     } //END of CACHE MISS
 }
+
+
+int System::fullBarrierFlush(Cache *cache_cur, int epoch_id, int req_core_id){
+    //Need to send write-back instruction to all upper level. from M or E state
+    //Write-back
+    int delay_flush = 0;
+    delay_flush++;
+    int core_id = cache_cur->getId();
+    int cache_id = cache_cur->getId();
+    Line *line_cur;
+    int timer = 0;
+    #ifdef DEBUG
+    printf("Delay on flush %d of core %d by core %d \n", delay[core_id], core_id, req_core_id);
+    #endif
+    //delay[core_id] = 0;
+    
+    int level = cache_cur->getLevel(); 
+    int persist_count =0;   
+
+    for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {
+            
+            for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) {
+                
+                //printf("A Epoch %d\n", rel_epoch_id);
+                InsMem ins_mem;
+                line_cur = cache_cur->directAccess(i,j,&ins_mem);                
+                //printf("B (%lu,%lu) 0x%lx 0x%lx %d \n", i,j, line_cur->tag, ins_mem.addr_dmem, line_cur->state);                
+                if(line_cur != NULL && (line_cur->state==M) && line_cur->dirty){ //Need to think about E here
+                    //printf("[Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
+                    //    i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
+                     //without sync conflicts                    
+                    if(line_cur->max_epoch_id < epoch_id){ //This  covers modified vs exclusive as well
+                    //if(true){
+                        //Cacheline needs to be written back
+                        //uint64_t address_tag = line_cur->tag;
+                        ins_mem.mem_type = WB;   
+                        ins_mem.atom_type = NON;                                             
+                        line_cur->state = mesi_directory(cache_cur->parent, level+1, 
+                                          cache_id*cache_level[level].share/cache_level[level+1].share, 
+                                          core_id, &ins_mem, timer + delay[core_id]);
+                        
+                        cache_cur->incPersistCount();
+                        persist_count++;
+                        
+                        line_cur->dirty = 0;
+                        line_cur->state = I;
+                    }
+                }
+        }
+    } 
+
+    #ifdef DEBUG
+    printf("Number of persists on FUll FLush : %d \n", persist_count); 
+    #endif
+    cache_cur->incPersistDelay(delay[core_id]);  
+    return delay[core_id];
+}
+
+
+
 
 //SyncMap conflicts syncConflict
 int System::syncConflict(Cache * cache_cur, SyncLine * syncline, Line* line_call){
