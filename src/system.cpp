@@ -1771,6 +1771,9 @@ void System::report(ofstream* result)
     int i, j;
     uint64_t ins_count = 0, miss_count = 0, evict_count = 0, wb_count = 0, persist_count=0, persist_delay=0, intra_tot =0, inter_tot=0;
     double miss_rate = 0;
+    double  ratio_inter_intra_conflicts = 0.0;
+    double  ratio_inter_intra_persists = 0.0;
+    double  ratio_inter_intra_persist_cycles = 0.0;
     //double conflict_rate=0.0;
    
     network.report(result); 

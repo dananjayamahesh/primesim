@@ -756,9 +756,18 @@ void Cache::report(ofstream* result)
     *result << "The cache miss rate: " << 100 * (double)miss_count/ (double)ins_count << "%" << endl;
     *result << "The # of persist counts: " << persist_count << endl;
     *result << "The # of persist delays: " << persist_delay << endl;
+    *result << "---------------------------------------------------------------------- " << endl;
     *result << "Intra-thread Conflicts : " << intra_conflicts <<endl;   
     *result << "Inter-thread Conflicts : " << inter_conflicts <<endl;  
     *result << "Inter/Intra Conflict Ratio : " << (double)inter_conflicts/(intra_conflicts+inter_conflicts) <<endl;  
+    *result << "---------------------------------------------------------------------- " << endl;
+    *result << "Intra-thread Persists : " << intra_persists <<endl;
+    *result << "Inter-thread Persists : " << inter_persists <<endl;  
+    *result << "Inter/Intra Persists Ratio : " << (double)inter_persists/(intra_persists+inter_persists) <<endl;  
+    *result << "---------------------------------------------------------------------- " << endl;
+    *result << "Intra-thread Persists Cycles : " << intra_persist_cycles <<endl;
+    *result << "Inter-thread Persists Cycles: " << inter_persist_cycles <<endl;  
+    *result << "Inter/Intra Persists Cycles Ratio : " << (double)inter_persist_cycles/(intra_persist_cycles+inter_persist_cycles) <<endl; 
     *result << "=================================================================\n\n";
 
     if(level==0 and cache_type==DATA_CACHE) printf("Cache ID: %d of Level %d , The # of persist counts: %lu The # of persist delays: %lu, Inter: %lu Intra: %lu Ratio %f \n" , cache_id, level, persist_count, persist_delay, inter_conflicts, intra_conflicts, (double)inter_conflicts/(intra_conflicts+inter_conflicts));
