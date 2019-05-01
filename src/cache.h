@@ -210,7 +210,13 @@ class Cache
 
         uint64_t        rmw_acq_count; //Write acquire as well
         uint64_t        rmw_rel_count;
+        uint64_t        rmw_full_count;
+        uint64_t        rmw_count;
+
         uint64_t        wrt_rel_count;
+        uint64_t        wrt_acq_count;
+         uint64_t       wrt_full_count;
+        uint64_t        wrt_relaxed_count;
         //Epoch Size?
 
     private:

@@ -74,6 +74,9 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
         rmw_acq_count           = 0;
         rmw_rel_count           = 0;
         wrt_rel_count           = 0;
+        rmw_full_count          = 0 ;
+        rmw_count               = 0;
+        wrt_relaxed_count       = 0;
 
     if (cache_type == TLB_CACHE) {
         offset_bits = (int) (log2(page_size));
@@ -770,7 +773,23 @@ void Cache::report(ofstream* result)
     *result << "Inter/Intra Persists Cycles Ratio : " << (double)inter_persist_cycles/(intra_persist_cycles+inter_persist_cycles) <<endl; 
     *result << "=================================================================\n\n";
 
-    if(level==0 and cache_type==DATA_CACHE) printf("Cache ID: %d of Level %d , The # of persist counts: %lu The # of persist delays: %lu, Inter: %lu Intra: %lu Ratio %f \n" , cache_id, level, persist_count, persist_delay, inter_conflicts, intra_conflicts, (double)inter_conflicts/(intra_conflicts+inter_conflicts));
+    *result << "RMW: " << rmw_count <<endl;
+    *result << "RMW full: " << rmw_full_count <<endl;
+    *result << "RMW Acq: " << rmw_acq_count <<endl;
+    *result << "RMW Rel: " << rmw_rel_count <<endl;
+    *result << "WRT : " << wrt_relaxed_count <<endl;
+    *result << "WRT full: " << wrt_full_count <<endl;
+    *result << "WRT acq: " << wrt_acq_count <<endl;
+    *result << "WRT rel: " << wrt_rel_count <<endl;
+    *result << "RMW/WRT: " << (double)rmw_count /wrt_relaxed_count<<endl;
+    *result << "=================================================================\n\n";
+
+    if(level==0 and cache_type==DATA_CACHE) printf("Cache ID: %d of Level %d , The # of persist counts: %lu The # of persist delays: %lu, Inter: %lu Intra: %lu Ratio %f, P-Inter-P: %lu P-Intra-P: %lu P-Ratio-P %f, PC-Inter: %lu PC-Intra: %lu PC-Ratio %f  \n" 
+            , cache_id, level, persist_count, persist_delay 
+            , inter_conflicts, intra_conflicts, (double)inter_conflicts/(intra_conflicts+inter_conflicts)
+            , inter_persists, intra_persists, (double)inter_persists/(intra_persists+inter_persists)
+            , inter_persist_cycles, intra_persist_cycles, (double)inter_persist_cycles/(intra_persist_cycles+inter_persist_cycles)
+        );
 }
 
 Cache::~Cache()

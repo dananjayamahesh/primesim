@@ -433,15 +433,33 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
     cache_cur->lockUp(ins_mem);
     delay[core_id] += cache_level[level].access_time;
 
+    //counters
+    if(ins_mem->mem_type==WR){
+        if(ins_mem->mem_op==2){
+            cache_cur->rmw_count++;
+            if(ins_mem->atom_type==FULL)cache_cur->rmw_full_count++;
+            else if(ins_mem->atom_type==ACQUIRE)cache_cur->rmw_acq_count++;
+            else if(ins_mem->atom_type==RELEASE)cache_cur->rmw_rel_count++;
+        }
+        else {
+            cache_cur->wrt_relaxed_count++;
+            if(ins_mem->atom_type==FULL)cache_cur->wrt_full_count++;
+            else if(ins_mem->atom_type==ACQUIRE)cache_cur->wrt_acq_count++;
+            else if(ins_mem->atom_type==RELEASE)cache_cur->wrt_rel_count++;
+        }
+
+    }
+
     //Full barrier flush in reelase persistency - Special case   
     //Full flush - Full barrier Release Persistency (on the critical path)
     if(pmodel == FBRP && level==0){
         //Nedd to flush all cachelines with epoch id > min epoch id
         //Need to free the syncmap
-        fullBarrierFlush(cache_cur, ins_mem->epoch_id, core_id);
+        if(ins_mem->mem_type==WR && ins_mem->atom_type==FULL){
+            fullBarrierFlush(cache_cur, ins_mem->epoch_id, core_id);
+        }        
         //Full barrier semantics on Release persistency
     }
-
 
     line_cur = cache_cur->accessLine(ins_mem);
 
@@ -494,6 +512,14 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             line_cur->atom_type = ins_mem->atom_type; //Update only when atomic word is inserted.                                        
                             
                             if(pmodel==RLSB){
+                                SyncLine * new_line =  cache_cur->addSyncLine(ins_mem); //Can write isFull();
+                                if(new_line == NULL) {
+                                    syncConflict(cache_cur, new_line, line_cur);
+                                    cache_cur->addSyncLine(ins_mem); //Dont erase the first line
+                                } //dont erase new write
+                                assert(new_line !=NULL);
+                            }
+                            else if(pmodel==FBRP){
                                 SyncLine * new_line =  cache_cur->addSyncLine(ins_mem); //Can write isFull();
                                 if(new_line == NULL) {
                                     syncConflict(cache_cur, new_line, line_cur);
@@ -693,6 +719,10 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             if(ins_mem_old.atom_type !=NON)
                                 delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline
                         }
+                        else if(pmodel == FBRP){
+                            if(ins_mem_old.atom_type !=NON)
+                                delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline
+                        }
                         else{
                             //NOP do nothing.
                         }
@@ -753,7 +783,15 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                                 cache_cur->addSyncLine(ins_mem);
                             } //Dont erase the added line
                             assert(new_line !=NULL);    //Sync line  
-                        }                  
+                        } 
+                        else if(pmodel == FBRP){ //No need to NOP and BEP
+                            SyncLine * new_line = cache_cur->addSyncLine(ins_mem); //Add word
+                            if(new_line == NULL){
+                                syncConflict(cache_cur, new_line, line_cur);
+                                cache_cur->addSyncLine(ins_mem);
+                            } //Dont erase the added line
+                            assert(new_line !=NULL);    //Sync line  
+                        }                 
             }
 
             // line_cur->state == M 3 modified
@@ -931,7 +969,8 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
                             
                 if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M)){ //|| line_cur->state==E  //Need to think about E here
                     //Only dirty data
-                    if(line_cur->max_epoch_id <= conflict_epoch_id){ //Epoch Id < conflictigng epoch id - similar to full flush
+                    //if(line_cur->max_epoch_id <= conflict_epoch_id){ //Epoch Id < conflictigng epoch id - similar to full flush
+                    if(line_cur->max_epoch_id < conflict_epoch_id){    
                         ins_mem.mem_type = WB;   
                         ins_mem.atom_type = NON;                                             
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
@@ -1770,6 +1809,7 @@ void System::report(ofstream* result)
 {
     int i, j;
     uint64_t ins_count = 0, miss_count = 0, evict_count = 0, wb_count = 0, persist_count=0, persist_delay=0, intra_tot =0, inter_tot=0;
+    uint64_t intra_persist_tot=0, inter_persist_tot=0, intra_pcycles_tot=0, inter_pcycles_tot=0;
     double miss_rate = 0;
     double  ratio_inter_intra_conflicts = 0.0;
     double  ratio_inter_intra_persists = 0.0;
@@ -1852,6 +1892,14 @@ void System::report(ofstream* result)
                 persist_delay += cache[i][j]->getPersistDelay();
                 inter_tot += cache[i][j]->inter_conflicts;
                 intra_tot += cache[i][j]->intra_conflicts;
+                ratio_inter_intra_conflicts += (double)inter_tot/(inter_tot+intra_tot);
+                inter_persist_tot += cache[i][j]->inter_persists;
+                intra_persist_tot += cache[i][j]->intra_persists;
+                ratio_inter_intra_persists += (double)inter_persist_tot/(inter_persist_tot+intra_persist_tot);
+                inter_pcycles_tot += cache[i][j]->inter_persist_cycles;
+                intra_pcycles_tot += cache[i][j]->intra_persist_cycles;
+                ratio_inter_intra_persist_cycles += (double)inter_pcycles_tot/(inter_pcycles_tot+intra_pcycles_tot);
+
 
             }
         }
@@ -1865,10 +1913,21 @@ void System::report(ofstream* result)
         *result << "The # of evicted instructions: " << evict_count << endl;
         *result << "The # of writeback instructions: " << wb_count << endl;
         *result << "The cache miss rate: " << 100 * miss_rate << "%" << endl;
-        *result << "=================================================================\n\n";
+        *result << "=----------------------------------------------------------------------\n";
         *result << "Inter-thread conflicts: " <<  inter_tot << endl;
         *result << "Intra-thread conflicts: " <<  intra_tot << endl;
-        *result << "Inter-Intra ratio: " << (double)inter_tot/(inter_tot+intra_tot) << endl;
+        *result << "Inter-Intra ratio (SUM): " << (double)inter_tot/(inter_tot+intra_tot) << endl;
+        *result << "Inter-Intra ratio (AVG): " << ratio_inter_intra_conflicts/cache_level[i].num_caches << endl;
+        *result << "-----------------------------------------------------------------------\n";
+        *result << "Inter-thread Persists: " <<  inter_persist_tot << endl;
+        *result << "Intra-thread Persists: " <<  intra_persist_tot << endl;
+        *result << "Inter-Intra P ratio (SUM): " << (double)inter_persist_tot/(inter_persist_tot+intra_persist_tot) << endl;
+        *result << "Inter-Intra P ratio (AVG): " << ratio_inter_intra_persists/cache_level[i].num_caches << endl;
+        *result << "-----------------------------------------------------------------------\n";
+        *result << "Inter-thread Persist Cycles: " <<  inter_pcycles_tot << endl;
+        *result << "Intra-thread Persist Cycles: " <<  intra_pcycles_tot << endl;
+        *result << "Inter-Intra PC ratio (SUM): " << (double)inter_pcycles_tot/(inter_pcycles_tot+intra_pcycles_tot) << endl;
+        *result << "Inter-Intra PC ratio (AVG): " << ratio_inter_intra_persist_cycles/cache_level[i].num_caches << endl;
         *result << "=================================================================\n\n";
 
     }
