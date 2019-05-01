@@ -496,8 +496,10 @@ void Fini(int32_t code, void *v)
     ss_rank << myrank;
     result.open((KnobOutputFile.Value() + "_" + ss_rank.str()).c_str());
     //Report results
-    core_manager->report(&result);
+    stat.open((KnobOutputFile.Value() + "_" + "stat").c_str());
+    core_manager->report(&result, &stat);
     result.close();
+    stat.close();
     core_manager->finishSim(code, v);
     delete core_manager;
 }

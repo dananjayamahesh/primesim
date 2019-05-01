@@ -102,7 +102,7 @@ class CoreManager
         void sysAfter(ADDRINT ret, THREADID threadid);
         void syscallEntry(THREADID threadIndex, CONTEXT *ctxt, SYSCALL_STANDARD std, void *v);
         void syscallExit(THREADID threadIndex, CONTEXT *ctxt, SYSCALL_STANDARD std, void *v);
-        void report(ofstream *result);
+        void report(ofstream *result, ofstream *stat);
         ~CoreManager();        
     private:
         double getAvgCycle(THREADID threadid);

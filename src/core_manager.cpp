@@ -413,7 +413,7 @@ void CoreManager::getSimFinishTime()
 
 
 
-void CoreManager::report(ofstream *result)
+void CoreManager::report(ofstream *result, ofstream *stat)
 {
     uint64_t total_cycles = 0, total_ins_counts = 0,  total_nonmem_ins_counts = 0, dimp_cycles=0;
     double total_cycles_nonmem = 0;
@@ -423,6 +423,7 @@ void CoreManager::report(ofstream *result)
     uint64_t thread_0_cycles =0, thread_0_ins=0;
     thread_0_cycles += (uint64_t)(cycle[0]._count);
     thread_0_ins = ins_count[0]._count;
+    thread_0_ins = thread_0_ins;
     int i;
     for (i = 0; i < max_threads; i++) {
         total_ins_counts += ins_count[i]._count;
@@ -460,9 +461,16 @@ void CoreManager::report(ofstream *result)
     *result << "\nExecution Time : " << total_cycles/(freq*pow(10.0,9)) <<endl;
     *result << "IPC : " << (double)total_ins_counts / dimp_cycles <<endl;
     *result << "Total Instns : " << total_ins_counts <<endl;   
-    *result << "Total Cycles : " << dimp_cycles <<endl;       
+    *result << "Total Cycles : " << dimp_cycles <<endl;   
+    *result << "\nIPC(MEM) : " << (double)(total_ins_counts- total_nonmem_ins_counts)/ (dimp_cycles-total_cycles_nonmem) <<endl;    
+    *result << "Total Mem Instns : " << (total_ins_counts- total_nonmem_ins_counts)<<endl;   
+    *result << "Total Mem Cycles : " << (dimp_cycles-total_cycles_nonmem) <<endl;  
+    *result << "\nIPC(NON-MEM) : " << (double)total_nonmem_ins_counts/ total_cycles_nonmem <<endl;    
+    *result << "Total Non-Mem Instns : " << total_nonmem_ins_counts<<endl;   
+    *result << "Total Non-Mem Cycles : " << total_cycles_nonmem <<endl;
 
     printf("Execution time : %f \n", total_cycles/(freq*pow(10.0,9)));
+    printf("DIMP Execution time : %f \n", dimp_cycles/(freq*pow(10.0,9)));
 /*
     printf("\nDIMP IPC-Tot \t %f \t Total Instructions \t %f \t Dimp Cycle \t %lu \n", (double)total_ins_counts / dimp_cycles , (double)total_ins_counts, dimp_cycles);
     printf("DIMP IPC-Mem \t %f \t Total Mem Ins \t %f \t Mem Cycle %lu \n", (double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(dimp_cycles - total_cycles_nonmem) , (double)(total_ins_counts - total_nonmem_ins_counts), (uint64_t)(dimp_cycles - total_cycles_nonmem) );
@@ -473,12 +481,13 @@ void CoreManager::report(ofstream *result)
 */
     //std::ofstream file;
     //file.open(filepath, std::ios::out | std::ios::app);
-    FILE * dimp_file = fopen ("/afs/inf.ed.ac.uk/user/s17/s1797403/repos/primesim/output/stat.txt","w");
+    *stat << (double)total_ins_counts / dimp_cycles << "," << total_ins_counts << "," << dimp_cycles << endl;
+    //FILE * dimp_file = fopen ("/afs/inf.ed.ac.uk/user/s17/s1797403/repos/primesim/output/stat.txt","w");
 
-    fprintf(dimp_file, "%f,%f,%f,%lu,%lu,%f,%lu,%lu\n",(double)total_ins_counts / dimp_cycles,(double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(dimp_cycles - total_cycles_nonmem),(double)total_ins_counts / total_cycles ,total_ins_counts,dimp_cycles,(double)(total_ins_counts-thread_0_ins) / (dimp_cycles-thread_0_cycles),(total_ins_counts-thread_0_ins),dimp_cycles-thread_0_cycles);
+    //fprintf(dimp_file, "%f,%f,%f,%lu,%lu,%f,%lu,%lu\n",(double)total_ins_counts / dimp_cycles,(double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(dimp_cycles - total_cycles_nonmem),(double)total_ins_counts / total_cycles ,total_ins_counts,dimp_cycles,(double)(total_ins_counts-thread_0_ins) / (dimp_cycles-thread_0_cycles),(total_ins_counts-thread_0_ins),dimp_cycles-thread_0_cycles);
 
     //fprintf(dimp_file, "%f,%f,%f\n",(double)total_ins_counts / dimp_cycles,(double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(dimp_cycles - total_cycles_nonmem),(double)total_ins_counts / total_cycles);
-    fclose (dimp_file);
+    //fclose (dimp_file);
 
     printf("\nDIMP IPC-Tot \t %f \t %lu\t %lu \n", (double)total_ins_counts / dimp_cycles , total_ins_counts, dimp_cycles);
     printf("DIMP IPC-Mem \t %f \t %lu \t %lu \n", (double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(dimp_cycles - total_cycles_nonmem) , (uint64_t)(total_ins_counts - total_nonmem_ins_counts), (uint64_t)(dimp_cycles - total_cycles_nonmem) );

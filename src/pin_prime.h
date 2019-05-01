@@ -54,6 +54,7 @@ MPI_Group  orig_group, new_group;
 MPI_Comm   new_comm;
 ofstream result;
 CoreManager *core_manager;
+ofstream stat;
 
 bool foundMFence = false;
 int mfence_count = 0; //Number of mfence found
