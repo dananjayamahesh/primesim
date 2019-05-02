@@ -20,10 +20,12 @@ rate2=64000
 
 for threads in 8 16 32
 do
-	for operations in 1000 4000
+	#for operations in 1000 4000
+	for operations in 4000
 	do
 			
-			for bench in linkedlist hashmap bstree skiplist-rotating-c
+			#for bench in linkedlist hashmap bstree skiplist-rotating-c
+			for bench in bstree skiplist-rotating-c
 			do	
 				echo "$bench,$threads,$rate,$rate2,$operations" >> ${DATA_FILE}
 				for pmodel in 0 3 4 6
