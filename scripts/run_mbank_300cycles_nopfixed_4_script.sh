@@ -1,4 +1,15 @@
-CONF_NAME=syncbench-mbank-300cycles-4000-skiplist32
+#I am fixing few bugs. 
+# 1. NOP does not need any write backs.
+#2 Release Persistency Write Back
+#3 delay of core id fixed
+
+
+#RUn History
+#syncbench-mbank-300cycles-nopfixed-4 ->initial run after fixing rp writeback delays
+#syncbench-mbank-300cycles-nopfixed-4-1 ->same
+#syncbench-mbank-300cycles-nopfixed-4-2 ->add more counters for write backs and epoch sizes, add thread 1,
+
+CONF_NAME=syncbench-mbank-300cycles-nopfixed-4-2
 CONF_PATH=${HOME}/repos/primesim/output/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/stat.txt
 DATA_FILE=${HOME}/repos/primesim/output/${CONF_NAME}/data_2.txt
@@ -18,13 +29,15 @@ DATA_FILE3=${HOME}/repos/primesim/output/${CONF_NAME}/data_3.txt
 rate=1000
 rate2=64000
 
-for threads in 31
+#for threads in 8 16 32
+for operations in 1000 4000
 do
-	for operations in 2000
+	#for operations in 1000 4000
+	for threads in 8 1 16 32
 	do
 			
-			#for bench in linkedlist hashmap bstree skiplist-rotating-c
-			for bench in skiplist-rotating-c
+			for bench in linkedlist hashmap bstree skiplist-rotating-c
+			#for bench in bstree skiplist-rotating-c
 			do	
 				echo "$bench,$threads,$rate,$rate2,$operations" >> ${DATA_FILE}
 				for pmodel in 0 3 4 6
