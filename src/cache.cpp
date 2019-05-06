@@ -78,6 +78,28 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
         rmw_count               = 0;
         wrt_relaxed_count       = 0;
 
+        sync_conflict_count     = 0;
+        sync_conflict_persists  = 0;
+        sync_conflict_persist_cycles = 0;
+
+        critical_conflict_count = 0;
+        critical_conflict_persists = 0;
+        critical_conflict_persist_cycles = 0;
+
+        write_back_count = 0;
+        write_back_delay = 0; //Write-backs on the critical path
+
+        critical_write_back_count = 0;
+        critical_write_back_delay = 0;
+        noncritical_write_back_count = 0;
+        noncritical_write_back_delay = 0;
+
+        external_critical_wb_count = 0;
+        external_critical_wb_delay = 0;
+
+        //To check number of evictions
+        natural_eviction_count = 0; //conflicts are not included.
+
     if (cache_type == TLB_CACHE) {
         offset_bits = (int) (log2(page_size));
         offset_mask = (uint64_t)(page_size - 1);
@@ -771,6 +793,15 @@ void Cache::report(ofstream* result)
     *result << "Intra-thread Persists Cycles : " << intra_persist_cycles <<endl;
     *result << "Inter-thread Persists Cycles: " << inter_persist_cycles <<endl;  
     *result << "Inter/Intra Persists Cycles Ratio : " << (double)inter_persist_cycles/(intra_persist_cycles+inter_persist_cycles) <<endl; 
+    *result << "---------------------------------------------------------------------- " << endl;
+    *result << "Write-Backs count and delay " <<  write_back_count << " \t" << write_back_delay << endl;
+    *result << "Critical Write-Backs count and delay " <<  critical_write_back_count << " \t" << critical_write_back_delay << endl;
+    *result << "NonCritical Write-Backs count and delay " <<  noncritical_write_back_count << " \t" << noncritical_write_back_delay << endl;
+    *result << "External Write-Backs count and delay " <<  external_critical_wb_count << " \t" << external_critical_wb_delay << endl;
+    *result << "Natural Write-Backs count and delay " <<  natural_eviction_count << " \t" << natural_eviction_delay << endl;
+    *result << "Sync Write-Backs count and delay " <<  sync_conflict_persists << " \t" << sync_conflict_persist_cycles << endl;
+    *result << "Critical Persist count and delay " <<  critical_conflict_persists << " \t" << critical_conflict_persist_cycles << endl;
+    *result << "All perisist (Persistence)" <<  getPersistCount() << " \t" << getPersistDelay() << endl;
     *result << "=================================================================\n\n";
 
     *result << "RMW: " << rmw_count <<endl;

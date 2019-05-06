@@ -597,10 +597,14 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                 line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, ins_mem, timer + delay[core_id]);
+                line_cur->state = I; //Only for directory cache 
+                line_cur->dirty = 0;
+                return I;
             }
             else{
 
                     //New Logic
+                if(pmodel != NONB){
                     assert (line_cur->state == M || line_cur->state==E);
                     //delay[core_id] += inval_children(cache_cur, &ins_mem); //Invalidating all S->I, M->I
 
@@ -615,11 +619,35 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                        delay[core_id] += accessDirectoryCache(cache_id, id_home, ins_mem, timer+delay[core_id], &state_tmp, core_id);
                     }
                     delay[core_id] += network.transmit(id_home, cache_id, 0, timer+delay[core_id]);
+
+                    line_cur->state = I; //Only for directory cache 
+                    line_cur->dirty = 0;
+                    return I;
+                }
+                else{ //Adding no delay. Becuase its not in the critical path
+                    //For no persistency write-back is not in the critical path
+                    assert (line_cur->state == M || line_cur->state==E);
+                    //delay[core_id] += inval_children(cache_cur, &ins_mem); //Invalidating all S->I, M->I
+
+                    id_home = getHomeId(ins_mem);
+                    network.transmit(cache_id, id_home, 0, timer+delay[core_id]);
+                   
+                    if (shared_llc) {
+                       accessSharedCache(cache_id, id_home, ins_mem, timer+delay[core_id], &state_tmp, core_id);
+                    
+                    }    
+                    else {
+                       accessDirectoryCache(cache_id, id_home, ins_mem, timer+delay[core_id], &state_tmp, core_id);
+                    }
+                    network.transmit(id_home, cache_id, 0, timer+delay[core_id]);
+
+                    line_cur->state = I; //Only for directory cache 
+                    line_cur->dirty = 0;
+                    return I;
+                }
             }
 
-            line_cur->state = I; //Only for directory cache 
-            line_cur->dirty = 0;
-            return I;
+            
         }
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //Read
@@ -706,6 +734,8 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     //Replacement Logic///////////////////////////////////////////////////////////////////////
                     //InsMem newMem = ins_mem_old;
                     //if(level==0 && (ins_mem_old.atom_type !=NON) ){ ///BIg Wrong Wronnnnnnnnnng 2019/04/15
+
+                    //bool hasReleasePersisted = false;
                     if(level==0){ //Fixed
                         
                         //printf("Release Persistency in Replacement \n");
@@ -716,12 +746,16 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             persist(cache_cur, &ins_mem_old, line_cur, core_id); //BEP-on repacement
                         }
                         else if(pmodel == RLSB){
-                            if(ins_mem_old.atom_type !=NON)
-                                delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline
+                            if(ins_mem_old.atom_type !=NON){
+                                //delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline
+                                persist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline
+                            }
                         }
                         else if(pmodel == FBRP){
-                            if(ins_mem_old.atom_type !=NON)
+                            if(ins_mem_old.atom_type !=NON){
                                 delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline
+                                //hasReleasePersisted = true;
+                            }
                         }
                         else{
                             //NOP do nothing.
@@ -748,11 +782,37 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     //printf("E\n");                          
                     ins_mem_old.mem_type = WB;
                     //printf("F\n");
-                         
+                         int before_delay = delay[core_id];
                     //printf("G\n"); 
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem_old, timer + delay[core_id]); 
+                        
+                        int after_delay = delay[core_id];
+                        int delay_wb = after_delay - before_delay;
+                        cache_cur->natural_eviction_count++; //Naturally evicted. not in the critical path of RP.
+
+                        if(pmodel == RLSB && level==0){ //Becuase write-backs happenes in the criticial path
+                            delay[core_id] = before_delay; //No write-back cost. happenes outside the critical path of execution
+                        }
+
+                        if(level == 0){
+                            cache_cur->write_back_count++;
+                            cache_cur->write_back_delay+=delay_wb;
+
+                            if(pmodel == RLSB || pmodel ==NONB){
+                                cache_cur->noncritical_write_back_count++;     
+                                cache_cur->noncritical_write_back_delay += delay_wb;
+                            }
+                            //This is also not in the critical path. For BEP evictions are lower.
+                            else if(pmodel == BEPB || pmodel ==FBRP){ //This should also belongs to noncritical since conflicting blokc
+                                cache_cur->critical_write_back_count++;     
+                                cache_cur->critical_write_back_delay += delay_wb;
+                            }
+
+                        }
+
+
                     line_cur->state = I;
                     line_cur->dirty = 0;
                     line_cur->atom_type = NON;                                       
@@ -858,6 +918,9 @@ int System::fullBarrierFlush(Cache *cache_cur, int epoch_id, int req_core_id){
     printf("Delay on flush %d of core %d by core %d \n", delay[core_id], core_id, req_core_id);
     #endif
     //delay[core_id] = 0;
+    if(core_id != req_core_id){
+        delay[core_id]  = 0;
+    }
     
     int level = cache_cur->getLevel(); 
     int persist_count =0;   
@@ -894,6 +957,16 @@ int System::fullBarrierFlush(Cache *cache_cur, int epoch_id, int req_core_id){
         }
     } 
 
+    //same cores.
+    
+    cache_cur->critical_conflict_persists += persist_count;
+    cache_cur->write_back_count += persist_count;
+    cache_cur->critical_write_back_count += persist_count;
+    
+    cache_cur->critical_conflict_persist_cycles += delay[core_id]; //Delay
+    cache_cur->write_back_delay += delay[core_id];
+    cache_cur->critical_write_back_delay += delay[core_id];
+
     #ifdef DEBUG
     printf("Number of persists on FUll FLush : %d \n", persist_count); 
     #endif
@@ -901,12 +974,10 @@ int System::fullBarrierFlush(Cache *cache_cur, int epoch_id, int req_core_id){
     return delay[core_id];
 }
 
-
-
-
 //SyncMap conflicts syncConflict
 int System::syncConflict(Cache * cache_cur, SyncLine * syncline, Line* line_call){
         
+    //this functiona act as checkpointing. conflicts   
     int core_id = cache_cur->getId();
     int cache_id = core_id;
     printf("syncmap conflicts need to resolved %d \n", core_id);
@@ -914,6 +985,9 @@ int System::syncConflict(Cache * cache_cur, SyncLine * syncline, Line* line_call
     Line * line_cur;
     int timer =0;
     int persist_count =0;
+
+    //sync conflicts
+    cache_cur->critical_conflict_count++;
     //fullFlush(cache_cur, syncline, line_cur, syncline->epo)
     for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {            
             for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) {                
@@ -930,8 +1004,9 @@ int System::syncConflict(Cache * cache_cur, SyncLine * syncline, Line* line_call
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
                         
-                        cache_cur->incPersistCount();
+                        cache_cur->incPersistCount(); //conflicting persist count - critical path.
                         persist_count++;
+                        //sync conflict                       
                         
                         line_cur->dirty = 0;
                         line_cur->state = I;
@@ -939,9 +1014,22 @@ int System::syncConflict(Cache * cache_cur, SyncLine * syncline, Line* line_call
                 }
         }
     }
-    
+
+    //same cores.
+    cache_cur->sync_conflict_persists += persist_count;
+    cache_cur->critical_conflict_persists += persist_count;
+    cache_cur->write_back_count += persist_count;
+    cache_cur->critical_write_back_count += persist_count;
+
+
+    cache_cur->sync_conflict_persist_cycles += delay[core_id];
+    cache_cur->critical_conflict_persist_cycles += delay[core_id]; //Delay
+    cache_cur->write_back_delay += delay[core_id];
+    cache_cur->critical_write_back_delay += delay[core_id];
+
+    //Ideally need to order synchronization variables.    
     cache_cur->initSyncMap(0);
-    return 0;
+    return 0; //Delay is added to the core delay with core id;
     
 }
 
@@ -958,6 +1046,10 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
     Line *line_cur;
     int timer = 0;
     //delay[core_id] = 0;   //Check this. Need to chaneg.  
+    if(core_id != req_core_id){
+        delay[core_id]  = 0;
+    }
+
     int level = cache_cur->getLevel(); 
     int persist_count =0;
 
@@ -993,11 +1085,31 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
         cache_cur->intra_conflicts++;
         cache_cur->intra_persists += persist_count;
         cache_cur->intra_persist_cycles += delay[core_id]; //Not correct, but not effects the core
+
+        //
+        cache_cur->critical_conflict_persists += persist_count; //Should be equal to both intra-thread and inter-thread
+        cache_cur->critical_conflict_persist_cycles += delay[core_id]; //Delay
+
+        cache_cur->write_back_count += persist_count;
+        cache_cur->write_back_delay += delay[core_id];
+
+        cache_cur->critical_write_back_count += persist_count;       
+        cache_cur->critical_write_back_delay += delay[core_id];
         
     }else{
         cache_cur->inter_conflicts++;
         cache_cur->inter_persists += persist_count;
         cache_cur->inter_persist_cycles += delay[core_id]; 
+
+        //New
+        cache_cur->write_back_count += persist_count;
+        cache_cur->noncritical_write_back_count += persist_count; //Is this true
+
+        cache_cur->write_back_delay += delay[core_id];
+        cache_cur->noncritical_write_back_delay += delay[core_id];
+        
+        cache[0][req_core_id]->external_critical_wb_count += persist_count;
+        cache[0][req_core_id]->external_critical_wb_delay += delay[core_id];  
     }
 
 
@@ -1023,6 +1135,9 @@ int System::fullFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, in
     printf("Delay on flush %d of core %d by core %d \n", delay[core_id], core_id, req_core_id);
     #endif
     //delay[core_id] = 0;
+    if(core_id != req_core_id){
+        delay[core_id]  = 0;
+    }
     
     int level = cache_cur->getLevel(); 
     int persist_count =0;   
@@ -1059,6 +1174,40 @@ int System::fullFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, in
         }
     } 
 
+    //Counts
+    if(core_id == req_core_id){
+        cache_cur->intra_conflicts++;
+        cache_cur->intra_persists += persist_count;
+        cache_cur->intra_persist_cycles += delay[core_id]; //Not correct, but not effects the core
+
+        //New
+        cache_cur->critical_conflict_persists += persist_count; //Should be equal to both intra-thread and inter-thread
+        cache_cur->critical_conflict_persist_cycles += delay[core_id]; //Delay
+
+        cache_cur->write_back_count += persist_count;
+        cache_cur->write_back_delay += delay[core_id];
+
+        cache_cur->critical_write_back_count += persist_count;       
+        cache_cur->critical_write_back_delay += delay[core_id];
+        
+    }else{ // Inter conflicts are not in the sritical path of the receiving core.
+        cache_cur->inter_conflicts++;
+        cache_cur->inter_persists += persist_count;
+        cache_cur->inter_persist_cycles += delay[core_id]; 
+
+
+        //New
+        cache_cur->write_back_count += persist_count;
+        cache_cur->write_back_delay += delay[core_id];
+
+        cache_cur->noncritical_write_back_count += persist_count; //Is this true        
+        cache_cur->noncritical_write_back_delay += delay[core_id];
+
+        
+        cache[0][req_core_id]->external_critical_wb_count += persist_count;
+        cache[0][req_core_id]->external_critical_wb_delay += delay[core_id];        
+    }
+
     #ifdef DEBUG
     printf("Number of persists on FUll FLush : %d \n", persist_count); 
     #endif
@@ -1080,6 +1229,9 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
     printf("Delay on flush %d of core %d by core %d \n", delay[core_id], core_id, req_core_id);
     #endif
     //delay[core_id] = 0;
+    if(core_id != req_core_id){
+        delay[core_id]  = 0;
+    }
 
     int level = cache_cur->getLevel(); 
     int persist_count =0;   
@@ -1093,6 +1245,8 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
                 line_cur = cache_cur->directAccess(i,j,&ins_mem);                
                 //printf("B (%lu,%lu) 0x%lx 0x%lx %d \n", i,j, line_cur->tag, ins_mem.addr_dmem, line_cur->state);                
                 if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M || line_cur->state==E )){ //Need to think about E here
+                    //M stads for dirty lines as well. this condition checks dirty==1
+
                     //printf("[Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
                     //    i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
                      //without sync conflicts                    
@@ -1107,8 +1261,11 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
                         
-                        cache_cur->incPersistCount();
+                        cache_cur->incPersistCount(); //all
                         persist_count++;
+                        //cache_cur->critical_conflict_persists++; //But not in the critical path of this core
+                        cache_cur->write_back_count++;
+                        cache_cur->noncritical_write_back_count++;
                         
                         line_cur->dirty = 0;
                         line_cur->state = I;
@@ -1117,16 +1274,36 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
         }
     } 
 
-        //Counts
+     //Counts
     if(core_id == req_core_id){
         cache_cur->intra_conflicts++;
         cache_cur->intra_persists += persist_count;
         cache_cur->intra_persist_cycles += delay[core_id]; //Not correct, but not effects the core
+
+        //New
+        cache_cur->critical_conflict_persists += persist_count; //Should be equal to both intra-thread and inter-thread
+        cache_cur->critical_conflict_persist_cycles += delay[core_id]; //Delay
+
+        cache_cur->write_back_count += persist_count;
+        cache_cur->write_back_delay += delay[core_id];
+
+        cache_cur->critical_write_back_count += persist_count;       
+        cache_cur->critical_write_back_delay += delay[core_id];
         
-    }else{
+    }else{ // Inter conflicts are not in the sritical path of the receiving core.
         cache_cur->inter_conflicts++;
         cache_cur->inter_persists += persist_count;
         cache_cur->inter_persist_cycles += delay[core_id]; 
+
+        //New
+        cache_cur->write_back_count += persist_count;
+        cache_cur->write_back_delay += delay[core_id];
+
+        cache_cur->noncritical_write_back_count += persist_count; //Is this true        
+        cache_cur->noncritical_write_back_delay += delay[core_id];
+        
+        cache[0][req_core_id]->external_critical_wb_count += persist_count;
+        cache[0][req_core_id]->external_critical_wb_delay += delay[core_id];        
     }
 
     #ifdef DEBUG
@@ -1193,6 +1370,12 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
     printf("----------------------------------- Start Persist ---------------------------------------\n");
     #endif
     if(pmodel == RLSB){
+        //printf("Release Persistence \n");
+        delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id); 
+        cache_cur->incPersistDelay(delay_tmp); //Counters
+        //delay_tmp =  delay_tmp/2;
+    }
+    if(pmodel == FBRP){ //Epoch PErsistency
         //printf("Release Persistence \n");
         delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id); 
         cache_cur->incPersistDelay(delay_tmp); //Counters
@@ -1344,7 +1527,8 @@ int System::inval(Cache* cache_cur, InsMem* ins_mem, int core_id)
                     if (pmodel == BEPB) delay += persist(cache_cur, ins_mem, line_cur, core_id); // need both Acquire and Release
                     else if (line_cur->atom_type != NON) delay += persist(cache_cur, ins_mem, line_cur, core_id); 
 
-                }
+                }//Delay of invalidation and shar is added to the cycles by coherence itdels.
+                //No need to write-back 
                 
             }
                   
@@ -1815,6 +1999,8 @@ void System::report(ofstream* result)
     double  ratio_inter_intra_persists = 0.0;
     double  ratio_inter_intra_persist_cycles = 0.0;
     //double conflict_rate=0.0;
+    uint64_t clwb_tot=0, critical_clwb=0, noncritical_clwb=0, external_clwb=0, natural_clwb=0, sync_clwb=0, critical_persist_wb=0; //last one id related to total persist count
+    uint64_t delay_clwb_tot=0, delay_critical_clwb=0, delay_noncritical_clwb=0, delay_external_clwb=0, delay_natural_clwb=0, delay_sync_clwb=0, delay_critical_persist_wb=0;
    
     network.report(result); 
     dram.report(result); 
@@ -1882,6 +2068,31 @@ void System::report(ofstream* result)
         persist_count = 0;
         persist_delay =0;
         miss_rate = 0;
+
+        delay_critical_persist_wb = 0;
+        inter_tot = 0;
+        intra_tot = 0;
+        ratio_inter_intra_conflicts = 0;
+        inter_persist_tot = 0;
+        intra_persist_tot = 0;
+        ratio_inter_intra_persists = 0;
+        inter_pcycles_tot = 0;
+        intra_pcycles_tot = 0;
+        ratio_inter_intra_persist_cycles = 0;
+        clwb_tot = 0;
+        critical_clwb = 0;
+        noncritical_clwb = 0;
+        external_clwb = 0;
+        natural_clwb = 0;
+        sync_clwb = 0;
+        critical_persist_wb = 0;
+        delay_clwb_tot = 0;
+        delay_critical_clwb = 0;
+        delay_noncritical_clwb = 0;
+        delay_external_clwb = 0;
+        delay_natural_clwb = 0;
+        delay_sync_clwb = 0;
+
         for (j=0; j<cache_level[i].num_caches; j++) {
             if (cache[i][j] != NULL) {
                 ins_count += cache[i][j]->getInsCount();
@@ -1899,6 +2110,23 @@ void System::report(ofstream* result)
                 inter_pcycles_tot += cache[i][j]->inter_persist_cycles;
                 intra_pcycles_tot += cache[i][j]->intra_persist_cycles;
                 ratio_inter_intra_persist_cycles += (double)inter_pcycles_tot/(inter_pcycles_tot+intra_pcycles_tot);
+
+                clwb_tot            +=    cache[i][j]->write_back_count; 
+                critical_clwb       +=   cache[i][j]->critical_write_back_count; 
+                noncritical_clwb    +=    cache[i][j]->noncritical_write_back_count; 
+                external_clwb       +=   cache[i][j]->external_critical_wb_count; 
+                natural_clwb        +=    cache[i][j]->natural_eviction_count; 
+                sync_clwb           +=   cache[i][j]->sync_conflict_persists; 
+                critical_persist_wb +=     cache[i][j]->critical_conflict_persists;
+
+
+                delay_clwb_tot              +=      cache[i][j]->write_back_delay;
+                delay_critical_clwb         +=      cache[i][j]->critical_write_back_delay;
+                delay_noncritical_clwb      +=      cache[i][j]->noncritical_write_back_delay;
+                delay_external_clwb         +=      cache[i][j]->external_critical_wb_delay;
+                delay_natural_clwb          +=      cache[i][j]->natural_eviction_delay;
+                delay_sync_clwb             +=      cache[i][j]->sync_conflict_persist_cycles;
+                delay_critical_persist_wb   +=      cache[i][j]->critical_conflict_persist_cycles;
 
 
             }
@@ -1928,6 +2156,17 @@ void System::report(ofstream* result)
         *result << "Intra-thread Persist Cycles: " <<  intra_pcycles_tot << endl;
         *result << "Inter-Intra PC ratio (SUM): " << (double)inter_pcycles_tot/(inter_pcycles_tot+intra_pcycles_tot) << endl;
         *result << "Inter-Intra PC ratio (AVG): " << ratio_inter_intra_persist_cycles/cache_level[i].num_caches << endl;
+        *result << "-----------------------------------------------------------------------\n";
+        *result << "Write-Backs count and delay " <<  clwb_tot << " \t" << delay_clwb_tot << endl;
+        *result << "Critical Write-Backs count and delay " <<  critical_clwb << " \t" << delay_critical_clwb << endl;
+        *result << "NonCritical Write-Backs count and delay " <<  noncritical_clwb << " \t" << delay_noncritical_clwb << endl;
+        *result << "External Write-Backs count and delay " <<  external_clwb << " \t" << delay_external_clwb << endl;
+        *result << "Natural Write-Backs count and delay " <<  natural_clwb << " \t" << delay_natural_clwb << endl;
+        *result << "Sync Write-Backs count and delay " <<  sync_clwb << " \t" << delay_sync_clwb << endl;
+        *result << "Critical Persist count and delay " <<  critical_persist_wb << " \t" << critical_persist_wb << endl;
+        *result << "All perisist (Persistence)" <<  persist_count << " \t" << persist_delay << endl;
+        *result << "Sync WB/Critical WB" <<  (double)sync_clwb/critical_clwb << endl;
+        *result << "Critical WB/All WB" <<  (double)critical_clwb/clwb_tot << endl;
         *result << "=================================================================\n\n";
 
     }

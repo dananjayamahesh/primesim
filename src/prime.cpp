@@ -207,6 +207,30 @@ void *msgHandler(void *t)
                 ins_mem.atom_type = atype;
                 //ins_mem.epoch_id = epoch_id;
                 ins_mem.mem_op = mem_op;
+
+                //Calculate average epoch sizes.
+                if(ins_mem.mem_type == 1){
+                    if(epoch_id[core_id] != last_epoch_id[core_id]){
+                        int cur_epoch_size = epoch_persist_counter[core_id];
+                        total_epoch_size[core_id] += cur_epoch_size;
+                        if(last_epoch_id[core_id]==0){
+                            max_epoch_size[core_id]=cur_epoch_size;
+                            min_epoch_size[core_id]=cur_epoch_size;
+                        }
+                        else{
+                            if(cur_epoch_size > max_epoch_size[core_id]) max_epoch_size[core_id]=cur_epoch_size;
+                            if(cur_epoch_size <  min_epoch_size[core_id]) min_epoch_size[core_id]=cur_epoch_size;
+                        }
+                        
+                        total_epochs[core_id]++;
+                        last_epoch_id[core_id] = epoch_id[core_id];
+                        epoch_persist_counter[core_id]=0;
+
+                    }else{
+                        epoch_persist_counter[core_id]++; // Epoch size - number of stores in a epoch
+                    }
+                }
+
                 //Acquire-Release catch
                 if(ins_mem.atom_type !=NON){
                     //printf("[PIN] Core : %d Address : 0x%lx in atomic : %d memory op:%d \n", core_id, ins_mem.addr_dmem, ins_mem.atom_type, ins_mem.mem_type);
@@ -347,6 +371,10 @@ int main(int argc, char *argv[])
     uncore_manager.getSimFinishTime();
     
     uncore_manager.report(&result);
+
+    for(int z=0;z<num_threads;z++){
+        result << "Thread or Core Id : "<< num_threads << "Epochs: "<< total_epochs[z]  <<", average epochs size "<< (double)total_epoch_size[z]/total_epochs[z] << " Max " << max_epoch_size[z]<< ",Min "<< min_epoch_size[z] << endl;
+    }
 
     printf("Uncore Print");
     result.close();

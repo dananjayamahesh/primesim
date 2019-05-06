@@ -92,6 +92,8 @@ void UncoreManager::report(ofstream *result)
     double sim_time = (sim_finish_time.tv_sec - sim_start_time.tv_sec) + (double) (sim_finish_time.tv_nsec - sim_start_time.tv_nsec) / 1000000000.0; 
     *result << "Total computation time: " << sim_time <<" seconds\n";
     *result<<endl;
+
+    //for(int i=0;i)
     
     thread_sched.report(result);
     sys.report(result);

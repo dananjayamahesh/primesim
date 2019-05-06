@@ -65,5 +65,12 @@ ofstream result;
 pthread_mutex_t mutex;
 
 
+int epoch_persist_counter[THREAD_MAX];
+int max_epoch_size[THREAD_MAX];
+int min_epoch_size[THREAD_MAX];
+int total_epochs[THREAD_MAX];
+int total_epoch_size[THREAD_MAX];
+int last_epoch_id[THREAD_MAX];
+
 
 #endif //PRIME_H

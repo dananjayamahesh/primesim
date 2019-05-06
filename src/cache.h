@@ -217,6 +217,30 @@ class Cache
         uint64_t        wrt_acq_count;
          uint64_t       wrt_full_count;
         uint64_t        wrt_relaxed_count;
+
+        uint64_t sync_conflict_count; //Sync Write backs.
+        uint64_t sync_conflict_persists;
+        uint64_t sync_conflict_persist_cycles;
+
+        uint64_t critical_conflict_count; //Number of persist happens in the critical path.
+        uint64_t critical_conflict_persists;
+        uint64_t critical_conflict_persist_cycles;
+
+        uint64_t write_back_count;
+        uint64_t write_back_delay;
+
+        uint64_t critical_write_back_count;
+        uint64_t critical_write_back_delay;
+
+        uint64_t noncritical_write_back_count;
+        uint64_t noncritical_write_back_delay;
+
+        uint64_t external_critical_wb_count;
+        uint64_t external_critical_wb_delay;
+
+        uint64_t natural_eviction_count;
+        uint64_t natural_eviction_delay;
+
         //Epoch Size?
 
     private:
