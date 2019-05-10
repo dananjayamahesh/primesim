@@ -791,9 +791,16 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                         int after_delay = delay[core_id];
                         int delay_wb = after_delay - before_delay;
                         cache_cur->natural_eviction_count++; //Naturally evicted. not in the critical path of RP.
+                        cache_cur->natural_eviction_delay += delay_wb;
 
-                        if(pmodel == RLSB && level==0){ //Becuase write-backs happenes in the criticial path
-                            delay[core_id] = before_delay; //No write-back cost. happenes outside the critical path of execution
+                        if(level ==0){
+                            if(pmodel == RLSB){ //Becuase write-backs happenes in the criticial path
+                                delay[core_id] = before_delay; //No write-back cost. happenes outside the critical path of execution
+                            }else if(pmodel !=NONB){
+                                if(core_id ==0){
+                                    delay[core_id] = before_delay;  //Check this correctness
+                                }
+                            }
                         }
 
                         if(level == 0){
@@ -2165,8 +2172,8 @@ void System::report(ofstream* result)
         *result << "Sync Write-Backs count and delay " <<  sync_clwb << " \t" << delay_sync_clwb << endl;
         *result << "Critical Persist count and delay " <<  critical_persist_wb << " \t" << critical_persist_wb << endl;
         *result << "All perisist (Persistence)" <<  persist_count << " \t" << persist_delay << endl;
-        *result << "Sync WB/Critical WB" <<  (double)sync_clwb/critical_clwb << endl;
-        *result << "Critical WB/All WB" <<  (double)critical_clwb/clwb_tot << endl;
+        *result << "Sync WB/Critical WB " <<  (double)sync_clwb/critical_clwb << endl;
+        *result << "Critical WB/All WB " <<  (double)critical_clwb/clwb_tot << endl;
         *result << "=================================================================\n\n";
 
     }

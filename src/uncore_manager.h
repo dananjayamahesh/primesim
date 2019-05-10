@@ -59,6 +59,7 @@ class UncoreManager
         int getCoreId(int prog_id, int thread_id);
         int uncore_access(int core_id, InsMem* ins_mem, int64_t timer);
         void report(ofstream *result);
+        System * getSystem();
         ~UncoreManager();        
     private:
         struct timespec sim_start_time;

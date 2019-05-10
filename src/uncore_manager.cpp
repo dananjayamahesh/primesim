@@ -84,6 +84,10 @@ int UncoreManager::uncore_access(int core_id, InsMem* ins_mem, int64_t timer)
     return sys.access(core_id, ins_mem, timer);
 }
 
+System * UncoreManager::getSystem(){
+    return &sys;
+}
+
 void UncoreManager::report(ofstream *result)
 {
     *result << "*********************************************************\n";

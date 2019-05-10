@@ -421,9 +421,9 @@ void CoreManager::report(ofstream *result, ofstream *stat)
     //dimp_cycles = (uint64_t)(cycle[0]._count);
     dimp_cycles = 0;
     uint64_t thread_0_cycles =0, thread_0_ins=0;
-    thread_0_cycles += (uint64_t)(cycle[0]._count);
+    thread_0_cycles = (uint64_t)(cycle[0]._count);
     thread_0_ins = ins_count[0]._count;
-    thread_0_ins = thread_0_ins;
+    //thread_0_ins = thread_0_ins;
     int i;
     for (i = 0; i < max_threads; i++) {
         total_ins_counts += ins_count[i]._count;
@@ -481,7 +481,7 @@ void CoreManager::report(ofstream *result, ofstream *stat)
 */
     //std::ofstream file;
     //file.open(filepath, std::ios::out | std::ios::app);
-    *stat << (double)total_ins_counts / dimp_cycles << "," << total_ins_counts << "," << dimp_cycles << endl;
+    *stat << (double)total_ins_counts / dimp_cycles << "," << total_ins_counts << "," << dimp_cycles<< "," << (double)(total_ins_counts-thread_0_ins) / (dimp_cycles-thread_0_cycles) << "," << (total_ins_counts-thread_0_ins) << "," << (dimp_cycles-thread_0_cycles) << endl;
     //FILE * dimp_file = fopen ("/afs/inf.ed.ac.uk/user/s17/s1797403/repos/primesim/output/stat.txt","w");
 
     //fprintf(dimp_file, "%f,%f,%f,%lu,%lu,%f,%lu,%lu\n",(double)total_ins_counts / dimp_cycles,(double)(total_ins_counts - total_nonmem_ins_counts) /(uint64_t)(dimp_cycles - total_cycles_nonmem),(double)total_ins_counts / total_cycles ,total_ins_counts,dimp_cycles,(double)(total_ins_counts-thread_0_ins) / (dimp_cycles-thread_0_cycles),(total_ins_counts-thread_0_ins),dimp_cycles-thread_0_cycles);
