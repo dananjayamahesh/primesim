@@ -15,7 +15,8 @@
 # COncurrent running
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-5-2_
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-5-2_1000000
-CONF_NAME=syncbench-mbank-120cycles-nopfixed-5-2_500
+#CONF_NAME=syncbench-mbank-120cycles-nopfixed-5-2_500
+CONF_NAME=syncbench-mbank-120cycles-nopfixed-5-2_100
 CONF_PATH=${HOME}/repos/primesim/output/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/stat.txt
 DATA_FILE=${HOME}/repos/primesim/output/${CONF_NAME}/data_2.txt
