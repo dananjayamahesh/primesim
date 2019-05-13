@@ -2,7 +2,7 @@
 
 #BENCHS = src/trees/sftree src/linkedlists/lockfree-list src/hashtables/lockfree-ht src/trees/rbtree src/skiplists/sequential
 #LBENCHS = src/trees/tree-lock src/linkedlists/lock-coupling-list src/linkedlists/lazy-list src/hashtables/lockbased-ht src/skiplists/skiplist-lock
-LFBENCHS = src/lockfree-linkedlist src/lockfree-hashmap src/lockfree-bstree src/skiplist-rotating-c
+LFBENCHS = src/lockfree-linkedlist src/lockfree-hashmap src/lockfree-bstree src/skiplist-rotating-c src/lockfree-queue
 LBENCHS = src/lock-coupling-list
 #MALLOC=TC
 
