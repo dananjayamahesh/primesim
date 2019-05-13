@@ -52,6 +52,7 @@ static volatile AO_t stop;
 
 #define MAX_PARITY_LOAD 100
 //#define EPOCH_PARITY
+//#define WRITES_N
 
 typedef intptr_t val_t;
 #define VAL_MIN                         INT_MIN
@@ -59,6 +60,18 @@ typedef intptr_t val_t;
 
 typedef struct node {
 	val_t val;
+
+	#ifdef WRITES_N
+	long write_0;
+	long write_1;
+	long write_2;
+	long write_3;
+	long write_4;
+	long write_5;
+	long write_6;
+	long write_7;
+	
+	#endif
 	#ifdef EPOCH_PARITY
 		int parity[MAX_PARITY_LOAD];
 	#endif
