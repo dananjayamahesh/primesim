@@ -107,6 +107,10 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
         epoch_size = 0;
         epoch_last = 0;
 
+        epoch_min_set =false;
+        epoch_updated_id=0;
+        epoch_counted_id=0;
+
     if (cache_type == TLB_CACHE) {
         offset_bits = (int) (log2(page_size));
         offset_mask = (uint64_t)(page_size - 1);
@@ -809,6 +813,17 @@ void Cache::report(ofstream* result)
     *result << "Sync Write-Backs count and delay " <<  sync_conflict_persists << " \t" << sync_conflict_persist_cycles << endl;
     *result << "Critical Persist count and delay " <<  critical_conflict_persists << " \t" << critical_conflict_persist_cycles << endl;
     *result << "All perisist (Persistence)" <<  getPersistCount() << " \t" << getPersistDelay() << endl;
+
+    *result << "\n---------------------------------------------------------------------- " << endl;
+    *result << "Updated Epoch ID : " << epoch_updated_id <<endl;
+    *result << "Counted Epoch ID : " << epoch_counted_id <<endl;    
+    *result << "Epoch Sum : " << epoch_sum <<endl;
+    *result << "Epoch Last : " << epoch_last <<endl;
+    *result << "Epoch Min : " << epoch_min <<endl;
+    *result << "Epoch Max: " << epoch_max <<endl;
+    *result << "Epoch Remaining Persiss: " << epoch_size <<endl;
+    *result << "Average Writes per Epoch: " << (double)epoch_sum/epoch_updated_id << endl;
+    
     *result << "=================================================================\n\n";
 
     *result << "RMW: " << rmw_count <<endl;

@@ -247,6 +247,11 @@ class Cache
         uint64_t epoch_size;
         uint64_t epoch_last;
 
+        bool     epoch_min_set;
+        uint64_t epoch_updated_id;
+        uint64_t epoch_counted_id;
+
+
         //Epoch Size?
 
     private:

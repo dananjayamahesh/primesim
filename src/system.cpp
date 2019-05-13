@@ -173,12 +173,36 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
     cache_id = core_id / cache_level[0].share;
 
     //epoch counters
-    if(cache[0][core_id]->epoch_last != ins_mem->epoch_id){
-        
+    cache[0][core_id]->epoch_updated_id = ins_mem->epoch_id;
+    
+    if(ins_mem->mem_type == WR){ //Only for the stores/writes
+        if(cache[0][core_id]->epoch_last != (uint64_t)ins_mem->epoch_id){
+            
+            if(cache[0][core_id]->epoch_last == 0){
+                cache[0][core_id]->epoch_min = cache[0][core_id]->epoch_size;
+                cache[0][core_id]->epoch_max = cache[0][core_id]->epoch_size; // this might be zero as well.
+                if(cache[0][core_id]->epoch_size != 0) cache[0][core_id]->epoch_min_set = true;
+            }else{
+                if(cache[0][core_id]->epoch_max < cache[0][core_id]->epoch_size) cache[0][core_id]->epoch_max = cache[0][core_id]->epoch_size;
+                
+                if(cache[0][core_id]->epoch_min_set){
+                    if(cache[0][core_id]->epoch_min > cache[0][core_id]->epoch_size) cache[0][core_id]->epoch_min = cache[0][core_id]->epoch_size;
+                }else{
+                    cache[0][core_id]->epoch_min = cache[0][core_id]->epoch_size;
+                    cache[0][core_id]->epoch_min_set = true;
+                }
+            }
+
+            cache[0][core_id]->epoch_sum += cache[0][core_id]->epoch_size;            
+            cache[0][core_id]->epoch_size = 0;
+            cache[0][core_id]->epoch_last = ins_mem->epoch_id;
+            cache[0][core_id]->epoch_counted_id++;
+        }
+        else{
+            cache[0][core_id]->epoch_size++;
+        } 
     }
-    else{
-        cache[0][core_id]->epoch_size++;
-    }
+    
  
     if (tlb_enable) {
         delay[core_id] = tlb_translate(ins_mem, core_id, timer);
@@ -2017,6 +2041,9 @@ void System::report(ofstream* result)
     uint64_t clwb_tot=0, critical_clwb=0, noncritical_clwb=0, external_clwb=0, natural_clwb=0, sync_clwb=0, critical_persist_wb=0; //last one id related to total persist count
     uint64_t delay_clwb_tot=0, delay_critical_clwb=0, delay_noncritical_clwb=0, delay_external_clwb=0, delay_natural_clwb=0, delay_sync_clwb=0, delay_critical_persist_wb=0;
    
+   uint64_t epoch_sum_tot = 0;
+   uint64_t epoch_id_tot = 0, epoch_id2_tot=0;
+   
     network.report(result); 
     dram.report(result); 
     *result << endl <<  "Simulation result for cache system: \n\n";
@@ -2108,6 +2135,10 @@ void System::report(ofstream* result)
         delay_natural_clwb = 0;
         delay_sync_clwb = 0;
 
+        epoch_sum_tot = 0;
+        epoch_id_tot = 0;
+        epoch_id2_tot = 0;
+
         for (j=0; j<cache_level[i].num_caches; j++) {
             if (cache[i][j] != NULL) {
                 ins_count += cache[i][j]->getInsCount();
@@ -2142,6 +2173,10 @@ void System::report(ofstream* result)
                 delay_natural_clwb          +=      cache[i][j]->natural_eviction_delay;
                 delay_sync_clwb             +=      cache[i][j]->sync_conflict_persist_cycles;
                 delay_critical_persist_wb   +=      cache[i][j]->critical_conflict_persist_cycles;
+
+                epoch_sum_tot += cache[i][j]->epoch_sum;
+                epoch_id_tot += cache[i][j]->epoch_updated_id;
+                epoch_id2_tot += cache[i][j]->epoch_counted_id;
 
 
             }
@@ -2182,6 +2217,11 @@ void System::report(ofstream* result)
         *result << "All perisist (Persistence)" <<  persist_count << " \t" << persist_delay << endl;
         *result << "Sync WB/Critical WB " <<  (double)sync_clwb/critical_clwb << endl;
         *result << "Critical WB/All WB " <<  (double)critical_clwb/clwb_tot << endl;
+        *result << "-----------------------------------------------------------------------\n";
+        *result << "Total Epochs Sum " <<  epoch_sum_tot << endl;
+        *result << "Total IDs Sum " <<  epoch_id_tot << endl;
+        *result << "Total Counted IDs Sum " <<  epoch_id2_tot << endl;
+        *result << "Average Writes/Epoch" <<  (double)epoch_sum_tot/epoch_id_tot << endl;
         *result << "=================================================================\n\n";
 
     }
