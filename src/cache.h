@@ -241,6 +241,12 @@ class Cache
         uint64_t natural_eviction_count;
         uint64_t natural_eviction_delay;
 
+        uint64_t epoch_sum;
+        uint64_t epoch_max;
+        uint64_t epoch_min;
+        uint64_t epoch_size;
+        uint64_t epoch_last;
+
         //Epoch Size?
 
     private:

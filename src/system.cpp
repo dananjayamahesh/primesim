@@ -171,6 +171,14 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
     hit_flag[core_id] = false;
     delay[core_id] = 0;
     cache_id = core_id / cache_level[0].share;
+
+    //epoch counters
+    if(cache[0][core_id]->epoch_last != ins_mem->epoch_id){
+        
+    }
+    else{
+        cache[0][core_id]->epoch_size++;
+    }
  
     if (tlb_enable) {
         delay[core_id] = tlb_translate(ins_mem, core_id, timer);

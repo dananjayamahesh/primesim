@@ -100,6 +100,13 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
         //To check number of evictions
         natural_eviction_count = 0; //conflicts are not included.
 
+        //epoch info
+        epoch_sum = 0;
+        epoch_max = 0;
+        epoch_min = 0;
+        epoch_size = 0;
+        epoch_last = 0;
+
     if (cache_type == TLB_CACHE) {
         offset_bits = (int) (log2(page_size));
         offset_mask = (uint64_t)(page_size - 1);
