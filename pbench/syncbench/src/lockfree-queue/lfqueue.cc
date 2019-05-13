@@ -34,14 +34,7 @@ inline long get_marked_ref(long w) {
 	return set_mark(w);
 }
 
-/*
- * harris_search looks for value val, it
- *  - returns right_node owning val (if present) or its immediately higher 
- *    value present in the list (otherwise) and 
- *  - sets the left_node to the node owning the value immediately lower than val. 
- * Encountered nodes that are marked as logically deleted are physically removed
- * from the list, yet not garbage collected.
- */
+
 node_t *lfqueue_search(intset_t *set, val_t val, node_t **left_node) {
 	node_t *left_node_next, *right_node;
 	left_node_next = set->head;
@@ -82,69 +75,74 @@ search_again:
 	} while (1);
 }
 
-/*
- * harris_find returns whether there is a node in the list owning value val.
- */
+//search function has never been called
 int lfqueue_find(intset_t *set, val_t val) {
-	node_t *right_node, *left_node;
-	left_node = set->head;
 	
-	right_node = lfqueue_search(set, val, &left_node);
-	if ((!right_node->next) || right_node->val != val)
-		return 0;
-	else 
-		return 1;
+	node_t * ptr = set->head;
+
+	while(ptr !=NULL){
+		if(ptr->val == val) return 1;
+
+		ptr = ptr->next;
+		
+	}
+	return 0;
 }
 
-/*
- * harris_find inserts a new node with the given value val in the list
- * (if the value was absent) or does nothing (if the value is already present).
- */
+
 int lfqueue_enque(intset_t *set, val_t val) {
 	//printf("insert value - %d\n", (int) val);
-	node_t *newnode, *right_node, *left_node;
-	left_node = set->head;
+	node_t *newnode, *tail, *next;
+	newnode = new_node(val, NULL, 0);
 	
 	do {
-		right_node = lfqueue_search(set, val, &left_node);
-		if (right_node->val == val)
-			return 0;
-		newnode = new_node(val, right_node, 0);
-		/* mem-bar between node creation and insertion */
-		AO_nop_full(); 
-		//__asm__ __volatile__("sfence" : : : "memory");
-		//printf("requesting CAS \n");
-		if (ATOMIC_CAS_MB(&left_node->next, right_node, newnode))
-			return 1;
+
+		tail = set->tail;
+		next = tail->next;	
+
+		if(tail == set->tail){
+			if(next == NULL){
+				if(ATOMIC_CAS_MB(&tail->next, next, newnode))
+					break;
+			}
+			else{
+				ATOMIC_CAS_MB(&set->tail, tail, next);
+			}
+		}	
+		
 	} while(1);
+
+	ATOMIC_CAS_MB(&set->tail, tail, newnode);
+	return 1;
+
 }
 
-/*
- * harris_find deletes a node with the given value val (if the value is present) 
- * or does nothing (if the value is already present).
- * The deletion is logical and consists of setting the node mark bit to 1.
- */
-int lfqueue_deque(intset_t *set, val_t val) {
+int lfqueue_deque(intset_t *set, val_t val) { //Does not have to do with the value.
 	//printf("insert value - %d\n", (int) val);
-	node_t *right_node, *right_node_next, *left_node;
-	left_node = set->head;
-	
+	node_t *head, *tail, *next;
+		
 	do {
-		right_node = lfqueue_search(set, val, &left_node);
-		if (right_node->val != val)
-			return 0;
-		right_node_next = right_node->next;
-		if (!is_marked_ref((long) right_node_next))
-			if (ATOMIC_CAS_MB(&right_node->next, 
-							  right_node_next, 
-							  get_marked_ref((long) right_node_next)))
-				break;
+		head = set->head;
+		tail = set->tail;
+		next = head->next;
+
+		if(head == set->head){
+			if(head == tail){
+				if(next == NULL)
+					return 0;
+				else ATOMIC_CAS_MB(set->tail, tail, next);
+
+			}
+			else{
+				//Read value befire CAS
+				//*pvalue = next->value;
+				if(ATOMIC_CAS_MB(&set->head, head, next)) break;
+
+			}
+		}		
+
 	} while(1);
-	//__asm__ __volatile__("sfence" : : : "memory");
-	if (!ATOMIC_CAS_MB(&left_node->next, right_node, right_node_next))
-		right_node = lfqueue_search(set, right_node->val, &left_node);
+
+	free(head);
 	return 1;
 }
-
-
-

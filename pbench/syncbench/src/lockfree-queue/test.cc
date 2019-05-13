@@ -116,7 +116,7 @@ void *test(void *data) {
 	for (int i=0; i<d->operations;i++) {
 		if (unext) { // update
 			
-			if (last < 0) { // add
+			if (last < 0) { // add - ENQUE
 		
 				val = rand_range_re(&d->seed, d->range);
 				pthread_t tid = pthread_self() ;
@@ -129,7 +129,7 @@ void *test(void *data) {
 				} 				
 				d->nb_add++;
 				
-			} else { // remove
+			} else { // remove - DEQUE
 				
 				if (d->alternate) { // alternate mode (default)
 					if (set_remove(d->set, last, TRANSACTIONAL)) {
