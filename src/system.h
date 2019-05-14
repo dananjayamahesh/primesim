@@ -88,7 +88,7 @@ class System
         char mesi_directory(Cache* cache_cur, int level, int cache_id, int core_id, InsMem* ins_mem, int64_t timer);
         int syncConflict(Cache * cache_cur, SyncLine * syncline, Line* line_call);
         int fullBarrierFlush(Cache *cache_cur, int epoch_id, int req_core_id);
-        //int syncConflict(Cache * cache_cur, Line * line, SyncLine * syncline);
+        int epoch_meters(int core_id, InsMem * ins_mem);
         int  epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id);
         int fullFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id);
         int releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id);

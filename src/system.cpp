@@ -172,6 +172,37 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
     delay[core_id] = 0;
     cache_id = core_id / cache_level[0].share;
 
+    //Place where the epoch meters were intially placed.
+    if (tlb_enable) {
+        delay[core_id] = tlb_translate(ins_mem, core_id, timer);
+    }
+ 
+    if (sys_type == DIRECTORY) {
+        mesi_directory(cache[0][core_id], 0, cache_id, core_id, ins_mem, timer + delay[core_id]);
+    }
+    else {
+        mesi_bus(cache[0][core_id], 0, cache_id, core_id, ins_mem, timer + delay[core_id]);
+    }
+
+     #ifdef DEBUG
+        if(ins_mem->atom_type == RELEASE)
+            {
+                printf("[System] Core: %d accessed address 0x%lx within %d ns - atomics %s \n", core_id, (uint64_t) ins_mem->addr_dmem, delay[core_id], (ins_mem->atom_type == RELEASE)?" is RELEASE":"is ACQUIRE");
+                printf("---------------------------------------------------------------------------------------\n");
+            }
+        if(ins_mem->atom_type == ACQUIRE){
+            printf("[System] Core: %d accessed address 0x%lx within %d ns - atomics %s \n", core_id, (uint64_t) ins_mem->addr_dmem, delay[core_id], (ins_mem->atom_type == RELEASE)?" is RELEASE":"is ACQUIRE");
+            printf("---------------------------------------------------------------------------------------\n");
+    
+            }
+     #endif
+
+    return delay[core_id];
+}
+
+
+//Only call in level0
+int System::epoch_meters(int core_id, InsMem * ins_mem){
     //epoch counters
     cache[0][core_id]->epoch_updated_id = ins_mem->epoch_id;
     
@@ -202,36 +233,10 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
             cache[0][core_id]->epoch_size++;
         } 
     }
-    
- 
-    if (tlb_enable) {
-        delay[core_id] = tlb_translate(ins_mem, core_id, timer);
-    }
- 
-    if (sys_type == DIRECTORY) {
-        mesi_directory(cache[0][core_id], 0, cache_id, core_id, ins_mem, timer + delay[core_id]);
-    }
-    else {
-        mesi_bus(cache[0][core_id], 0, cache_id, core_id, ins_mem, timer + delay[core_id]);
-    }
 
-     #ifdef DEBUG
-        if(ins_mem->atom_type == RELEASE)
-            {
-                printf("[System] Core: %d accessed address 0x%lx within %d ns - atomics %s \n", core_id, (uint64_t) ins_mem->addr_dmem, delay[core_id], (ins_mem->atom_type == RELEASE)?" is RELEASE":"is ACQUIRE");
-                printf("---------------------------------------------------------------------------------------\n");
-            }
-        if(ins_mem->atom_type == ACQUIRE){
-            printf("[System] Core: %d accessed address 0x%lx within %d ns - atomics %s \n", core_id, (uint64_t) ins_mem->addr_dmem, delay[core_id], (ins_mem->atom_type == RELEASE)?" is RELEASE":"is ACQUIRE");
-            printf("---------------------------------------------------------------------------------------\n");
+    return 1;
     
-            }
-     #endif
-
-    return delay[core_id];
 }
-
-
 //Initialize caches on demand
 Cache* System::init_caches(int level, int cache_id)
 {
@@ -466,7 +471,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
     delay[core_id] += cache_level[level].access_time;
 
     //counters
-    if(ins_mem->mem_type==WR){
+    if(ins_mem->mem_type==WR && level==0){
         if(ins_mem->mem_op==2){
             cache_cur->rmw_count++;
             if(ins_mem->atom_type==FULL)cache_cur->rmw_full_count++;
@@ -479,7 +484,11 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
             else if(ins_mem->atom_type==ACQUIRE)cache_cur->wrt_acq_count++;
             else if(ins_mem->atom_type==RELEASE)cache_cur->wrt_rel_count++;
         }
+    }
 
+    if(level==0){
+        //Epoch meters
+        epoch_meters(core_id, ins_mem);
     }
 
     //Full barrier flush in reelase persistency - Special case   
@@ -1608,7 +1617,7 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
 {
 
     int level;
-    level = 3;
+    level = num_levels;
     level = level;
     if (!directory_cache_init_done[home_id]) {
         init_directories(home_id); 
@@ -1801,7 +1810,7 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
 int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_t timer, char* state, int core_id)
 {
     int level;
-    level = 3;
+    level = num_levels;
     level = level;
     if (!directory_cache_init_done[home_id]) {
         init_directories(home_id); 
