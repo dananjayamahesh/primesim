@@ -75,6 +75,8 @@ __thread unsigned int *rng_seed;
 pthread_key_t rng_seed_key;
 #endif /* ! TLS */
 unsigned int levelmax;
+
+volatile int initialized=0;
 /*
 typedef struct barrier {
 	pthread_cond_t complete;
@@ -166,6 +168,9 @@ typedef struct thread_data {
 	int effective;
 	int operations;
 	int init_size;
+	int mono_int;
+	int reverse_int;
+	int unbalanced;
 	unsigned long nb_add;
 	unsigned long nb_added;
 	unsigned long nb_remove;
@@ -209,23 +214,31 @@ void print_skiplist(set_t *set) {
 		printf("%d nodes of level %d\n", arr[j], j);
 }
 
+
+//initializing the skiplist
 void *test_init(void *data) {
 
-	val_t val = 0;	
+	unsigned int val = 0, last=0;
 	thread_data_t *d = (thread_data_t *)data;
 	
 	/* Create transaction */
 	//TM_THREAD_ENTER();
 	/* Wait on barrier */
+	printf("X \n");
+
 	barrier_cross(d->barrier);	
+
+	printf("X \n");
 
 	int i = 0;
 
 	while (i < d->init_size) {
+
+		printf("Loop \n");
     	if(d->mono_int) {
     	  val = i;
     	} else if(d->reverse_int) {
-    	  val = initial - 1 - i;
+    	  val = d->init_size - 1 - i;
     	} else {
     	  // Whether the key is unbalanced, if it is then just insert keys
     	  // in the given range (i.e. the number of iterations)
@@ -236,11 +249,19 @@ void *test_init(void *data) {
     	  }
 		}
 			
-		if (sl_add_old(set, val, 0)) {
+		if (sl_add_old(d->set, val, 0)) {
 			last = val;
+			printf("Insert : %d \n", val);
 			i++;
+			d->nb_added++;
 		}
+		d->nb_add++;
 	}
+
+	initialized = 1;
+  	TM_THREAD_EXIT()
+  	return NULL;
+
 }
 
 void *test(void *data) {
@@ -253,6 +274,11 @@ void *test(void *data) {
 	TM_THREAD_ENTER();
 	/* Wait on barrier */
 	barrier_cross(d->barrier);
+
+	printf("A \n");
+	//while(initialized != 1);
+
+	printf("B \n");
 
 	/* Is the first op an update? */
 	unext = (rand_range_re(&d->seed, 100) - 1 < d->update);
@@ -572,7 +598,7 @@ int main(int argc, char **argv)
 	printf("Adding %d entries to set\n", initial);
 	i = 0;
 
-/*
+
 	while (i < initial) {
     if(mono_int) {
       val = i;
@@ -593,7 +619,8 @@ int main(int argc, char **argv)
 			i++;
 		}
 	}
-	*/
+	
+	
 	
 
 	// Access set from all threads
@@ -603,6 +630,8 @@ int main(int argc, char **argv)
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
+	
+/*
 	printf("Creating thread %d\n", 0);
 		data[0].first = last;
 		data[0].range = range;
@@ -612,6 +641,10 @@ int main(int argc, char **argv)
 		data[0].effective = effective;
 		data[0].operations = operations;
 		data[0].init_size = initial;
+		data[0].mono_int = mono_int;
+		data[0].reverse_int = reverse_int;
+		data[0].unbalanced = unbalanced;
+	
 		data[0].nb_add = 0;
 		data[0].nb_added = 0;
 		data[0].nb_remove = 0;
@@ -631,16 +664,28 @@ int main(int argc, char **argv)
 		data[0].set = set;
 		data[0].barrier = &barrier;
 		data[0].failures_because_contention = 0;
+
+		printf("A");
+
         if (pthread_create(&threads[0], &attr, test_init, (void *)(&data[0])) != 0) {
 			fprintf(stderr, "Error creating thread\n");
 			exit(1);
 		}
 
+	*/
+
+
+ 		/*
  		if (pthread_join(threads[0], NULL) != 0) {
 			fprintf(stderr, "Error waiting for thread completion\n");
 			exit(1);
 		}
+		*/
 
+
+	//while(initialized !=1);	
+
+	printf("A");
 
 	size = set_size(set, 1);
 	printf("Set size     : %d\n", size);
@@ -669,7 +714,7 @@ int main(int argc, char **argv)
         bg_start(50000);
         printf("Number of levels is %lu\n", set->head->level);
 
-	for (i = 1; i < nb_threads; i++) {
+	for (i = 0; i < nb_threads; i++) {
 		printf("Creating thread %d\n", i);
 		data[i].first = last;
 		data[i].range = range;
@@ -738,7 +783,7 @@ int main(int argc, char **argv)
 	printf("STOPPING...\n");
 
 	// Wait for thread completion
-	for (i = 1; i < nb_threads; i++) {
+	for (i = 0; i < nb_threads; i++) {
                 if (pthread_join(threads[i], NULL) != 0) {
 			fprintf(stderr, "Error waiting for thread completion\n");
 			exit(1);

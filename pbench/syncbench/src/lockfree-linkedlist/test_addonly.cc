@@ -20,12 +20,11 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#include <unistd.h>
+
 #include "intset.h"
 
 barrier_t barrier, barrier_global;
 int stop1 =0;
-volatile int initialized=0;
 
 /* 
  * Returns a pseudo-random value in [1; range].
@@ -72,7 +71,6 @@ typedef struct thread_data {
 	int alternate;
 	int effective;
 	int operations;
-	int init_size;
 	unsigned long nb_add;
 	unsigned long nb_added;
 	unsigned long nb_remove;
@@ -94,40 +92,6 @@ typedef struct thread_data {
 	unsigned long failures_because_contention;
 } thread_data_t;
 
-//Intializing set thread- thread 1
-void *test_init(void *data) {
-	
-	val_t val = 0;	
-	thread_data_t *d = (thread_data_t *)data;
-	
-	/* Create transaction */
-	TM_THREAD_ENTER();
-	/* Wait on barrier */
-	printf("C\n");
-	barrier_cross(d->barrier);	
-
-	int i = 0;
-	while (i < d->init_size) {
-
-		//This could be incremental as well
-		val = rand_range(d->range); //This could be random
-		printf("Insert Value : %d \n", (int)val);
-		if (set_add(d->set, val, 0)) {
-			//last = val;
-			d->nb_added++;
-			//printf("i %d and val %d \n",i, val);
-			i++;
-		}
-
-		d->nb_add++;
-	}
-
-	initialized = 1;
-    TM_THREAD_EXIT()
-	return NULL;
-}
-
-
 void *test(void *data) {
 	int unext, last = -1; 
 	val_t val = 0;
@@ -147,15 +111,12 @@ void *test(void *data) {
 #else
 	while (AO_load_full(&stop) == 0) {
 #endif  ICC */
-	while(initialized !=1);
-	
 	//int count = 
 	//while (stop1 == 0) {
 	for (int i=0; i<d->operations;i++) {
 		if (unext) { // update
 			
-			if (last < 0) { // add
-		
+			
 				val = rand_range_re(&d->seed, d->range);
 				pthread_t tid = pthread_self() ;
 				//printf("Inserting value %d from thread %d\n", val, (int) tid );
@@ -165,29 +126,8 @@ void *test(void *data) {
 					last = val;
 					//printf("Added %d \n", val);
 				} 				
-				d->nb_add++;
-				
-			} else { // remove
-				
-				if (d->alternate) { // alternate mode (default)
-					if (set_remove(d->set, last, TRANSACTIONAL)) {
-						d->nb_removed++;
-					} 
-					last = -1;
-				} else {
-					/* Random computation only in non-alternated cases */
-					val = rand_range_re(&d->seed, d->range);
-					/* Remove one random value */
-					if (set_remove(d->set, val, TRANSACTIONAL)) {
-						d->nb_removed++;
-						/* Repeat until successful, to avoid size variations */
-						//last = -1;
-					} 
-					last = -1; //NEW
-				}
-				d->nb_remove++;
-			}
-			
+				d->nb_add++;				
+
 		} else { // read
 				
 			if (d->alternate) {
@@ -415,7 +355,7 @@ int main(int argc, char **argv) {
 	/* Populate set */
 	printf("Adding %d entries to set\n", initial);
 
-	/*
+	
 	i = 0;
 	while (i < initial) {
 		val = rand_range(range);
@@ -425,59 +365,16 @@ int main(int argc, char **argv) {
 			i++;
 		}
 	}
-	*/
 	
-
+	size = set_size(set);
+	printf("Set size     : %d\n", size);
+	
 	/* Access set from all threads */
 	barrier_init(&barrier_global, nb_threads + 1);
 	barrier_init(&barrier, nb_threads);
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-
- 		data[0].first = last;
-		data[0].range = range;
-		data[0].update = update;
-		data[0].unit_tx = unit_tx;
-		data[0].alternate = alternate;
-		data[0].effective = effective;
-		data[0].operations = operations;
-		data[0].init_size = initial;
-		data[0].nb_add = 0;
-		data[0].nb_added = 0;
-		data[0].nb_remove = 0;
-		data[0].nb_removed = 0;
-		data[0].nb_contains = 0;
-		data[0].nb_found = 0;
-		data[0].nb_aborts = 0;
-		data[0].nb_aborts_locked_read = 0;
-		data[0].nb_aborts_locked_write = 0;
-		data[0].nb_aborts_validate_read = 0;
-		data[0].nb_aborts_validate_write = 0;
-		data[0].nb_aborts_validate_commit = 0;
-		data[0].nb_aborts_invalid_memory = 0;
-		data[0].nb_aborts_double_write = 0;
-		data[0].max_retries = 0;
-		data[0].seed = rand();
-		data[0].set = set;
-		data[0].barrier = &barrier;
-		data[0].failures_because_contention = 0;
-
-	if (pthread_create(&threads[0], &attr, test_init, (void *)(&data[0])) != 0) {
-			fprintf(stderr, "Error creating thread\n");
-			exit(1);
-	}
-    //sleep(10);
-	/*
-	if (pthread_join(threads[0], NULL) != 0) {
-			fprintf(stderr, "Error waiting for thread completion\n");
-			exit(1);
-	}*/
-
-	size = set_size(set);
-	printf("Set size     : %d\n", size);
-
-	for (i = 1; i < nb_threads; i++) {
+	for (i = 0; i < nb_threads; i++) {
 		printf("Creating thread %d\n", i);
 		data[i].first = last;
 		data[i].range = range;

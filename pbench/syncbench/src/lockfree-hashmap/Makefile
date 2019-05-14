@@ -33,9 +33,15 @@ intset.o: $(LLREP)/linkedlist.h harris.o hashtable.o
 
 test.o: linkedlist.o harris.o intset.o hashtable.o intset.o
 	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test.o test.cc
+	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_balanced.o test_balanced.cc
+	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_addonly.o test_addonly.cc
+	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_mremoved.o test_mremoved.cc
 
 main: linkedlist.o harris.o intset.o hashtable.o intset.o test.o 
-	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/harris.o $(BUILDIR)/ll-intset.o $(BUILDIR)/hashtable.o $(BUILDIR)/intset.o $(BUILDIR)/test.o -o $(BINS) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/harris.o $(BUILDIR)/ll-intset.o $(BUILDIR)/hashtable.o $(BUILDIR)/intset.o $(BUILDIR)/test.o -o $(BINDIR)/hashmap_regular $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/harris.o $(BUILDIR)/ll-intset.o $(BUILDIR)/hashtable.o $(BUILDIR)/intset.o $(BUILDIR)/test_balanced.o -o $(BINDIR)/hashmap_balanced $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/harris.o $(BUILDIR)/ll-intset.o $(BUILDIR)/hashtable.o $(BUILDIR)/intset.o $(BUILDIR)/test_addonly.o -o $(BINDIR)/hashmap_addonly $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/harris.o $(BUILDIR)/ll-intset.o $(BUILDIR)/hashtable.o $(BUILDIR)/intset.o $(BUILDIR)/test_mremoved.o -o $(BINDIR)/hashmap_mremoved $(LDFLAGS)
 
 clean:
-	-rm -f $(BINS)
+	-rm -f $(BINS) $(BUILDIR)

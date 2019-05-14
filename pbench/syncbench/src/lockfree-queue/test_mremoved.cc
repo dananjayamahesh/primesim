@@ -20,7 +20,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#include <unistd.h>
+
 #include "intset.h"
 
 barrier_t barrier, barrier_global;
@@ -94,39 +94,35 @@ typedef struct thread_data {
 	unsigned long failures_because_contention;
 } thread_data_t;
 
-//Intializing set thread- thread 1
+
+//initializing the skiplist
 void *test_init(void *data) {
-	
-	val_t val = 0;	
+
+	val_t val = 0, last=0;	
 	thread_data_t *d = (thread_data_t *)data;
 	
-	/* Create transaction */
-	TM_THREAD_ENTER();
-	/* Wait on barrier */
-	printf("C\n");
+
 	barrier_cross(d->barrier);	
 
 	int i = 0;
+	
+	i = 0;
 	while (i < d->init_size) {
-
-		//This could be incremental as well
-		val = rand_range(d->range); //This could be random
-		printf("Insert Value : %d \n", (int)val);
+		val = rand_range(d->range);
 		if (set_add(d->set, val, 0)) {
-			//last = val;
-			d->nb_added++;
+			last = val;
 			//printf("i %d and val %d \n",i, val);
 			i++;
+			d->nb_added++;
 		}
-
 		d->nb_add++;
 	}
 
 	initialized = 1;
-    TM_THREAD_EXIT()
-	return NULL;
-}
+  	TM_THREAD_EXIT()
+  	return NULL;
 
+}
 
 void *test(void *data) {
 	int unext, last = -1; 
@@ -141,20 +137,20 @@ void *test(void *data) {
 	
 	/* Is the first op an update? */
 	unext = (rand_range_re(&d->seed, 100) - 1 < d->update);
+
+	while(initialized !=1);
 /*	
 #ifdef ICC 
 	while (stop == 0) {
 #else
 	while (AO_load_full(&stop) == 0) {
 #endif  ICC */
-	while(initialized !=1);
-	
 	//int count = 
 	//while (stop1 == 0) {
 	for (int i=0; i<d->operations;i++) {
 		if (unext) { // update
 			
-			if (last < 0) { // add
+			if (last < 0) { // add - ENQUE
 		
 				val = rand_range_re(&d->seed, d->range);
 				pthread_t tid = pthread_self() ;
@@ -167,7 +163,7 @@ void *test(void *data) {
 				} 				
 				d->nb_add++;
 				
-			} else { // remove
+			} else { // remove - DEQUE
 				
 				if (d->alternate) { // alternate mode (default)
 					if (set_remove(d->set, last, TRANSACTIONAL)) {
@@ -181,9 +177,8 @@ void *test(void *data) {
 					if (set_remove(d->set, val, TRANSACTIONAL)) {
 						d->nb_removed++;
 						/* Repeat until successful, to avoid size variations */
-						//last = -1;
+						last = -1;
 					} 
-					last = -1; //NEW
 				}
 				d->nb_remove++;
 			}
@@ -427,7 +422,7 @@ int main(int argc, char **argv) {
 	}
 	*/
 	
-
+	
 	/* Access set from all threads */
 	barrier_init(&barrier_global, nb_threads + 1);
 	barrier_init(&barrier, nb_threads);
@@ -435,7 +430,8 @@ int main(int argc, char **argv) {
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
 
- 		data[0].first = last;
+		printf("Creating init thread %d\n", 0);
+		data[0].first = last;
 		data[0].range = range;
 		data[0].update = update;
 		data[0].unit_tx = unit_tx;
@@ -443,6 +439,7 @@ int main(int argc, char **argv) {
 		data[0].effective = effective;
 		data[0].operations = operations;
 		data[0].init_size = initial;
+
 		data[0].nb_add = 0;
 		data[0].nb_added = 0;
 		data[0].nb_remove = 0;
@@ -462,20 +459,21 @@ int main(int argc, char **argv) {
 		data[0].set = set;
 		data[0].barrier = &barrier;
 		data[0].failures_because_contention = 0;
-
-	if (pthread_create(&threads[0], &attr, test_init, (void *)(&data[0])) != 0) {
+		if (pthread_create(&threads[0], &attr, test_init, (void *)(&data[0])) != 0) {
 			fprintf(stderr, "Error creating thread\n");
 			exit(1);
-	}
-    //sleep(10);
-	/*
-	if (pthread_join(threads[0], NULL) != 0) {
+		}
+
+	/*	
+		if (pthread_join(threads[0], NULL) != 0) {
 			fprintf(stderr, "Error waiting for thread completion\n");
 			exit(1);
-	}*/
+		}
+		*/
 
-	size = set_size(set);
-	printf("Set size     : %d\n", size);
+		size = set_size(set);
+		printf("Set size     : %d\n", size);
+
 
 	for (i = 1; i < nb_threads; i++) {
 		printf("Creating thread %d\n", i);

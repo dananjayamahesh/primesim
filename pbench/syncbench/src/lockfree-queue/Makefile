@@ -25,9 +25,15 @@ intset.o: linkedlist.h lfqueue.h
 
 test.o: linkedlist.h lfqueue.h intset.h
 	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test.o test.cc
+	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_balanced.o test_balanced.cc
+	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_addonly.o test_addonly.cc
+	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_mremoved.o test_mremoved.cc
 
 main: linkedlist.o lfqueue.o intset.o test.o
-	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue.o $(BUILDIR)/intset.o $(BUILDIR)/test.o -o $(BINS) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue.o $(BUILDIR)/intset.o $(BUILDIR)/test.o -o $(BINDIR)/lfqueue_regular $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue.o $(BUILDIR)/intset.o $(BUILDIR)/test_balanced.o -o $(BINDIR)/lfqueue_balanced $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue.o $(BUILDIR)/intset.o $(BUILDIR)/test_addonly.o -o $(BINDIR)/lfqueue_addonly $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue.o $(BUILDIR)/intset.o $(BUILDIR)/test_mremoved.o -o $(BINDIR)/lfqueue_mremoved $(LDFLAGS)
 
 clean:
 	-rm -f $(BINS) 

@@ -201,9 +201,7 @@ void *test(void *data) {
     //#endif /* ICC */
 		
     if (unext) { // update
-			//printf("unext\n");
-      if (last < 0) { // add
-	     			
+		
 	       val = rand_range_re(&d->seed, d->range);
          //printf("insert %d\n", val);
 	       assert(val > 0);
@@ -211,34 +209,8 @@ void *test(void *data) {
 	         last = val;
            //d->nb_added++;
 	       } 				
-	       d->nb_add++;
-	       			
-      } 
-      else { // remove
-	     			
-	       if (d->alternate) { // alternate mode (default)
-	       				
-	         delete_node(d, last);
-           //printf("delete Alt %d\n", last);
-	         //printf("delete1 %d\n", val);
-	         last = -1;
-	       				
-	       } else {	       		
-	         // Random computation only in non-alternated cases 
-	         val = rand_range_re(&d->seed, d->range);
-           //printf("delete2 %d\n", val);   
-	         // Remove one random value 
-	         if (delete_node(d, val)) {
-	           // Repeat until successful, to avoid size variations 
-            d->nb_removed++;
-            //printf("del\n");
-	           //last = -1;
-	         } 		
-           last = -1;			
-	       }
-	       d->nb_remove++;
-      }
-			
+	       d->nb_add++;	       			
+     
     } else { // read			
 			
       //printf("Read \n");
@@ -618,12 +590,13 @@ void *test2(void *data)
       sigsuspend(&block_set);
     }
     */
-	/*	
+		/*
 #ifdef ICC
     stop = 1;
 #else	
     AO_store_full(&stop, 1);
-#endif */ /* ICC */
+#endif  */
+/* ICC */
 		stop=1;
     gettimeofday(&end, NULL);
     printf("STOPPING...\n");

@@ -25,6 +25,7 @@
 
 /* Hashtable length (# of buckets) */
 unsigned int maxhtlength;
+volatile int initialized=0;
 
 /* Hashtable seed */
 #ifdef TLS
@@ -152,12 +153,12 @@ void *test_init(void *data) {
 	/* Wait on barrier */
 	barrier_cross(d->barrier);	
 
-	i = 0;
+	int i = 0;
 	while (i < d->init_size) {
 
 		//This could be incremental as well
-		val = rand_range(range); //This could be random
-		if (set_add(set, val, 0)) {
+		val = rand_range(d->range); //This could be random
+		if (ht_add(d->set, val, 0)) {
 			//last = val;
 			d->nb_added++;
 			//printf("i %d and val %d \n",i, val);
@@ -166,6 +167,10 @@ void *test_init(void *data) {
 
 		d->nb_add++;
 	}
+
+	initialized = 1;
+    TM_THREAD_EXIT()
+	return NULL;
 }
 
 void *test(void *data) {
@@ -179,6 +184,8 @@ void *test(void *data) {
 	TM_THREAD_ENTER();
 	/* Wait on barrier */
 	barrier_cross(d->barrier);
+
+	while(initialized !=1);
 	
 	/* Is the first op an update, a move? */
 	r = rand_range_re(&d->seed, 100) - 1;
@@ -655,10 +662,11 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 
+		/*
 		if (pthread_join(threads[0], NULL) != 0) {
 			fprintf(stderr, "Error waiting for thread completion\n");
 			exit(1);
-		}
+		} */
 
 		size = ht_size(set);
 		printf("Set size     : %d\n", size);
@@ -729,7 +737,7 @@ int main(int argc, char **argv)
 	//print_ht(set);
 	
 	// Wait for thread completion 
-	for (i = 1; i < nb_threads; i++) {
+	for (i = 0; i < nb_threads; i++) {
 		if (pthread_join(threads[i], NULL) != 0) {
 			fprintf(stderr, "Error waiting for thread completion\n");
 			exit(1);

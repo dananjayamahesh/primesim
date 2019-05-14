@@ -57,6 +57,7 @@ pthread_key_t rng_seed_key;
 unsigned int levelmax;
 
 barrier_t barrier, barrier_global;
+volatile int initialized=0;
 /*
 static inline
 void barrier_init(barrier_t *b, int n)
@@ -190,7 +191,9 @@ void *test_init(void *data) {
   /* Wait on barrier */
   barrier_cross(d->barrier);  
 
-  i = 0;
+  printf("Pthread\n");
+
+  int i = 0;
   while (i < d->init_size) {
 
     //This could be incremental as well
@@ -200,12 +203,17 @@ void *test_init(void *data) {
     if (insert(d,val)) {
       //last = val;
       d->nb_added++;
-      //printf("i %d and val %d \n",i, val);
+      printf("i %d and val %d \n",i, val);
       i++;
     }
 
     d->nb_add++;
   }
+
+  initialized = 1;
+  TM_THREAD_EXIT()
+  return NULL;
+
 }
 
 void *test(void *data) {
@@ -217,6 +225,8 @@ void *test(void *data) {
 
   /* Wait on barrier */
   barrier_cross(d->barrier);
+
+  while(initialized !=1);
 	
   /* Is the first op an update? */
   unext = (rand_range_re(&d->seed, 100) - 1 < d->update);
@@ -238,6 +248,7 @@ void *test(void *data) {
 	       assert(val > 0);
 	       if (insert(d,val)) {
 	         last = val;
+           //d->nb_added++;
 	       } 				
 	       d->nb_add++;
 	       			
@@ -315,7 +326,7 @@ void *test(void *data) {
   //#else
   //	}
   //#endif /* ICC */
-	barrier_cross(&barrier);
+	//barrier_cross(&barrier);
   return NULL;
 }
 
@@ -628,10 +639,12 @@ void *test2(void *data)
              exit(1);
       }
 
-      if (pthread_join(threads[0], NULL) != 0) {
+      /*      
+        if (pthread_join(threads[0], NULL) != 0) {
          fprintf(stderr, "Error waiting for thread completion\n");
          exit(1);
       }
+      */
 
     size = data[0].nb_added + 2; /// Add 2 for the 2 sentinel keys
     //size = sl_set_size(set);
@@ -691,7 +704,7 @@ void *test2(void *data)
     printf("STOPPING...\n");
 		
     /* Wait for thread completion */
-    for (i = 1; i < nb_threads; i++) {
+    for (i = 0; i < nb_threads; i++) {
       if (pthread_join(threads[i], NULL) != 0) {
 	       fprintf(stderr, "Error waiting for thread completion\n");
 	       exit(1);
