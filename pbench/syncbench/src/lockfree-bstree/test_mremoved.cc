@@ -168,7 +168,7 @@ void *test4(void *data) {
   //while (stop == 0) { - Mahesh //////////////////////////////////////
   for (int i=0; i<d->range;i++) {
     val = rand_range_re(&d->seed, d->range);
-         printf("insert %d\n", val);
+         //printf("insert %d\n", val);
          assert(val > 0);
          if (insert(d,val)) {
            last = val;
@@ -177,6 +177,35 @@ void *test4(void *data) {
   }
 
   return NULL;
+}
+
+//Intializing set thread- thread 1
+void *test_init(void *data) {
+  
+  val_t val = 0;  
+  thread_data_t *d = (thread_data_t *)data;
+  
+  /* Create transaction */
+  TM_THREAD_ENTER();
+  /* Wait on barrier */
+  barrier_cross(d->barrier);  
+
+  i = 0;
+  while (i < d->init_size) {
+
+    //This could be incremental as well
+    //val = rand_range(range); //This could be random
+
+    val = rand_range_re(&d->seed, d->range);
+    if (insert(d,val)) {
+      //last = val;
+      d->nb_added++;
+      //printf("i %d and val %d \n",i, val);
+      i++;
+    }
+
+    d->nb_add++;
+  }
 }
 
 void *test(void *data) {
@@ -229,10 +258,11 @@ void *test(void *data) {
 	         // Remove one random value 
 	         if (delete_node(d, val)) {
 	           // Repeat until successful, to avoid size variations 
-            //d->nb_removed++;
+            d->nb_removed++;
             //printf("del\n");
-	           last = -1;
-	         } 					
+	           //last = -1;
+	         } 		
+           last = -1;			
 	       }
 	       d->nb_remove++;
       }
@@ -553,6 +583,7 @@ void *test2(void *data)
       data[i].ssr = new seekRecord_t;
   
     /* Populate set */
+      /*
     printf("Adding %d entries to set\n",initial);
     i = 0;
     while (i < initial) {
@@ -561,22 +592,55 @@ void *test2(void *data)
 	         last = val;	
 	         i++;
       }
-    }
+    } */
     
     //sleep(1000);
-    size = data[0].nb_added + 2; /// Add 2 for the 2 sentinel keys
-    //size = sl_set_size(set);
-    //printf("Set size     : %d\n", size);
-    printf("Set size (TENTATIVE) : %d\n", initial);
-    printf("Level max    : %d\n", levelmax);
-		
+  
     /* Access set from all threads */
     barrier_init(&barrier_global, nb_threads + 1);
     barrier_init(&barrier, nb_threads);
 
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    for (i = 0; i < nb_threads; i++) {
+
+
+      data[0].first = last;
+      data[0].range = range;
+      data[0].update = update;
+      data[0].alternate = alternate;
+      data[0].effective = effective;
+      data[0].operations = operations;
+      data[0].init_size = initial;
+      data[0].nb_add = 0;
+      data[0].nb_added = 0;
+      data[0].nb_remove = 0;
+      data[0].nb_removed = 0;
+      data[0].nb_contains = 0;
+      data[0].nb_found = 0;
+      data[0].barrier = &barrier;
+      data[0].rootOfTree = newRT;
+      data[0].id = i;
+      data[0].recycledNodes.reserve(RECYCLED_VECTOR_RESERVE);
+      data[0].sr = new seekRecord_t;
+      data[0].ssr = new seekRecord_t;
+      if (pthread_create(&threads[0], &attr, test_init, (void *)(&data[0])) != 0) {
+             fprintf(stderr, "Error creating thread\n");
+             exit(1);
+      }
+
+      if (pthread_join(threads[0], NULL) != 0) {
+         fprintf(stderr, "Error waiting for thread completion\n");
+         exit(1);
+      }
+
+    size = data[0].nb_added + 2; /// Add 2 for the 2 sentinel keys
+    //size = sl_set_size(set);
+    //printf("Set size     : %d\n", size);
+    printf("Set size (TENTATIVE) : %d\n", initial);
+    printf("Level max    : %d\n", levelmax);
+    
+
+    for (i = 1; i < nb_threads; i++) {
       printf("Creating thread %d\n", i);
       data[i].first = last;
       data[i].range = range;
@@ -616,19 +680,18 @@ void *test2(void *data)
       sigsuspend(&block_set);
     }
     */
-		/*
+/*		
 #ifdef ICC
     stop = 1;
 #else	
     AO_store_full(&stop, 1);
-#endif  */
-/* ICC */
+#endif */ /* ICC */
 		stop=1;
     gettimeofday(&end, NULL);
     printf("STOPPING...\n");
 		
     /* Wait for thread completion */
-    for (i = 0; i < nb_threads; i++) {
+    for (i = 1; i < nb_threads; i++) {
       if (pthread_join(threads[i], NULL) != 0) {
 	       fprintf(stderr, "Error waiting for thread completion\n");
 	       exit(1);

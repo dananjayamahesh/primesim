@@ -60,6 +60,7 @@ typedef struct thread_data {
   int alternate;
   int effective;
   int operations;
+  int init_size;
   int id;
   unsigned long numThreads;
   unsigned long nb_add;

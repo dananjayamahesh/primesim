@@ -660,14 +660,14 @@ int main(int argc, char **argv)
 		sigsuspend(&block_set);
 	}
 	*/
-
+/*
 #ifdef ICC
 	stop = 1;
 #else
 	AO_store_full(&stop, 1);
-#endif /* ICC */
+#endif */ /* ICC */
 
-        stop = 1;
+    stop = 1;
 
 	gettimeofday(&end, NULL);
 	printf("STOPPING...\n");

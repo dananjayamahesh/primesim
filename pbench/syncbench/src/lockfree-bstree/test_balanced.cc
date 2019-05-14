@@ -229,10 +229,11 @@ void *test(void *data) {
 	         // Remove one random value 
 	         if (delete_node(d, val)) {
 	           // Repeat until successful, to avoid size variations 
-            //d->nb_removed++;
+            d->nb_removed++;
             //printf("del\n");
-	           last = -1;
-	         } 					
+	           //last = -1;
+	         } 		
+           last = -1;			
 	       }
 	       d->nb_remove++;
       }
@@ -616,13 +617,12 @@ void *test2(void *data)
       sigsuspend(&block_set);
     }
     */
-		/*
+	/*	
 #ifdef ICC
     stop = 1;
 #else	
     AO_store_full(&stop, 1);
-#endif  */
-/* ICC */
+#endif */ /* ICC */
 		stop=1;
     gettimeofday(&end, NULL);
     printf("STOPPING...\n");
