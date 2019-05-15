@@ -586,6 +586,7 @@ void *test2(void *data)
       data[i].alternate = alternate;
       data[i].effective = effective;
       data[i].operations = operations;
+      data[i].seed = rand();  //Fixed recetly //Newly added
       data[i].nb_add = 0;
       data[i].nb_added = 0;
       data[i].nb_remove = 0;

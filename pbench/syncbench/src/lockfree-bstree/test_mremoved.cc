@@ -621,6 +621,7 @@ void *test2(void *data)
       data[0].alternate = alternate;
       data[0].effective = effective;
       data[0].operations = operations;
+      data[i].seed = seed;  //Fixed recetly //Newly added
       data[0].init_size = initial;
       data[0].nb_add = 0;
       data[0].nb_added = 0;
@@ -661,6 +662,7 @@ void *test2(void *data)
       data[i].alternate = alternate;
       data[i].effective = effective;
       data[i].operations = operations;
+      data[i].seed = rand();  //Fixed recetly //Newly added
       data[i].nb_add = 0;
       data[i].nb_added = 0;
       data[i].nb_remove = 0;

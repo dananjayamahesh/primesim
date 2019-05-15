@@ -50,6 +50,7 @@ int perform_one_insert_window_operation(thread_data_t* data, seekRecord_t * R, s
 		
   if(result == 1){
     // successfully inserted.
+    printf("Succesfully INserted : %d - from Thread: %d \n", newKey, data->id);
     data->nb_added++;
     return 1;
   }
@@ -459,6 +460,7 @@ bool insert(thread_data_t * data, size_t key){
 		seekRecord_t * R = insseek(data, key, INS);
 		if(R == NULL){
                   /// Key is already found in the tree
+			printf("Key Found : %d \n", key);
 		  return false;
                 }
 		

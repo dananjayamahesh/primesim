@@ -24,4 +24,4 @@ test.o: wfrbt.h test.cc test_balanced.cc test_addonly.cc test_mremoved.cc
 	$(CC) $(CFLAGS) -c -o ${BUILDIR}/test_addonly.o test_addonly.cc
 	$(CC) $(CFLAGS) -c -o ${BUILDIR}/test_mremoved.o test_mremoved.cc
 clean:
-	-rm -f $(BINS) *.o $(BUILDIR)
+	-rm -f $(BINS) *.o $(BUILDIR) $(BINDIR)

@@ -195,7 +195,7 @@ void *test(void *data) {
   //#ifdef ICC
   //while (stop == 0) { - Mahesh //////////////////////////////////////
   for (int i=0; i<d->operations;i++) {
-     //printf("Thread : %d Transaction : %d \n", d->id, i);
+    // printf("Thread : %d Transaction : %d \n", d->id, i);
     //#else
     //while (AO_load_full(&stop) == 0) {
     //#endif /* ICC */
@@ -209,6 +209,7 @@ void *test(void *data) {
 	       assert(val > 0);
 	       if (insert(d,val)) {
 	         last = val;
+           d->nb_added++;
 	       } 				
 	       d->nb_add++;
 	       			
@@ -558,7 +559,8 @@ void *test2(void *data)
     while (i < initial) {
       val = rand_range_re(&global_seed, range);
       if (insert(&data[0], val)) {
-	         last = val;	
+	         //printf("Initial Insert : %d\n", val);
+           last = val;	
 	         i++;
       }
     }
@@ -566,7 +568,7 @@ void *test2(void *data)
     //sleep(1000);
     size = data[0].nb_added + 2; /// Add 2 for the 2 sentinel keys
     //size = sl_set_size(set);
-    //printf("Set size     : %d\n", size);
+    printf("Set size     : %d\n", size);
     printf("Set size (TENTATIVE) : %d\n", initial);
     printf("Level max    : %d\n", levelmax);
 		
@@ -584,6 +586,7 @@ void *test2(void *data)
       data[i].alternate = alternate;
       data[i].effective = effective;
       data[i].operations = operations;
+      data[i].seed = rand();  //Fixed recetly //Newly added
       data[i].nb_add = 0;
       data[i].nb_added = 0;
       data[i].nb_remove = 0;
