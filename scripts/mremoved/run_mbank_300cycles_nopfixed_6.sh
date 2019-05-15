@@ -18,6 +18,13 @@ DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DATA_FILE=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/data_2.txt
 DATA_FILE3=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/data_3.txt
 
+
+
+if [ ! -d ${CONF_PATH} ] 
+then
+    mkdir -p ${CONF_PATH}
+fi 
+
 #echo "" > ${DIMP_FILE}
 #> ${DIMP_FILE}
 > ${DATA_FILE}

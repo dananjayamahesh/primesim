@@ -20,6 +20,12 @@ DATA_FILE3=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/data_3.txt
 
 #echo "" > ${DIMP_FILE}
 #> ${DIMP_FILE}
+
+if [ ! -d ${CONF_PATH} ] 
+then
+    mkdir -p ${CONF_PATH}
+fi 
+
 > ${DATA_FILE}
 
 #make -B
