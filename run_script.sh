@@ -150,3 +150,116 @@ mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 
 
 mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/linkedlist -t 16 -i 500 -r 1000 -o 1000 -u 50 -x 6
 
+
+
+
+
+
+
+
+
+2019/05/12 Nes Runiing. FOund the bug in BSTREE and observe there are no insets at display-allocation
+  541  make
+  542  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/lfqueue -t 16 -i 500 -r 1000 -o 1000 -u 50 -x 6
+  543  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/lfqueue -t 16 -i 500 -r 1000 -o 1000 -u 100 -x 6
+  544  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/lfqueue -t 2 -i 100 -r 200 -o 100 -u 100 -x 6
+  545  pwd
+  546  source env.sh 
+  547  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/lfqueue -t 2 -i 100 -r 200 -o 100 -u 100 -x 6
+  548  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_1.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_1.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/lfqueue -t 2 -i 100 -r 200 -o 100 -u 100 -x 6
+  549  make
+  550  git status
+  551  git pull origin dimp
+  552  make -B
+  553  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/lfqueue -t 2 -i 100 -r 200 -o 100 -u 100 -x 6
+  554  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/linkedlist -t 2 -i 100 -r 200 -o 100 -u 100 -x 6
+  555  pwd
+  556  make -
+  557  make -B
+  558  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/linkedlist -t 2 -i 100 -r 200 -o 100 -u 100 -x 6
+  559  make -B
+  560  make -B
+  561  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/lfqueue -t 2 -i 100 -r 200 -o 100 -u 100 -x 6
+  562  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/lfqueue -t 8 -i 1000 -r 4000 -o 1000 -u 100 -x 6
+  563  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/linkedlist -t 8 -i 1000 -r 4000 -o 1000 -u 100 -x 6
+  564  gedit output/syncbench-fixed/config.out_1 
+  565  gedit output/syncbench-fixed/config.out_0 
+  566  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/linkedlist -t 8 -i 1 -r 4000 -o 1000 -u 100 -x 6
+  567  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/linkedlist -t 8 -i 1 -r 64000 -o 1000 -u 100 -x 6
+  568  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 8 -i 1 -r 64000 -o 1000 -u 100 -x 6
+  569  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 8 -i 1000 -r 64000 -o 1000 -u 100 -x 6
+  570  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/skiplist-rotating-c -t 8 -i 1000 -r 64000 -o 1000 -u 100 -x 6
+  571  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 8 -i 1000 -r 64000 -o 1000 -u 100 -x 6
+  572  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 16 -i 1000 -r 64000 -o 1000 -u 100 -x 6
+  573  gedit output/syncbench-fixed/config.out0
+  574  gedit output/syncbench-fixed/config.out_0 
+  575  pwd
+  576  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_4.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_4.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 16 -i 1000 -r 64000 -o 1000 -u 100 -x 6
+  577  ls
+  578  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_4.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_4.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 4 -i 1000 -r 64000 -o 1000 -u 70 -x 6
+  579  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 4 -i 1000 -r 64000 -o 1000 -u 70 -x 6
+  580  ./${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 4 -i 1000 -r 64000 -o 1000 -u 70 -x 6
+  581  cd pbench/syncbench/bin/
+  582  ./bstree -t 4 -i 1000 -r 64000 -o 1000 -u 70 -x 6
+  583  ./bstree -t 4 -i 500 -r 64000 -o 1000 -u 70 -x 6
+  584  ./bstree -t 4 -i 999 -r 64000 -o 1000 -u 70 -x 6
+  585  ./bstree -t 4 -i 700 -r 64000 -o 1000 -u 70 -x 6
+  586  ./skiplist-rotating-c -t 4 -i 700 -r 64000 -o 1000 -u 70 -x 6
+  587  ./bstree -t 4 -i 700 -r 64000 -o 1000 -u 70 -x 6
+  588  ./bstree -t 4 -i 700 -r 64000 -o 1000 -u 70 -x 6
+  589  ./bstree -t 4 -i 700 -r 64000 -o 1000 -u 100 -x 6
+  590  ./bstree -t 4 -i 1 -r 64000 -o 1000 -u 100 -x 6
+  591  ./hashmap  -t 4 -i 1 -r 64000 -o 1000 -u 100 -x 6
+  592  ./hashmap  -t 4 -i 500 -r 64000 -o 1000 -u 100 -x 6
+  593  ./hashmap  -t 4 -i 1000 -r 64000 -o 1000 -u 100 -x 6
+  594  ./hashmap  -t 4 -i 4000 -r 64000 -o 1000 -u 100 -x 6
+  595  ./hashmap  -t 4 -i 10000 -r 64000 -o 1000 -u 100 -x 6
+  596  ./hashmap  -t 4 -i 500 -r 2000 -o 1000 -u 100 -x 6
+  597  ./hashmap  -t 4 -i 500 -r 2000 -o 2000 -u 100 -x 6
+  598  ./hashmap  -t 4 -i 500 -r 8000 -o 2000 -u 100 -x 6
+  599  ./hashmap  -t 4 -i 1000 -r 8000 -o 2000 -u 100 -x 6
+  600  ./hashmap  -t 4 -i 1000 -r 6000 -o 2000 -u 100 -x 6
+  601  ./hashmap  -t 4 -i 1000 -r 64000 -o 2000 -u 100 -x 6
+  602  ./linkedlist  -t 4 -i 1000 -r 64000 -o 2000 -u 100 -x 6
+  603  cd ..
+  604  cd ..
+  605  pwd
+  606  cd ..
+  607  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 4 -i 0 -r 64000 -o 1000 -u 70 -x 6
+  608  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_4.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_4.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 4 -i 0 -r 64000 -o 1000 -u 70 -x 6
+  609  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_4.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_4.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 4 -i 0 -r 4000 -o 1000 -u 70 -x 6
+  610  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_4.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_4.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 4 -i 0 -r 1000 -o 1000 -u 100 -x 6
+  611  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_4.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_4.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 4 -i 0 -r 100 -o 1000 -u 100 -x 6
+  612  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 4 -i 0 -r 100 -o 1000 -u 100 -x 6
+  613  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 4 -i 0 -r 10 -o 1000 -u 100 -x 6
+  614  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_4.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 4 -i 0 -r 10 -o 1000 -u 100 -x 6
+  615  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_4.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_4.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/bstree -t 4 -i 0 -r 10 -o 1000 -u 100 -x 6
+  616  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_4.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_4.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/linkedlist -t 4 -i 0 -r 10 -o 1000 -u 100 -x 6
+  617  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/linkedlist -t 4 -i 0 -r 10 -o 1000 -u 100 -x 6
+  618  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/hashmap -t 4 -i 0 -r 10 -o 1000 -u 100 -x 6
+  619  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/hashmap -t 4 -i 0 -r 10 -o 1000 -u 100
+  620  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/skiplist-rotating-c -t 4 -i 0 -r 10 -o 1000 -u 100
+
+
+  mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ${HOME}/repos/primesim/bin/prime ${HOME}/repos/primesim/xml/config_3.xml ${HOME}/repos/primesim/output/syncbench-fixed/config.out : -np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so -c ${HOME}/repos/primesim/xml/config_3.xml -o ${HOME}/repos/primesim/output/syncbench-fixed/config.out -- ${HOME}/repos/primesim/pbench/syncbench/bin/skiplist-rotating-c -t 4 -i 0 -r 10 -o 1000 -u 100
+
+#Still only single thread is running
+
+Set type     : BST
+Duration     : 10
+Initial size : 1000
+Nb threads   : 16
+Value range  : 64000
+Seed         : 0
+Update rate  : 100
+Lock alg.    : 6
+Alternate    : 0
+Effective    : 1
+Operations    : 1000
+Type sizes   : int=4/long=8/ptr=8/word=8
+Adding 1000 entries to set
+Set size (TENTATIVE) : 1000
+Level max    : 0
+Creating thread 0
+Creating thread 1
+[PriME] Thread 1 begins at cycle 6453114

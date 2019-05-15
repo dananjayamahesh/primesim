@@ -224,17 +224,17 @@ void *test_init(void *data) {
 	/* Create transaction */
 	//TM_THREAD_ENTER();
 	/* Wait on barrier */
-	printf("X \n");
+	//printf("X \n");
 
 	barrier_cross(d->barrier);	
 
-	printf("X \n");
+	//printf("X \n");
 
 	int i = 0;
 
 	while (i < d->init_size) {
 
-		printf("Loop \n");
+		//printf("Loop \n");
     	if(d->mono_int) {
     	  val = i;
     	} else if(d->reverse_int) {
@@ -251,7 +251,7 @@ void *test_init(void *data) {
 			
 		if (sl_add_old(d->set, val, 0)) {
 			last = val;
-			printf("Insert : %d \n", val);
+			//printf("Insert : %d \n", val);
 			i++;
 			d->nb_added++;
 		}
@@ -275,10 +275,10 @@ void *test(void *data) {
 	/* Wait on barrier */
 	barrier_cross(d->barrier);
 
-	printf("A \n");
+	//printf("A \n");
 	//while(initialized != 1);
 
-	printf("B \n");
+	//printf("B \n");
 
 	/* Is the first op an update? */
 	unext = (rand_range_re(&d->seed, 100) - 1 < d->update);
@@ -685,7 +685,7 @@ int main(int argc, char **argv)
 
 	//while(initialized !=1);	
 
-	printf("A");
+	//printf("A");
 
 	size = set_size(set, 1);
 	printf("Set size     : %d\n", size);

@@ -103,7 +103,7 @@ void *test_init(void *data) {
 	/* Create transaction */
 	TM_THREAD_ENTER();
 	/* Wait on barrier */
-	printf("C\n");
+	//printf("C\n");
 	barrier_cross(d->barrier);	
 
 	int i = 0;
@@ -111,7 +111,7 @@ void *test_init(void *data) {
 
 		//This could be incremental as well
 		val = rand_range(d->range); //This could be random
-		printf("Insert Value : %d \n", (int)val);
+		//printf("Insert Value : %d \n", (int)val);
 		if (set_add(d->set, val, 0)) {
 			//last = val;
 			d->nb_added++;

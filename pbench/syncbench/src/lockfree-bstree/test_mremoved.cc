@@ -191,7 +191,7 @@ void *test_init(void *data) {
   /* Wait on barrier */
   barrier_cross(d->barrier);  
 
-  printf("Pthread\n");
+  //printf("Pthread\n");
 
   int i = 0;
   while (i < d->init_size) {
@@ -203,7 +203,7 @@ void *test_init(void *data) {
     if (insert(d,val)) {
       //last = val;
       d->nb_added++;
-      printf("i %d and val %d \n",i, val);
+      //printf("i %d and val %d \n",i, val);
       i++;
     }
 
