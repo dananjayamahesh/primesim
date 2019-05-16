@@ -12,7 +12,7 @@ optype=addonly
 #syncbench-mbank-120cycles-nopfixed-4-1 ->same
 #syncbench-mbank-120cycles-nopfixed-4-2 ->add more counters for write backs and epoch sizes, add thread 1,
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
-CONF_NAME=syncbench-mbank-120cycles-nopfixed-6
+CONF_NAME=syncbench-mbank-120cycles-nopfixed-6_2000
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DATA_FILE=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/data_2.txt
@@ -38,7 +38,7 @@ fi
 
 
 
-rate=1000
+rate=2000
 rate2=64000
 
 #for threads in 8 16 32

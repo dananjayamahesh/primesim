@@ -6,27 +6,26 @@
 #remove delay from natural write back. it may have effected core 1
 
 #balanced, addony, mremoved
-optype=addonly
+optype=regular
 #RUn History
 #syncbench-mbank-120cycles-nopfixed-4 ->initial run after fixing rp writeback delays
 #syncbench-mbank-120cycles-nopfixed-4-1 ->same
 #syncbench-mbank-120cycles-nopfixed-4-2 ->add more counters for write backs and epoch sizes, add thread 1,
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
-CONF_NAME=syncbench-mbank-120cycles-nopfixed-6
+CONF_NAME=syncbench-mbank-120cycles-nopfixed-6_2000
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DATA_FILE=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/data_2.txt
 DATA_FILE3=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/data_3.txt
 
-
+#echo "" > ${DIMP_FILE}
+#> ${DIMP_FILE}
 
 if [ ! -d ${CONF_PATH} ] 
 then
     mkdir -p ${CONF_PATH}
 fi 
 
-#echo "" > ${DIMP_FILE}
-#> ${DIMP_FILE}
 > ${DATA_FILE}
 
 #make -B
@@ -38,7 +37,7 @@ fi
 
 
 
-rate=1000
+rate=2000
 rate2=64000
 
 #for threads in 8 16 32
