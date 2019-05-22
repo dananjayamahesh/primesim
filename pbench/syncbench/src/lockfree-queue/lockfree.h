@@ -58,6 +58,24 @@ void barrier_cross(barrier_t *b)
 	pthread_mutex_unlock(&b->mutex);
 }
 
+/* Returns nonzero if the comparison succeeded. */
+AO_INLINE int AO_compare_and_swap_nob(volatile AO_t *addr, AO_t old, AO_t new_val)
+{  
+ // printf("atomic\n");
+# ifdef AO_USE_SYNC_CAS_BUILTIN
+    return (int)__sync_bool_compare_and_swap(addr, old, new_val);
+   // __asm__ __volatile__("sfence" : : : "memory");
+    //__asm__ __volatile__("mfence" : : : "memory");
+# else
+    char result;
+    __asm__ __volatile__("lock; cmpxchgq %3, %0; setz %1"
+                         : "=m" (*addr), "=a" (result)
+                         : "m" (*addr), "r" (new_val), "a" (old) : "memory");
+    //__asm__ __volatile__("sfence" : : : "memory");
+    return (int) result;
+# endif
+}
+
 
 
 /* Returns nonzero if the comparison succeeded. */

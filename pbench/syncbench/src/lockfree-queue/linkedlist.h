@@ -43,6 +43,7 @@
 #define ATOMIC_CAS_MB(a, e, v)          (AO_compare_and_swap_full((volatile AO_t *)(a), (AO_t)(e), (AO_t)(v)))
 #define ATOMIC_CAS_MB_REL(a, e, v)          (AO_compare_and_swap_rel((volatile AO_t *)(a), (AO_t)(e), (AO_t)(v)))
 #define ATOMIC_CAS_MB_ACQ(a, e, v)          (AO_compare_and_swap_acq((volatile AO_t *)(a), (AO_t)(e), (AO_t)(v)))
+#define ATOMIC_CAS_MB_NOB(a, e, v)          (AO_compare_and_swap_nob((volatile AO_t *)(a), (AO_t)(e), (AO_t)(v)))
 
 #define AO_nop_full() 		__asm__ __volatile__("mfence" : : : "memory");		
 
