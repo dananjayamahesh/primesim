@@ -133,7 +133,7 @@ DIMP_compare_and_swap_rel(volatile AO_t *addr, AO_t old, AO_t new_val)
 #define ATOMIC_CAS_WEAK_ACQUIRE(a, e, v)    (DIMP_compare_and_swap_acq(( AO_t *)(a), (AO_t)(e), (AO_t)(v)))
 
 DIMP_INLINE int
-DIMP_pthread_spin_lock (pthread_spinlock_t *lock)
+DIMP_pthread_spin_lock (int *lock)
 {
   int val = 0;
     //https://code.woboq.org/userspace/glibc/nptl/pthread_spin_lock.c.html
@@ -150,13 +150,17 @@ DIMP_pthread_spin_lock (pthread_spinlock_t *lock)
           //val = *(int *)lock;
           //val = (int)(*lock);
           //printf("A");
-          int *val_ptr = (int *) lock;
-          val = *val_ptr;
+
+          //int *val_ptr = lock;
+          //val = *val_ptr;
+          val = *lock;
+          DIMP_nop_full();
           //printf("B");
-        }
+        }        
         
       while (val != 0);
-      printf("C");
+       //sprintf("B");
+     // printf("C");
       /* We need acquire memory order here for the same reason as mentioned
          for the first try to lock the spinlock.  */
     }
@@ -167,30 +171,30 @@ DIMP_pthread_spin_lock (pthread_spinlock_t *lock)
 //#include "pthreadP.h"
 //#include <atomic.h>
 DIMP_INLINE int
-DIMP_pthread_spin_unlock (pthread_spinlock_t *lock)
+DIMP_pthread_spin_unlock (int *lock)
 {
   /* The atomic_store_release synchronizes-with the atomic_exchange_acquire
      or atomic_compare_exchange_weak_acquire in pthread_spin_lock /
      pthread_spin_trylock.  */
   //atomic_store_release (lock, 0);
   __asm__ __volatile__("sfence" : : : "memory"); //Release semantics
-  lock= (pthread_spinlock_t)0;
+  *lock= (int)0;
   DIMP_nop_full(); //mfence is a release
   
   return 0;
 }
 
 DIMP_INLINE int
-DIMP_pthread_spin_init (pthread_spinlock_t *lock, int pshared)
+DIMP_pthread_spin_init (int *lock, int pshared)
 {
   /* Relaxed MO is fine because this is an initializing store.  */
   //atomic_store_relaxed (lock, 0);
-  lock=(pthread_spinlock_t)0;
+  *lock=(int)0;
   return 0;
 }
 
 DIMP_INLINE int
-DIMP_pthread_spin_destroy (pthread_spinlock_t *lock)
+DIMP_pthread_spin_destroy (int *lock)
 {
   /* Nothing to do.  */
   return 0;

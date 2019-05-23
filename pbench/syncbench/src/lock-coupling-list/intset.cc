@@ -21,22 +21,19 @@
  * GNU General Public License for more details.
  */
 
-#include "lazy.h"
+#include "intset.h"
 
 int set_contains_l(intset_l_t *set, val_t val, int transactional)
 {
-	if (transactional == 2) return parse_find(set, val);
-	else return lockc_find(set, val);
+	lockc_find(set, val);
 }
 
 int set_add_l(intset_l_t *set, val_t val, int transactional)
 {  
-	if (transactional == 2) return parse_insert(set, val);
-	else return lockc_insert(set, val);
+	lockc_insert(set, val);
 }
 
 int set_remove_l(intset_l_t *set, val_t val, int transactional)
 {
-	if (transactional == 2) return parse_delete(set, val);
-	else return lockc_delete(set, val);
+	lockc_delete(set, val);
 }

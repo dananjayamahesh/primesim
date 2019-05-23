@@ -62,6 +62,8 @@ typedef intptr_t val_t;
 #define VAL_MIN                         INT_MIN
 #define VAL_MAX                         INT_MAX
 
+#define NLINE inline
+
 /*
 #ifdef MUTEX
 typedef pthread_mutex_t ptlock_t;
@@ -77,7 +79,23 @@ typedef pthread_spinlock_t ptlock_t;
 #  define UNLOCK(lock)					pthread_spin_unlock((pthread_spinlock_t *) lock)
 #endif
 */
-typedef pthread_spinlock_t ptlock_t;
+typedef int dimp_spinlock_t;
+//typedef pthread_spinlock_t ptlock_t;
+typedef dimp_spinlock_t ptlock_t;
+
+#define INIT_LOCK(lock)				DIMP_pthread_spin_init((dimp_spinlock_t *) lock, PTHREAD_PROCESS_PRIVATE);
+#define DESTROY_LOCK(lock)			DIMP_pthread_spin_destroy((dimp_spinlock_t *) lock)
+
+#define LOCK(lock)					DIMP_pthread_spin_lock((dimp_spinlock_t *) lock)
+#define UNLOCK(lock)				DIMP_pthread_spin_unlock((dimp_spinlock_t *) lock)
+
+typedef struct node_l {
+  val_t val;
+  struct node_l *next;
+  volatile ptlock_t lock;
+} node_l_t;
+
+/*
 #define INIT_LOCK(lock)				DIMP_pthread_spin_init((pthread_spinlock_t *) lock, PTHREAD_PROCESS_PRIVATE);
 #define DESTROY_LOCK(lock)			DIMP_pthread_spin_destroy((pthread_spinlock_t *) lock)
 
@@ -89,6 +107,7 @@ typedef struct node_l {
   struct node_l *next;
   volatile ptlock_t lock;
 } node_l_t;
+*/
 
 typedef struct intset_l {
   node_l_t *head;

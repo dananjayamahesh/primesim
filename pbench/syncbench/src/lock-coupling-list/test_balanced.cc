@@ -140,32 +140,35 @@ void *test(void *data) {
 				
       if (last < 0) { // add
 					
-	val = rand_range_re(&d->seed, d->range);
-	if (set_add_l(d->set, val, TRANSACTIONAL)) {
-	  d->nb_added++;
-	  last = val;
-    //printf("Insert\n");
-	} 				
-	d->nb_add++;
+	       val = rand_range_re(&d->seed, d->range);
+	       if (set_add_l(d->set, val, TRANSACTIONAL)) {
+	         d->nb_added++;
+	         last = val;
+          //printf("Insert\n");
+	       } 				
+	     d->nb_add++;
 					
-      } else { // remove
+      } 
+      else { // remove
 					
-	if (d->alternate) { // alternate mode
+	       if (d->alternate) { // alternate mode
 						
-	  if (set_remove_l(d->set, last, TRANSACTIONAL)) {
-	    d->nb_removed++;
-	  }
-	  last = -1;
+	         if (set_remove_l(d->set, last, TRANSACTIONAL)) {
+	           d->nb_removed++;
+	         }
+	         last = -1;
 						
-	} else {
+	       } 
+          else {
 					
-	  val = rand_range_re(&d->seed, d->range);
-	  if (set_remove_l(d->set, val, TRANSACTIONAL)) {
-	       d->nb_removed++;
-	       last = -1;
-	     } 
+	           val = rand_range_re(&d->seed, d->range);
+	           if (set_remove_l(d->set, val, TRANSACTIONAL)) {
+	             d->nb_removed++;
+	             //last = -1;
+	           }
+             last = -1; 
 					
-	       }
+	        }
 	     d->nb_remove++;
       }
 				

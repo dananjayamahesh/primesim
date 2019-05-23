@@ -21,7 +21,7 @@
  * GNU General Public License for more details.
  */
 
-#include "lazy.h"
+#include "coupling.h"
 
 int set_contains_l(intset_l_t *set, val_t val, int transactional);
 int set_add_l(intset_l_t *set, val_t val, int transactional);
