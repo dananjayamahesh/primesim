@@ -366,6 +366,9 @@ int main(int argc, char *argv[])
     ss_rank << myrank;
     result.open((string(argv[2])+ "_" + ss_rank.str()).c_str());
 
+    //Stat streamer
+    stat.open((KnobOutputFile.Value() + "_" + "stat2").c_str());
+
     uncore_manager.getSimStartTime();
     for(t = 0; t < num_threads; t++) {
         cout << "[PriME] Main: creating thread " << t <<endl;
@@ -393,7 +396,7 @@ int main(int argc, char *argv[])
       
     uncore_manager.getSimFinishTime();
     
-    uncore_manager.report(&result);
+    uncore_manager.report(&result, &stat);
     cout<< "\n\n Epoch Details: \n"<< endl;
     for(int z=0;z < uncore_manager.getSystem()->getCoreCount();z++){
         cout<< "Thread or Core Id : "<< num_threads << "Epochs: "<< total_epochs[z]  <<", average epochs size "<< (double)total_epoch_size[z]/total_epochs[z] << " Max " << max_epoch_size[z]<< ",Min "<< min_epoch_size[z] << endl;
@@ -404,6 +407,7 @@ int main(int argc, char *argv[])
 
     printf("Uncore Print");
     result.close();
+    stat.close();
     printf("Uncore Print");
     MPI_Finalize();
     pthread_mutex_destroy(&mutex);

@@ -104,7 +104,7 @@ class System
         int getHomeId(InsMem *ins_mem);
         int tlb_translate(InsMem *ins_mem, int core_id, int64_t timer);
         int getCoreCount();
-        void report(ofstream* result);
+        void report(ofstream* result, ofstream* stat);
         ~System();        
     private:
         int        sys_type;

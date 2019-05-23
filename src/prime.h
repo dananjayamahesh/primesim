@@ -63,7 +63,7 @@ static unsigned int prog_count = 0;
 UncoreManager uncore_manager;
 ofstream result;
 pthread_mutex_t mutex;
-
+ofstream stat;
 
 int epoch_persist_counter[THREAD_MAX];
 int max_epoch_size[THREAD_MAX];

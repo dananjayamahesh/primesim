@@ -531,7 +531,14 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             //Buffered Epoch Persistency- Intra-thread conflict
                             //delay[core_id] += persist(cache_cur, ins_mem, line_cur, core_id); //BEP
                               persist(cache_cur, ins_mem, line_cur, core_id);
-                            //also need to write back this cache line                            
+                               int delay_wb =0; //inoked writebacks, CLWB happenes in the critical path
+                                cache_cur->critical_write_back_count++;     
+                                cache_cur->critical_write_back_delay += 1; //delay must be
+                                cache_cur->write_back_count++;
+                                cache_cur->write_back_delay+=1;
+                            
+                            //also need to write back this cache line - NOT 
+
                         }   
                     }
                 }//End of BEP flush
@@ -793,7 +800,9 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     //bool hasReleasePersisted = false;
                     if(level==0){ //Fixed
                         
+                        #ifdef DEBUG
                         printf("Release Persistency in Replacement \n");
+                        #endif
                         //delay[core_id] += releasePersist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline  
                         if(pmodel == BEPB){
                             //delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //BEP-on repacement
@@ -816,7 +825,10 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             //NOP do nothing.
                         }
 
-                        printf("Release Persistency in Replacement \n");
+
+                        #ifdef DEBUG
+                        printf("Release Persistency in Replacement End \n");
+                        #endif
 
                         /*
                         if(pmodel != BEPB){ //Need to change 2019-04-15
@@ -1128,10 +1140,10 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
                     //if(line_cur->max_epoch_id <= conflict_epoch_id){ //Epoch Id < conflictigng epoch id - similar to full flush
                     if(line_cur->max_epoch_id < conflict_epoch_id){    
 
-
+                    #ifdef DEBUG
                     printf("[Release Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
                     i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
-                     
+                    #endif
                         ins_mem.mem_type = WB;   
                         ins_mem.atom_type = NON;                                             
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
@@ -1148,7 +1160,7 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
         }
     } 
     //Check. Need to flush the calling line as well
-    printf("Here \n");
+    //printf("Here \n");
 
             //Counts
     if(core_id == req_core_id){
@@ -1324,10 +1336,10 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
                     //if(true){
                         //Cacheline needs to be written back
                         //printf();
-
+                        #ifdef DEBUG
                         printf("[Release Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
                         i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
-                     
+                        #endif
                         //uint64_t address_tag = line_cur->tag;
                         ins_mem.mem_type = WB;   
                         ins_mem.atom_type = NON;                                             
@@ -1348,7 +1360,7 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
         }
     } 
 
-    printf("Here\n"); 
+    //printf("Here\n"); 
 
      //Counts
     if(core_id == req_core_id){
@@ -1525,17 +1537,20 @@ int System::share(Cache* cache_cur, InsMem* ins_mem, int core_id)
             if(cache_cur->getLevel()==0){ 
                 //Eviction implement: line_cur->atom_type == RELEASE -> DO not have this information
                 //Before Write-back.
-                printf("[Share] Release Persist Starting.... and effected core \n");
+                
                 #ifdef DEBUG
-                              
+                    printf("[Share] Release Persist Starting.... and effected core \n");                              
                     printf("[MESI-SHARE] Atom- %d, State- %d -> Downgrading address [0x%lx]/[0x%lx] of cache [%d] in level [%d], Requesting core:%d\n", 
                             line_cur->atom_type, line_cur->state ,line_cur->tag, ins_mem->addr_dmem, cache_cur->getId(), cache_cur->getLevel(), core_id);
-               #endif
+                #endif
 
                 //delay += releasePersist(cache_cur, ins_mem, line_cur,core_id); // need both Acquire and Releas
                 if(pmodel == BEPB) delay += persist(cache_cur, ins_mem, line_cur,core_id); // need both Acquire and Release // Persistence Model
                 else if(line_cur->atom_type !=NON) delay += persist(cache_cur, ins_mem, line_cur,core_id);
-                printf("[Share-Finish] Release Persist Starting.... \n");
+                
+                #ifdef DEBUG
+                printf("[Share-Finish] Release Persist Ending.... \n");
+                #endif
 
             }
 
@@ -1610,8 +1625,9 @@ int System::inval(Cache* cache_cur, InsMem* ins_mem, int core_id)
                 //Eviction implement: line_cur->atom_type == RELEASE -> DO not have this information
                 //Before Write-back.
                 if((line_cur->state == M || line_cur->state == E)){
-                    printf("[Inval] Release Persist Starting.... \n");
-                    #ifdef DEBUG                    
+                    
+                    #ifdef DEBUG
+                    printf("[Inval] Release Persist Starting.... \n");                    
                     printf("\n[MESI-INVAL] Atom- %d, State- %d, Invalidating address [0x%lx]/[0x%lx] of cache [%d] in level [%d]\n", 
                         line_cur->atom_type, line_cur->state ,line_cur->tag, ins_mem->addr_dmem, cache_cur->getId(), cache_cur->getLevel());
                     
@@ -1619,7 +1635,10 @@ int System::inval(Cache* cache_cur, InsMem* ins_mem, int core_id)
                     //delay += releasePersist(cache_cur, ins_mem, line_cur, core_id); // need both Acquire and Releas
                     if (pmodel == BEPB) delay += persist(cache_cur, ins_mem, line_cur, core_id); // need both Acquire and Release
                     else if (line_cur->atom_type != NON) delay += persist(cache_cur, ins_mem, line_cur, core_id); 
-                    printf("[Inval-Finish] Release Persist Starting.... \n");
+                   
+                    #ifdef DEBUG
+                    printf("[Inval-Finish] Release Persist Ending.... \n");
+                    #endif
                 }//Delay of invalidation and shar is added to the cycles by coherence itdels.
                 //No need to write-back 
                 
@@ -2083,7 +2102,7 @@ int System::getCoreCount()
 }
 
 
-void System::report(ofstream* result)
+void System::report(ofstream* result, ofstream* stat)
 {
     int i, j;
     uint64_t ins_count = 0, miss_count = 0, evict_count = 0, wb_count = 0, persist_count=0, persist_delay=0, intra_tot =0, inter_tot=0;
@@ -2278,6 +2297,17 @@ void System::report(ofstream* result)
         *result << "Total Counted IDs Sum " <<  epoch_id2_tot << endl;
         *result << "Average Writes/Epoch" <<  (double)epoch_sum_tot/epoch_id_tot << endl;
         *result << "=================================================================\n\n";
+
+        //Statistic FIle
+        double conf_rate =(double)inter_persist_tot/(inter_persist_tot+intra_persist_tot);
+        double wbdelay_rate = (double)delay_critical_clwb/(delay_critical_clwb+delay_noncritical_clwb);
+        double wb_rate = (double)critical_clwb/(critical_clwb+noncritical_clwb);
+        double p_rate = (double) critical_persist_wb/clwb_tot;
+        double pdelay_rate = (double) delay_critical_persist_wb/delay_clwb_tot;
+        double clwb = clwb_tot;
+
+        *stat << conf_rate << "," << wb_rate << "," << wbdelay_rate << "," << p_rate << "," << pdelay_rate << "," << clwb_tot << "," << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
+
 
     }
     

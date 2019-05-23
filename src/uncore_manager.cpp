@@ -88,7 +88,7 @@ System * UncoreManager::getSystem(){
     return &sys;
 }
 
-void UncoreManager::report(ofstream *result)
+void UncoreManager::report(ofstream *result, ofstream *stat)
 {
     *result << "*********************************************************\n";
     *result << "*                   PriME Simulator                     *\n";
@@ -100,7 +100,7 @@ void UncoreManager::report(ofstream *result)
     //for(int i=0;i)
     
     thread_sched.report(result);
-    sys.report(result);
+    sys.report(result, stat);
     printf("sys report\n");
 }
 
