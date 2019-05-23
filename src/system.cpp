@@ -634,6 +634,12 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //Write-Back
         else if(ins_mem->mem_type == WB){ //mem_type=2
+
+            #ifdef DEBUG
+                    printf("[MESI-WB]   Op: %d Type: %d Hits 0x%lx, cache level : %d and Cache Id: %d in State : %d and Line atom: %d Line Tag : 0x%lx Line Index Write Ends\n", 
+                            ins_mem->mem_type, ins_mem->atom_type, ins_mem->addr_dmem, level, cache_id, line_cur->state, line_cur->atom_type, line_cur->tag);
+            #endif
+
             if(level!=num_levels-1){
                 line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
@@ -667,6 +673,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                 }
                 else{ //Adding no delay. Becuase its not in the critical path
                     //For no persistency write-back is not in the critical path
+                    
                     assert (line_cur->state == M || line_cur->state==E);
                     //delay[core_id] += inval_children(cache_cur, &ins_mem); //Invalidating all S->I, M->I
 
@@ -735,11 +742,18 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
 
     //Cache miss
     else {
+
+        //Serious Bug: There are some cacheline in the L0 that are not onvalidaed ot shared and no state in the higher level cache. Check invalidate..
+        //Same probelm Everywhere. Happenes when epoch sizes are large. Temporary solution is to ignore writebacks for missed cachelines.
+        //Invariant: If something is in the cacheline, highler levels should also ahve it. Inclusive caches.
+        if(ins_mem->mem_type == WB){
+            return I;
+        }
         //Set atomic type of the cache blocks
        // printf("Messi miss 0x%lx cache %d level %d \n", ins_mem->addr_dmem, cache_id, level); //printf("Mesi Miss 2\n");
         line_cur = cache_cur->replaceLine(&ins_mem_old, ins_mem);
         //Cacheline replacement logic.
-         #ifdef DEBUG 
+        #ifdef DEBUG 
         if(ins_mem->atom_type != NON){
         //if(level >=0 && cache_id>=0){
             printf("[MESI]   Op: %d Type: %d Miss 0x%lx, cache level : %d and Cache Id: %d RMW: %s Memory: %s Epoch: %d \n", 
@@ -779,7 +793,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     //bool hasReleasePersisted = false;
                     if(level==0){ //Fixed
                         
-                        //printf("Release Persistency in Replacement \n");
+                        printf("Release Persistency in Replacement \n");
                         //delay[core_id] += releasePersist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline  
                         if(pmodel == BEPB){
                             //delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //BEP-on repacement
@@ -801,6 +815,8 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                         else{
                             //NOP do nothing.
                         }
+
+                        printf("Release Persistency in Replacement \n");
 
                         /*
                         if(pmodel != BEPB){ //Need to change 2019-04-15
@@ -1111,6 +1127,11 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
                     //Only dirty data
                     //if(line_cur->max_epoch_id <= conflict_epoch_id){ //Epoch Id < conflictigng epoch id - similar to full flush
                     if(line_cur->max_epoch_id < conflict_epoch_id){    
+
+
+                    printf("[Release Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
+                    i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
+                     
                         ins_mem.mem_type = WB;   
                         ins_mem.atom_type = NON;                                             
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
@@ -1127,6 +1148,7 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
         }
     } 
     //Check. Need to flush the calling line as well
+    printf("Here \n");
 
             //Counts
     if(core_id == req_core_id){
@@ -1295,13 +1317,17 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
                 if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M || line_cur->state==E )){ //Need to think about E here
                     //M stads for dirty lines as well. this condition checks dirty==1
 
-                    //printf("[Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
-                    //    i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
+                    //printf("[Release Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
+                     //  i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
                      //without sync conflicts                    
-                    if(line_cur->min_epoch_id <= rel_epoch_id && line_cur->dirty){ //This  covers modified vs exclusive as well
+                    if((line_cur->min_epoch_id <= rel_epoch_id) && line_cur->dirty){ //This  covers modified vs exclusive as well
                     //if(true){
                         //Cacheline needs to be written back
+                        //printf();
 
+                        printf("[Release Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
+                        i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
+                     
                         //uint64_t address_tag = line_cur->tag;
                         ins_mem.mem_type = WB;   
                         ins_mem.atom_type = NON;                                             
@@ -1321,6 +1347,8 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
                 }
         }
     } 
+
+    printf("Here\n"); 
 
      //Counts
     if(core_id == req_core_id){
@@ -1418,13 +1446,13 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
     printf("----------------------------------- Start Persist ---------------------------------------\n");
     #endif
     if(pmodel == RLSB){
-        //printf("Release Persistence \n");
+        printf("Release Persistence \n");
         delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id); 
         cache_cur->incPersistDelay(delay_tmp); //Counters
         //delay_tmp =  delay_tmp/2;
     }
     if(pmodel == FBRP){ //Epoch PErsistency
-        //printf("Release Persistence \n");
+        printf("Full barrier Release Persistence \n");
         delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id); 
         cache_cur->incPersistDelay(delay_tmp); //Counters
         //delay_tmp =  delay_tmp/2;
@@ -1441,6 +1469,8 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
         //NO need to check syncmap
         delay_tmp = 0;
     }
+
+    printf("HERE Persistence \n");
     
     #ifdef DEBUG
     printf("Persistency Total Delay : %d \n", delay_tmp);  
@@ -1495,11 +1525,21 @@ int System::share(Cache* cache_cur, InsMem* ins_mem, int core_id)
             if(cache_cur->getLevel()==0){ 
                 //Eviction implement: line_cur->atom_type == RELEASE -> DO not have this information
                 //Before Write-back.
-                //printf("[Share] Release Persist Starting.... \n");
+                printf("[Share] Release Persist Starting.... and effected core \n");
+                #ifdef DEBUG
+                              
+                    printf("[MESI-SHARE] Atom- %d, State- %d -> Downgrading address [0x%lx]/[0x%lx] of cache [%d] in level [%d], Requesting core:%d\n", 
+                            line_cur->atom_type, line_cur->state ,line_cur->tag, ins_mem->addr_dmem, cache_cur->getId(), cache_cur->getLevel(), core_id);
+               #endif
+
                 //delay += releasePersist(cache_cur, ins_mem, line_cur,core_id); // need both Acquire and Releas
                 if(pmodel == BEPB) delay += persist(cache_cur, ins_mem, line_cur,core_id); // need both Acquire and Release // Persistence Model
                 else if(line_cur->atom_type !=NON) delay += persist(cache_cur, ins_mem, line_cur,core_id);
+                printf("[Share-Finish] Release Persist Starting.... \n");
+
             }
+
+            //Need more care here to write-back the release andacquires.
 
             line_cur->state = S; //Check this
             //Update atomic type
@@ -1570,11 +1610,16 @@ int System::inval(Cache* cache_cur, InsMem* ins_mem, int core_id)
                 //Eviction implement: line_cur->atom_type == RELEASE -> DO not have this information
                 //Before Write-back.
                 if((line_cur->state == M || line_cur->state == E)){
-                    //printf("[Inval] Release Persist Starting.... \n");
+                    printf("[Inval] Release Persist Starting.... \n");
+                    #ifdef DEBUG                    
+                    printf("\n[MESI-INVAL] Atom- %d, State- %d, Invalidating address [0x%lx]/[0x%lx] of cache [%d] in level [%d]\n", 
+                        line_cur->atom_type, line_cur->state ,line_cur->tag, ins_mem->addr_dmem, cache_cur->getId(), cache_cur->getLevel());
+                    
+                    #endif
                     //delay += releasePersist(cache_cur, ins_mem, line_cur, core_id); // need both Acquire and Releas
                     if (pmodel == BEPB) delay += persist(cache_cur, ins_mem, line_cur, core_id); // need both Acquire and Release
                     else if (line_cur->atom_type != NON) delay += persist(cache_cur, ins_mem, line_cur, core_id); 
-
+                    printf("[Inval-Finish] Release Persist Starting.... \n");
                 }//Delay of invalidation and shar is added to the cycles by coherence itdels.
                 //No need to write-back 
                 
@@ -1784,7 +1829,7 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
             line_cur->sharer_set.insert(cache_id);
         } 
         else if(ins_mem->mem_type == WB){ //Write-back
-                //printf("writeback 0x%lx \n",ins_mem->addr_dmem);
+                printf("writeback 0x%lx \n",ins_mem->addr_dmem);
                 delay += dram.access(ins_mem);
                 line_cur->state = I;
                 line_cur->sharer_set.clear();
@@ -1954,6 +1999,7 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
             line_cur->sharer_set.insert(cache_id);
         }
         else if((ins_mem->mem_type == WB)){
+            printf("writeback 0x%lx \n",ins_mem->addr_dmem);
             delay += dram.access(ins_mem);
             line_cur->state = I;
             line_cur->sharer_set.clear();            
