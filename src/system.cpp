@@ -531,11 +531,11 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             //Buffered Epoch Persistency- Intra-thread conflict
                             //delay[core_id] += persist(cache_cur, ins_mem, line_cur, core_id); //BEP
                               persist(cache_cur, ins_mem, line_cur, core_id);
-                               int delay_wb =0; //inoked writebacks, CLWB happenes in the critical path
+                               int delay_wb =1; //inoked writebacks, CLWB happenes in the critical path
                                 cache_cur->critical_write_back_count++;     
-                                cache_cur->critical_write_back_delay += 1; //delay must be
+                                cache_cur->critical_write_back_delay += delay_wb; //delay must be
                                 cache_cur->write_back_count++;
-                                cache_cur->write_back_delay+=1;
+                                cache_cur->write_back_delay+=delay_wb;
                             
                             //also need to write back this cache line - NOT 
 
@@ -1458,13 +1458,13 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
     printf("----------------------------------- Start Persist ---------------------------------------\n");
     #endif
     if(pmodel == RLSB){
-        printf("Release Persistence \n");
+        //printf("Release Persistence \n");
         delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id); 
         cache_cur->incPersistDelay(delay_tmp); //Counters
         //delay_tmp =  delay_tmp/2;
     }
     if(pmodel == FBRP){ //Epoch PErsistency
-        printf("Full barrier Release Persistence \n");
+        //printf("Full barrier Release Persistence \n");
         delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id); 
         cache_cur->incPersistDelay(delay_tmp); //Counters
         //delay_tmp =  delay_tmp/2;
@@ -1482,7 +1482,7 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
         delay_tmp = 0;
     }
 
-    printf("HERE Persistence \n");
+    //printf("HERE Persistence \n");
     
     #ifdef DEBUG
     printf("Persistency Total Delay : %d \n", delay_tmp);  
@@ -1848,7 +1848,7 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
             line_cur->sharer_set.insert(cache_id);
         } 
         else if(ins_mem->mem_type == WB){ //Write-back
-                printf("writeback 0x%lx \n",ins_mem->addr_dmem);
+                //printf("writeback 0x%lx \n",ins_mem->addr_dmem);
                 delay += dram.access(ins_mem);
                 line_cur->state = I;
                 line_cur->sharer_set.clear();
@@ -2018,7 +2018,7 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
             line_cur->sharer_set.insert(cache_id);
         }
         else if((ins_mem->mem_type == WB)){
-            printf("writeback 0x%lx \n",ins_mem->addr_dmem);
+            //printf("writeback 0x%lx \n",ins_mem->addr_dmem);
             delay += dram.access(ins_mem);
             line_cur->state = I;
             line_cur->sharer_set.clear();            
@@ -2304,7 +2304,7 @@ void System::report(ofstream* result, ofstream* stat)
         double wb_rate = (double)critical_clwb/(critical_clwb+noncritical_clwb);
         double p_rate = (double) critical_persist_wb/clwb_tot;
         double pdelay_rate = (double) delay_critical_persist_wb/delay_clwb_tot;
-        double clwb = clwb_tot;
+        //double clwb = clwb_tot;
 
         *stat << conf_rate << "," << wb_rate << "," << wbdelay_rate << "," << p_rate << "," << pdelay_rate << "," << clwb_tot << "," << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
 

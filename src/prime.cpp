@@ -136,8 +136,9 @@ void *msgHandler(void *t)
             if (core_id == -1) {
                 cerr<< "Not enough cores for process "<<local_status.MPI_SOURCE<<" thread "<<msg_mem[index_prev][0].mem_size<<endl;
                 pthread_mutex_unlock (&mutex);
-                uncore_manager.report(&result);
+                uncore_manager.report(&result, &stat);
                 result.close();
+                stat.close();
                 MPI_Abort(MPI_COMM_WORLD, -1);
                 pthread_exit(NULL);
             } 
@@ -367,7 +368,8 @@ int main(int argc, char *argv[])
     result.open((string(argv[2])+ "_" + ss_rank.str()).c_str());
 
     //Stat streamer
-    stat.open((KnobOutputFile.Value() + "_" + "stat2").c_str());
+    stat.open((string(argv[2])+ "_"  + "stat2").c_str());
+    //stat.open((KnobOutputFile.Value() + "_" + "stat2").c_str());
 
     uncore_manager.getSimStartTime();
     for(t = 0; t < num_threads; t++) {
