@@ -6,7 +6,8 @@
 #remove delay from natural write back. it may have effected core 1
 
 #balanced, addony, mremoved
-optype=regular
+optype=balanced
+#optype=balanced
 #RUn History
 #syncbench-mbank-120cycles-nopfixed-4 ->initial run after fixing rp writeback delays
 #syncbench-mbank-120cycles-nopfixed-4-1 ->same
@@ -44,9 +45,9 @@ fi
 rate2=64000
 
 #for threads in 8 16 32
-for rate in 1000 100 
+for rate in 100 
 do
-for operations in 100 500 
+for operations in 1000
 do
 	#for operations in 1000 4000
 	for threads in 8 1 16 32
