@@ -38,7 +38,7 @@ fi
 #for upd in 50 100
 #do
 #make -B
-
+urate=100
 
 
 #rate=1000
@@ -58,6 +58,14 @@ do
 			do	
 				echo "$bench,$threads,$rate,$rate2,$operations" >> ${DATA_FILE}
 				echo "$bench,$threads,$rate,$rate2,$operations" >> ${DATA2_FILE}
+				#urate=100
+
+				if [ bench = lfqueue ]; then
+              	  urate=50
+              	else
+              		urate=100
+            	fi
+
 				for pmodel in 0 3 4 6
 				do
 					echo "Executing $pmodel"

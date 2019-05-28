@@ -58,6 +58,13 @@ do
 			do	
 				echo "$bench,$threads,$rate,$rate2,$operations" >> ${DATA_FILE}
 				echo "$bench,$threads,$rate,$rate2,$operations" >> ${DATA2_FILE}
+
+				if [ bench = lfqueue ]; then
+              	  urate=50
+              	else
+              		urate=100
+            	fi
+				
 				for pmodel in 0 3 4 6
 				do
 					echo "Executing $pmodel"
