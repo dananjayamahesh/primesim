@@ -2305,10 +2305,8 @@ void System::report(ofstream* result, ofstream* stat)
         double p_rate = (double) critical_persist_wb/clwb_tot;
         double pdelay_rate = (double) delay_critical_persist_wb/delay_clwb_tot;
         //double clwb = clwb_tot;
-
-        *stat << conf_rate << "," << wb_rate << "," << wbdelay_rate << "," << p_rate << "," << pdelay_rate << "," << clwb_tot << "," << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
-
-
+        *stat << inter_persist_tot << "," << intra_persist_tot << "," << persist_count << "," << clwb_tot << "," << critical_clwb << "," << noncritical_clwb << "," << natural_clwb << "," << external_clwb << "," << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
+        //*stat << conf_rate << "," << wb_rate << "," << wbdelay_rate << "," << p_rate << "," << pdelay_rate << "," << clwb_tot << "," << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
     }
     
     ins_count =0;   
