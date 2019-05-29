@@ -6,13 +6,13 @@
 #remove delay from natural write back. it may have effected core 1
 
 #balanced, addony, mremoved
-optype=balanced
+optype=regular
 #RUn History
 #syncbench-mbank-120cycles-nopfixed-4 ->initial run after fixing rp writeback delays
 #syncbench-mbank-120cycles-nopfixed-4-1 ->same
 #syncbench-mbank-120cycles-nopfixed-4-2 ->add more counters for write backs and epoch sizes, add thread 1,
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
-CONF_NAME=syncbench-msocket-120cycles-nopfixed-7_500
+CONF_NAME=syncbench-msocket-120cycles-nopfixed-8
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DIMP2_FILE=${HOME}/repos/primesim/output/${optype}/stat2.txt
@@ -43,7 +43,7 @@ fi
 rate2=64000
 
 #for threads in 8 16 32
-for rate in 100
+for rate in 1000
 do
 
 #for threads in 8 16 32
@@ -58,7 +58,7 @@ do
 			do	
 				echo "$bench,$threads,$rate,$rate2,$operations" >> ${DATA_FILE}
 				echo "$bench,$threads,$rate,$rate2,$operations" >> ${DATA2_FILE}
-
+     			urate=100
 				if [ bench = lfqueue ]; then
               	  urate=50
               	else
@@ -79,14 +79,15 @@ do
 					-np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so \
 					-c ${HOME}/repos/primesim/xml/config_msocket_120cycles_${pmodel}.xml \
 					-o ${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/config_${threads}_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out \
-					-- ${HOME}/repos/primesim/pbench/syncbench/bin/${bench}_${optype} -t ${threads} -i ${rate} -r ${rate2} -o ${operations} -d 10 -x 6 -u 100
+					-- ${HOME}/repos/primesim/pbench/syncbench/bin/${bench}_${optype} -t ${threads} -i ${rate} -r ${rate2} -o ${operations} -d 10 -x 6 -u ${urate}
 					
 					#cat ${DIMP_FILE} >> ${DATA_FILE3}
 					DIMP_FILE=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/config_${threads}_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out_stat
 					DIMP2_FILE=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/config_${threads}_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out_stat2
 
 					cat ${DIMP_FILE} >> ${DATA_FILE}
-					cat ${DIMP2_FILE} >> ${DATA2_FILE}
+					#cat ${DIMP2_FILE} >> ${DATA2_FILE}
+					cat ${DIMP2_FILE} | head -n 1 >> ${DATA2_FILE}
 					
 					cat ${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/config_${threads}_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out_1 \
 					${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/config_${threads}_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out_0 \
