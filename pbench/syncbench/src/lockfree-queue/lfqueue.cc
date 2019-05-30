@@ -38,6 +38,8 @@ inline long get_marked_ref(long w) {
 node_t *lfqueue_search(intset_t *set, val_t val, node_t **left_node) {
 	node_t *left_node_next, *right_node;
 	left_node_next = set->head;
+
+	printf("Search \n");
 	
 search_again:
 	do {
@@ -80,6 +82,8 @@ int lfqueue_find(intset_t *set, val_t val) {
 	
 	node_t * ptr = set->head;
 
+	printf("Find \n");
+
 	while(ptr !=NULL){
 		if(ptr->val == val) return 1;
 
@@ -89,7 +93,7 @@ int lfqueue_find(intset_t *set, val_t val) {
 	return 0;
 }
 
-
+/*
 int lfqueue_enque(intset_t *set, val_t val) {
 	//printf("insert value - %d\n", (int) val);
 	node_t *newnode, *tail, *next;
@@ -145,4 +149,73 @@ int lfqueue_deque(intset_t *set, val_t val) { //Does not have to do with the val
 
 	free(head);
 	return 1;
+}
+
+*/
+///////////////////////////////////////////////////////////////////////////////////////
+////Non MC queue
+
+//Enque a node to the head.
+int lfqueue_enque(intset_t *set, val_t val) {
+	//printf("insert value - %d\n", (int) val);
+	node_t *newnode, *tail, *next, *head;
+	//printf("Enqueue %d \n", val);
+
+	do{
+
+		head = set->head;
+		newnode = new_node(val, set->head, 0);
+		
+		if(ATOMIC_CAS_MB(&set->head, head, newnode))
+			return 1;
+		//or return 1;
+
+		
+	}while(1);
+
+	free(head);
+	return 1;
+
+}
+
+int lfqueue_deque(intset_t *set, val_t val) { //Does not have to do with the value.
+	//printf("insert value - %d\n", (int) val);
+	node_t *head, *tail, *next, *ptr, *left;
+	//printf("Dequeue %d \n", val);
+		
+	//do {
+		
+		ptr = set->head;
+		left = NULL; //Header pointer - 1
+
+		if(ptr == NULL) return 0;
+
+		//Searching for the tail
+		while(ptr->next != NULL){
+			left = ptr;
+			ptr = ptr->next;
+		} 
+
+		if(ptr == head){
+			//left==NULL
+			if(ATOMIC_CAS_MB(&set->head, ptr, NULL))
+			return 1;
+		}
+		else{
+			if(ATOMIC_CAS_MB(&left->next, ptr, NULL))
+			return 1;
+		}
+
+		//endedup in the tail ptr=tail
+		//for single element - if not 1
+
+		//deque
+
+	//} while(1);
+
+	//free(ptr);
+	//free(left);
+
+
+	return 0;
 }

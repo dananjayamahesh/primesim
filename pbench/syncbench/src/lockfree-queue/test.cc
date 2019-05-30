@@ -122,7 +122,7 @@ void *test(void *data) {
 				pthread_t tid = pthread_self() ;
 				//printf("Inserting value %d from thread %d\n", val, (int) tid );
 				if (set_add(d->set, val, TRANSACTIONAL)) {
-					//printf("add thread");
+					//printf("add thread %d \n", val);
 					d->nb_added++;
 					last = val;
 					//printf("Added %d \n", val);
@@ -142,9 +142,11 @@ void *test(void *data) {
 					/* Remove one random value */
 					if (set_remove(d->set, val, TRANSACTIONAL)) {
 						d->nb_removed++;
+						//printf("remove thread %d \n", val);
 						/* Repeat until successful, to avoid size variations */
 						last = -1;
 					} 
+					//last = -1;
 				}
 				d->nb_remove++;
 			}
@@ -182,7 +184,21 @@ void *test(void *data) {
 						 < (d->update * (d->nb_add + d->nb_remove + d->nb_contains)));
 		} else { // remove/add (even failed) is considered as an update
 			unext = (rand_range_re(&d->seed, 100) - 1 < d->update);
-		}		
+		}	
+
+
+		//set_print(d->set);	
+		/*
+		 node_t * ptr = d->set->head;
+     
+	 		while(ptr !=NULL){
+	 			printf("%d -> ", ptr->val);
+	 			ptr = ptr->next;
+	 		}
+		
+	 	printf("\n");
+	 	*/
+
 
 	}	
 	/* Free transaction */

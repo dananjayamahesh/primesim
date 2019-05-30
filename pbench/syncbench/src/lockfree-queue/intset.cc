@@ -51,4 +51,13 @@ int set_remove(intset_t *set, val_t val, int transactional)
 	return result;
 }
 
+void set_print(intset_t *set){
+	 node_t * ptr = set->head;
+     
+	 while(ptr !=NULL){
+	 	//print("%d -> " ptr->val);
+	 	ptr = ptr->next;
+	 }
 
+	 //print("\n");
+}
