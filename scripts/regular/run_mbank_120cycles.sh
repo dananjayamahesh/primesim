@@ -6,14 +6,14 @@
 #remove delay from natural write back. it may have effected core 1
 
 #balanced, addony, mremoved
-optype=balanced
+optype=regular
 #optype=balanced
 #RUn History
 #syncbench-mbank-120cycles-nopfixed-4 ->initial run after fixing rp writeback delays
 #syncbench-mbank-120cycles-nopfixed-4-1 ->same
 #syncbench-mbank-120cycles-nopfixed-4-2 ->add more counters for write backs and epoch sizes, add thread 1,
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
-CONF_NAME=syncbench-mbank-120cycles-nopfixed-8_lfqueue50
+CONF_NAME=syncbench-mbank-120cycles-nopfixed-8
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DIMP2_FILE=${HOME}/repos/primesim/output/${optype}/stat2.txt
@@ -47,20 +47,20 @@ rate2=64000
 #for threads in 8 16 32
 for rate in 1000 
 do
-for operations in 4000
+for operations in 1000 4000
 do
 	#for operations in 1000 4000
 	for threads in 8 1 16 32
 	do
 			
-			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
-			for bench in lfqueue
+			for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
+			#for bench in lfqueue
 			#for bench in bstree skiplist-rotating-c
 			do	
 				echo "$bench,$threads,$rate,$rate2,$operations" >> ${DATA_FILE}
 				echo "$bench,$threads,$rate,$rate2,$operations" >> ${DATA2_FILE}
 				#urate=100
-				urate=50
+				urate=100
 				if [ bench = lfqueue ]; then
 					echo "update rate changed"
               	  urate=50
@@ -82,7 +82,7 @@ do
 					-np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so \
 					-c ${HOME}/repos/primesim/xml/config_mbank_120cycles_${pmodel}.xml \
 					-o ${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/config_${threads}_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out \
-					-- ${HOME}/repos/primesim/pbench/syncbench/bin/${bench}_${optype} -t ${threads} -i ${rate} -r ${rate2} -o ${operations} -d 10 -x 6 -u 50
+					-- ${HOME}/repos/primesim/pbench/syncbench/bin/${bench}_${optype} -t ${threads} -i ${rate} -r ${rate2} -o ${operations} -d 10 -x 6 -u ${urate}
 					
 					#cat ${DIMP_FILE} >> ${DATA_FILE3}
 					DIMP_FILE=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/config_${threads}_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out_stat
