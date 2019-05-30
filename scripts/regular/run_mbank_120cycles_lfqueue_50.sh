@@ -65,7 +65,7 @@ do
 					echo "update rate changed"
               	  urate=50
               	else
-              		urate=100
+              		urate=50
             	fi
 
 				for pmodel in 0 3 4 6
