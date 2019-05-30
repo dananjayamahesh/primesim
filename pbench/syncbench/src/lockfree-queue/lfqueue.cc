@@ -39,7 +39,7 @@ node_t *lfqueue_search(intset_t *set, val_t val, node_t **left_node) {
 	node_t *left_node_next, *right_node;
 	left_node_next = set->head;
 
-	printf("Search \n");
+	//printf("Search \n");
 	
 search_again:
 	do {
@@ -82,7 +82,7 @@ int lfqueue_find(intset_t *set, val_t val) {
 	
 	node_t * ptr = set->head;
 
-	printf("Find \n");
+	//printf("Find \n");
 
 	while(ptr !=NULL){
 		if(ptr->val == val) return 1;
