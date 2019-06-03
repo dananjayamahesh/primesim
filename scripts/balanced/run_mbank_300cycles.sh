@@ -50,7 +50,7 @@ do
 	for threads in 8 1 16 32
 	do
 			
-			for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
+			for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
 			#for bench in bstree skiplist-rotating-c
 			do	
