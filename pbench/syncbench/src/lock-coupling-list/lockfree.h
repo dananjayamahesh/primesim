@@ -93,12 +93,14 @@ DIMP_compare_and_swap_acq(volatile AO_t *addr, AO_t old, AO_t new_val)
 {
 
 # ifdef AO_USE_SYNC_CAS_BUILTIN
+  printf("built in acquire \n");
   //__asm__ __volatile__("sfence" : : : "memory");
   __asm__ __volatile__("lfence" : : : "memory");
     return (int)__sync_bool_compare_and_swap(addr, old, new_val);
    // __asm__ __volatile__("sfence" : : : "memory");
     //__asm__ __volatile__("mfence" : : : "memory");
 # else
+    printf("not a built in acquire \n");
      char result;
     __asm__ __volatile__("lfence" : : : "memory");
     __asm__ __volatile__("lock; cmpxchg %3, %0; setz %1"
@@ -130,7 +132,10 @@ DIMP_compare_and_swap_rel(volatile AO_t *addr, AO_t old, AO_t new_val)
 #endif
 }
 
-#define ATOMIC_CAS_WEAK_ACQUIRE(a, e, v)    (DIMP_compare_and_swap_acq(( AO_t *)(a), (AO_t)(e), (AO_t)(v)))
+#define ATOMIC_CAS_WEAK_ACQ(a, e, v)    (DIMP_compare_and_swap_acq(( AO_t *)(a), (AO_t)(e), (AO_t)(v)))
+#define ATOMIC_CAS_WEAK_REL(a, e, v)    (DIMP_compare_and_swap_rel(( AO_t *)(a), (AO_t)(e), (AO_t)(v)))
+#define ATOMIC_CAS_WEAK_FULL(a, e, v)    (DIMP_compare_and_swap_full(( AO_t *)(a), (AO_t)(e), (AO_t)(v)))
+
 
 DIMP_INLINE int
 DIMP_pthread_spin_lock (int *lock)
@@ -164,7 +169,7 @@ DIMP_pthread_spin_lock (int *lock)
       /* We need acquire memory order here for the same reason as mentioned
          for the first try to lock the spinlock.  */
     }
-  while (!ATOMIC_CAS_WEAK_ACQUIRE (lock, 0, 1));
+  while (!ATOMIC_CAS_WEAK_ACQ(lock, 0, 1));
   return 0;
 }
 
