@@ -165,6 +165,8 @@ int lfqueue_enque(intset_t *set, val_t val) {
 
 		head = set->head;
 		newnode = new_node(val, set->head, 0);
+		newnode->load1=(long)val+1;
+		newnode->load2=(long)val+2;		
 		
 		if(ATOMIC_CAS_MB(&set->head, head, newnode))
 			return 1;

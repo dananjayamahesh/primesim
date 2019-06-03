@@ -24,8 +24,14 @@ enum {UNFLAG,FLAG};
 
 typedef uintptr_t Word;
 
+typedef long load_t;
+
 typedef struct node{
 	int key;
+
+  load_t load1;
+  load_t load2;
+
 	AO_double_t volatile child;
 	#ifdef UPDATE_VAL
 		long value;

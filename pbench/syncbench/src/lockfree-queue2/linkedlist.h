@@ -59,8 +59,12 @@ typedef intptr_t val_t;
 #define VAL_MIN                         INT_MIN
 #define VAL_MAX                         INT_MAX
 
+typedef long load_t;
+
 typedef struct node {
 	val_t val;
+	load_t load1;
+	load_t load2;	
 	struct node *next;
 } node_t;
 

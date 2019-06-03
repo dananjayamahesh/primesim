@@ -21,6 +21,8 @@
 #define IDX(_i, _z) ((_z) + (_i)) % MAX_LEVELS
 unsigned long sl_zero;
 
+typedef long load_t;
+
 /* bottom-level nodes */
 typedef VOLATILE struct sl_node node_t;
 struct sl_node {
@@ -32,6 +34,8 @@ struct sl_node {
         struct sl_node  *succs[MAX_LEVELS];
         unsigned long   marker;
         unsigned long   raise_or_remove;
+
+        load_t load1;
 };
 
 /* the skip list set */

@@ -19,6 +19,10 @@ int perform_one_insert_window_operation(thread_data_t* data, seekRecord_t * R, s
   newLeaf->child.AO_val1 = 0;
   newLeaf->child.AO_val2 = 0;
   newLeaf->key = newKey;
+
+  	//Parity Load
+  	newLeaf->load1=(long)newKey+1;
+	newLeaf->load2=(long)newKey+2;
 		
   node_t * existLeaf = (node_t *)get_addr(R->pL);
   size_t existKey = R->leafKey;

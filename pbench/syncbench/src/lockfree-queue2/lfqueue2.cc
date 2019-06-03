@@ -96,6 +96,9 @@ int old_lfqueue_enque(intset_t *set, val_t val) {
 	//printf("insert value - %d\n", (int) val);
 	node_t *newnode, *tail, *next;
 	newnode = new_node(val, NULL, 0);
+
+	newnode->load1=val;
+	newnode->load2=val;
 	
 	do {
 
@@ -156,6 +159,10 @@ int lfqueue_enque(intset_t *set, val_t val) {
 	//printf("insert value - %d\n", (int) val);
 	node_t *newnode, *tail, *next;
 	newnode = new_node(val, NULL, 0);
+
+	//8B parity load
+	newnode->load1=(long)val+1;
+	newnode->load2=(long)val+2;
 	
 	do {
 

@@ -131,6 +131,9 @@ int harris_insert(intset_t *set, val_t val) {
 		if (right_node->val == val)
 			return 0;
 		newnode = new_node(val, right_node, 0);
+
+		newnode->load1=(long)val+1;
+		newnode->load2=(long)val+2;
 		
 		#ifdef WRITE_N
 		newnode->write_0 = (long)val+1;
