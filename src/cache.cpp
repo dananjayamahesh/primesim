@@ -74,7 +74,7 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
         rmw_acq_count           = 0;
         rmw_rel_count           = 0;
         wrt_rel_count           = 0;
-        rmw_full_count          = 0 ;
+        rmw_full_count          = 0;
         rmw_count               = 0;
         wrt_relaxed_count       = 0;
 
@@ -88,6 +88,9 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
 
         write_back_count = 0;
         write_back_delay = 0; //Write-backs on the critical path
+
+         same_block_count =0;
+         same_block_delay = 0;
 
         critical_write_back_count = 0;
         critical_write_back_delay = 0;

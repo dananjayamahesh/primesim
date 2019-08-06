@@ -226,6 +226,9 @@ class Cache
         uint64_t critical_conflict_persists;
         uint64_t critical_conflict_persist_cycles;
 
+        uint64_t same_block_count;
+        uint64_t same_block_delay;
+
         uint64_t write_back_count;
         uint64_t write_back_delay;
 

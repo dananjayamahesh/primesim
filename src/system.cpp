@@ -522,7 +522,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
         //Write
         if (ins_mem->mem_type == WR) {
 
-           if (level != num_levels-1) {
+            if (level != num_levels-1) {
 
                 if(line_cur->state == M  || line_cur->state == E){ //Cache hit
                     //Check for buffered epoch persistency - BEP
@@ -531,11 +531,14 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             //Buffered Epoch Persistency- Intra-thread conflict
                             //delay[core_id] += persist(cache_cur, ins_mem, line_cur, core_id); //BEP
                               persist(cache_cur, ins_mem, line_cur, core_id);
-                               int delay_wb =1; //inoked writebacks, CLWB happenes in the critical path
+                               int delay_wb =100; //inoked writebacks, CLWB happenes in the critical path
                                 cache_cur->critical_write_back_count++;     
                                 cache_cur->critical_write_back_delay += delay_wb; //delay must be
                                 cache_cur->write_back_count++;
                                 cache_cur->write_back_delay+=delay_wb;
+
+                                cache_cur->same_block_count++;
+                                cache_cur->same_block_delay+=delay_wb;
                             
                             //also need to write back this cache line - NOT 
 
@@ -848,7 +851,15 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     assert(ins_mem !=NULL);   
                     assert(cache_cur!=NULL);
                     
-                    //printf("E\n");                          
+                    //printf("E\n"); 
+
+                    //ASPLOS-WB
+                    bool is_natural_wb = false;  //Writeback
+                    if(line_cur->state == M ){
+                            is_natural_wb = true;
+                    }
+                    
+
                     ins_mem_old.mem_type = WB;
                     //printf("F\n");
                          int before_delay = delay[core_id];
@@ -859,8 +870,12 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                         
                         int after_delay = delay[core_id];
                         int delay_wb = after_delay - before_delay;
-                        cache_cur->natural_eviction_count++; //Naturally evicted. not in the critical path of RP.
-                        cache_cur->natural_eviction_delay += delay_wb;
+
+                        //ASPLOS
+                        if(is_natural_wb){
+                            cache_cur->natural_eviction_count++; //Naturally evicted. not in the critical path of RP.
+                            cache_cur->natural_eviction_delay += delay_wb;
+                        }
 
                         if(level ==0){
                             if(pmodel == RLSB){ //Becuase write-backs happenes in the criticial path
@@ -872,7 +887,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             }
                         }
 
-                        if(level == 0){
+                        if(level == 0 && is_natural_wb){
                             cache_cur->write_back_count++;
                             cache_cur->write_back_delay+=delay_wb;
 
@@ -1164,7 +1179,10 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
 
             //Counts
     if(core_id == req_core_id){
-        cache_cur->intra_conflicts++;
+        
+        if(persist_count>0){
+             cache_cur->intra_conflicts++;
+        }
         cache_cur->intra_persists += persist_count;
         cache_cur->intra_persist_cycles += delay[core_id]; //Not correct, but not effects the core
 
@@ -1179,16 +1197,20 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
         cache_cur->critical_write_back_delay += delay[core_id];
         
     }else{
-        cache_cur->inter_conflicts++;
+
+        
+        if(persist_count>0){
+             cache_cur->inter_conflicts++;
+        }        
         cache_cur->inter_persists += persist_count;
         cache_cur->inter_persist_cycles += delay[core_id]; 
 
         //New
-        cache_cur->write_back_count += persist_count;
-        cache_cur->noncritical_write_back_count += persist_count; //Is this true
+        cache_cur->write_back_count += persist_count+1;
+        cache_cur->noncritical_write_back_count += persist_count+1; //Is this true
 
-        cache_cur->write_back_delay += delay[core_id];
-        cache_cur->noncritical_write_back_delay += delay[core_id];
+        cache_cur->write_back_delay += delay[core_id]+1;
+        cache_cur->noncritical_write_back_delay += delay[core_id]+1;
         
         cache[0][req_core_id]->external_critical_wb_count += persist_count;
         cache[0][req_core_id]->external_critical_wb_delay += delay[core_id];  
@@ -1372,11 +1394,14 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
         cache_cur->critical_conflict_persists += persist_count; //Should be equal to both intra-thread and inter-thread
         cache_cur->critical_conflict_persist_cycles += delay[core_id]; //Delay
 
+        //+1 non-critical does not require. Its happening in the evicting thread.
+
         cache_cur->write_back_count += persist_count;
         cache_cur->write_back_delay += delay[core_id];
 
         cache_cur->critical_write_back_count += persist_count;       
         cache_cur->critical_write_back_delay += delay[core_id];
+
         
     }else{ // Inter conflicts are not in the sritical path of the receiving core.
         cache_cur->inter_conflicts++;
@@ -1384,11 +1409,11 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
         cache_cur->inter_persist_cycles += delay[core_id]; 
 
         //New
-        cache_cur->write_back_count += persist_count;
-        cache_cur->write_back_delay += delay[core_id];
+        cache_cur->write_back_count += persist_count+1; //1 is for release
+        cache_cur->write_back_delay += delay[core_id]+1;
 
-        cache_cur->noncritical_write_back_count += persist_count; //Is this true        
-        cache_cur->noncritical_write_back_delay += delay[core_id];
+        cache_cur->noncritical_write_back_count += persist_count+1; //Is this true        , 1 is for the release
+        cache_cur->noncritical_write_back_delay += delay[core_id]+ (delay[core_id]/persist_count);
         
         cache[0][req_core_id]->external_critical_wb_count += persist_count;
         cache[0][req_core_id]->external_critical_wb_delay += delay[core_id];        
@@ -2114,7 +2139,7 @@ void System::report(ofstream* result, ofstream* stat)
     //double conflict_rate=0.0;
     uint64_t clwb_tot=0, critical_clwb=0, noncritical_clwb=0, external_clwb=0, natural_clwb=0, sync_clwb=0, critical_persist_wb=0; //last one id related to total persist count
     uint64_t delay_clwb_tot=0, delay_critical_clwb=0, delay_noncritical_clwb=0, delay_external_clwb=0, delay_natural_clwb=0, delay_sync_clwb=0, delay_critical_persist_wb=0;
-   
+   uint64_t delay_same_block_tot =0; uint64_t same_block_count_tot =0;
    uint64_t epoch_sum_tot = 0;
    uint64_t epoch_id_tot = 0, epoch_id2_tot=0;
    
@@ -2213,6 +2238,10 @@ void System::report(ofstream* result, ofstream* stat)
         epoch_id_tot = 0;
         epoch_id2_tot = 0;
 
+        same_block_count_tot = 0;
+        delay_same_block_tot =0;
+
+
         for (j=0; j<cache_level[i].num_caches; j++) {
             if (cache[i][j] != NULL) {
                 ins_count += cache[i][j]->getInsCount();
@@ -2231,6 +2260,7 @@ void System::report(ofstream* result, ofstream* stat)
                 intra_pcycles_tot += cache[i][j]->intra_persist_cycles;
                 ratio_inter_intra_persist_cycles += (double)inter_pcycles_tot/(inter_pcycles_tot+intra_pcycles_tot);
 
+                same_block_count_tot += cache[i][j]->same_block_count; 
                 clwb_tot            +=    cache[i][j]->write_back_count; 
                 critical_clwb       +=   cache[i][j]->critical_write_back_count; 
                 noncritical_clwb    +=    cache[i][j]->noncritical_write_back_count; 
@@ -2240,6 +2270,7 @@ void System::report(ofstream* result, ofstream* stat)
                 critical_persist_wb +=     cache[i][j]->critical_conflict_persists;
 
 
+                delay_same_block_tot += cache[i][j]->same_block_delay; 
                 delay_clwb_tot              +=      cache[i][j]->write_back_delay;
                 delay_critical_clwb         +=      cache[i][j]->critical_write_back_delay;
                 delay_noncritical_clwb      +=      cache[i][j]->noncritical_write_back_delay;
@@ -2305,7 +2336,9 @@ void System::report(ofstream* result, ofstream* stat)
         double p_rate = (double) critical_persist_wb/clwb_tot;
         double pdelay_rate = (double) delay_critical_persist_wb/delay_clwb_tot;
         //double clwb = clwb_tot;
-        *stat << inter_persist_tot << "," << intra_persist_tot << "," << persist_count << "," << clwb_tot << "," << critical_clwb << "," << noncritical_clwb << "," << natural_clwb << "," << external_clwb << "," << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
+
+        //ASPLOS Updates WB
+        *stat << inter_persist_tot << "," << intra_persist_tot << "," << persist_count << "," << clwb_tot << "," << critical_clwb << "," << noncritical_clwb << "," << natural_clwb << "," << external_clwb << "," << inter_tot << "," << intra_tot <<"," << same_block_count_tot << "," << delay_same_block_tot << ","  << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
         *result << conf_rate << "," << wb_rate << "," << wbdelay_rate << "," << p_rate << "," << pdelay_rate << "," << clwb_tot << "," << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
     }
     
