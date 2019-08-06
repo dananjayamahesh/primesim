@@ -30,10 +30,10 @@ test.o: linkedlist.h lfqueue2.h intset.h
 	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_mremoved.o test_mremoved.cc
 
 main: linkedlist.o lfqueue2.o intset.o test.o
-	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue.o $(BUILDIR)/intset.o $(BUILDIR)/test.o -o $(BINDIR)/lfqueue2_regular $(LDFLAGS)
-	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue.o $(BUILDIR)/intset.o $(BUILDIR)/test_balanced.o -o $(BINDIR)/lfqueue2_balanced $(LDFLAGS)
-	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue.o $(BUILDIR)/intset.o $(BUILDIR)/test_addonly.o -o $(BINDIR)/lfqueue2_addonly $(LDFLAGS)
-	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue.o $(BUILDIR)/intset.o $(BUILDIR)/test_mremoved.o -o $(BINDIR)/lfqueue2_mremoved $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue2.o $(BUILDIR)/intset.o $(BUILDIR)/test.o -o $(BINDIR)/lfqueue2_regular $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue2.o $(BUILDIR)/intset.o $(BUILDIR)/test_balanced.o -o $(BINDIR)/lfqueue2_balanced $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue2.o $(BUILDIR)/intset.o $(BUILDIR)/test_addonly.o -o $(BINDIR)/lfqueue2_addonly $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue2.o $(BUILDIR)/intset.o $(BUILDIR)/test_mremoved.o -o $(BINDIR)/lfqueue2_mremoved $(LDFLAGS)
 
 clean:
 	-rm -f $(BINS) 

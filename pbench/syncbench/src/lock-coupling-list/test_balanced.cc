@@ -322,8 +322,11 @@ int main(int argc, char **argv)
       operations = atoi(optarg);
       break;
     case 'x':
+      unit_tx = atoi(optarg);
+      unit_tx = DEFAULT_LOCKTYPE;
       printf("The parameter x is not valid for this benchmark.\n");
-      exit(0);
+      break;
+      //exit(0);
     case 'a':
       printf("The parameter a is not valid for this benchmark.\n");
       exit(0);

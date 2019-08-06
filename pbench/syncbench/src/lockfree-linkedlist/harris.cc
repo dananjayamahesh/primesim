@@ -131,20 +131,7 @@ int harris_insert(intset_t *set, val_t val) {
 		if (right_node->val == val)
 			return 0;
 		newnode = new_node(val, right_node, 0);
-
-		newnode->load1=(long)val+1;
-		newnode->load2=(long)val+2;
 		
-		#ifdef WRITE_N
-		newnode->write_0 = (long)val+1;
-		newnode->write_1 = (long)val+2;
-		newnode->write_2 = (long)val+3;
-		newnode->write_3 = (long)val+4;
-		newnode->write_4 = (long)val+5;
-		newnode->write_5 = (long)val+6;
-		newnode->write_6 = (long)val+7;
-		newnode->write_7 = (long)val+8;
-		#endif
 		//Parity Epoch
 		#ifdef EPOCH_PARITY
 		int load=0;

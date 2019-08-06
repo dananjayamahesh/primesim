@@ -58,12 +58,54 @@ typedef intptr_t val_t;
 #define VAL_MIN                         INT_MIN
 #define VAL_MAX                         INT_MAX
 
+//#define 4B
+//#define 8B
+#define B4
+//#define 64B
+
 typedef long load_t;
 
 typedef struct node {
 	val_t val;
+
+	#ifdef B4
+	load_t load1;
+	#endif
+
+	#ifdef B8
 	load_t load1;
 	load_t load2;
+	#endif
+
+	#ifdef B32
+	load_t load1;
+	load_t load2;
+	load_t load3;
+	load_t load4;
+	load_t load5;
+	load_t load6;
+	load_t load7;
+	load_t load8;
+	#endif
+
+	#ifdef B64
+	load_t load1;
+	load_t load2;
+	load_t load3;
+	load_t load4;
+	load_t load5;
+	load_t load6;
+	load_t load7;
+	load_t load8;
+	load_t load9;
+	load_t load10;
+	load_t load11;
+	load_t load12;
+	load_t load13;
+	load_t load14;
+	load_t load15;
+	load_t load16;
+	#endif
 
 	#ifdef WRITES_N
 	long write_0;
@@ -73,9 +115,9 @@ typedef struct node {
 	long write_4;
 	long write_5;
 	long write_6;
-	long write_7;
-	
+	long write_7;	
 	#endif
+
 	#ifdef EPOCH_PARITY
 		int parity[MAX_PARITY_LOAD];
 	#endif

@@ -24,13 +24,51 @@ enum {UNFLAG,FLAG};
 
 typedef uintptr_t Word;
 
+#define B4
+
 typedef long load_t;
 
 typedef struct node{
 	int key;
 
+  #ifdef B4
+  load_t load1;
+  #endif
+
+  #ifdef B8
   load_t load1;
   load_t load2;
+  #endif
+
+  #ifdef B32
+  load_t load1;
+  load_t load2;
+  load_t load3;
+  load_t load4;
+  load_t load5;
+  load_t load6;
+  load_t load7;
+  load_t load8;
+  #endif
+
+  #ifdef B64
+  load_t load1;
+  load_t load2;
+  load_t load3;
+  load_t load4;
+  load_t load5;
+  load_t load6;
+  load_t load7;
+  load_t load8;
+  load_t load9;
+  load_t load10;
+  load_t load11;
+  load_t load12;
+  load_t load13;
+  load_t load14;
+  load_t load15;
+  load_t load16;
+  #endif
 
 	AO_double_t volatile child;
 	#ifdef UPDATE_VAL

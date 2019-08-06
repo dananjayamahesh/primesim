@@ -330,7 +330,7 @@ int main(int argc, char **argv) {
 	assert(range > 0 && range >= initial);
 	assert(update >= 0 && update <= 100);
 	
-	printf("Bench type   : linked list\n");
+	printf("Bench type   : lfqueue2\n");
 	printf("Duration     : %d\n", duration);
 	printf("Initial size : %d\n", initial);
 	printf("Nb threads   : %d\n", nb_threads);

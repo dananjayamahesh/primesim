@@ -77,6 +77,46 @@ node_t* node_new(unsigned long key, void *val, node_t *prev,
 
         assert (node->next != node);
 
+        //New parity
+    #ifdef B4
+      node->load1=val+1;
+    #endif
+
+    #ifdef B8
+      node->load1=val+1;
+      node->load2=val+2;
+    #endif
+    
+    #ifdef B32
+      node->load1=val+1;
+      node->load2=val+2;
+      node->load3=val+3;
+      node->load4=val+4;
+      node->load5=val+5;
+      node->load6=val+6;
+      node->load7=val+7;
+      node->load8=val+8;
+    #endif
+
+      #ifdef B64
+      node->load1=val+1;
+      node->load2=val+2;
+      node->load3=val+3;
+      node->load4=val+4;
+      node->load5=val+5;
+      node->load6=val+6;
+      node->load7=val+7;
+      node->load8=val+8;
+      node->load9=val+9;
+      node->load10=val+10;
+      node->load11=val+11;
+      node->load12=val+12;
+      node->load13=val+13;
+      node->load14=val+14;
+      node->load15=val+15;
+      node->load16=val+16;
+    #endif
+
         return node;
 }
 

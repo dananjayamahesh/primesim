@@ -21,8 +21,44 @@ int perform_one_insert_window_operation(thread_data_t* data, seekRecord_t * R, s
   newLeaf->key = newKey;
 
   	//Parity Load
+  	#ifdef B4
+  	newLeaf->load1=(long)newKey+1;
+	#endif
+
+  	#ifdef B8
   	newLeaf->load1=(long)newKey+1;
 	newLeaf->load2=(long)newKey+2;
+	#endif
+
+	#ifdef B32
+  	newLeaf->load1=(long)newKey+1;
+	newLeaf->load2=(long)newKey+2;
+	newLeaf->load3=(long)newKey+3;
+	newLeaf->load4=(long)newKey+4;
+	newLeaf->load5=(long)newKey+5;
+	newLeaf->load6=(long)newKey+6;
+	newLeaf->load7=(long)newKey+7;
+	newLeaf->load8=(long)newKey+8;
+	#endif
+
+	#ifdef B64
+  	newLeaf->load1=(long)newKey+1;
+	newLeaf->load2=(long)newKey+2;
+	newLeaf->load3=(long)newKey+3;
+	newLeaf->load4=(long)newKey+4;
+	newLeaf->load5=(long)newKey+5;
+	newLeaf->load6=(long)newKey+6;
+	newLeaf->load7=(long)newKey+7;
+	newLeaf->load8=(long)newKey+8;
+	newLeaf->load9=(long)newKey+9;
+	newLeaf->load10=(long)newKey+10;
+	newLeaf->load11=(long)newKey+11;
+	newLeaf->load12=(long)newKey+12;
+	newLeaf->load13=(long)newKey+13;
+	newLeaf->load14=(long)newKey+14;
+	newLeaf->load15=(long)newKey+15;
+	newLeaf->load16=(long)newKey+16;
+	#endif
 		
   node_t * existLeaf = (node_t *)get_addr(R->pL);
   size_t existKey = R->leafKey;
