@@ -6,13 +6,14 @@
 #remove delay from natural write back. it may have effected core 1
 
 #balanced, addony, mremoved
-optype=balanced
+#optype=balanced
+optype=regular
 #RUn History
 #syncbench-mbank-120cycles-nopfixed-4 ->initial run after fixing rp writeback delays
 #syncbench-mbank-120cycles-nopfixed-4-1 ->same
 #syncbench-mbank-120cycles-nopfixed-4-2 ->add more counters for write backs and epoch sizes, add thread 1,
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
-CONF_NAME=syncbench-mbank-300cycles-nopfixed-9
+CONF_NAME=syncbench-mbank-300cycles-nopfixed-23
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DIMP2_FILE=${HOME}/repos/primesim/output/${optype}/stat2.txt
@@ -41,16 +42,21 @@ fi
 urate=100
 
 rate=1000
-rate2=64000
+#rate2=64000
+#rate2=1000000
+#rate2=8000
+#rate2=4000000
+rate2=1024
 
 #for threads in 8 16 32
 for operations in 1000 
 do
 	#for operations in 1000 4000
-	for threads in 8 1 16 32
+	for threads in 1 8 16 32
 	do
 			
-			for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
+			for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
+			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
 			#for bench in bstree skiplist-rotating-c
 			do	
@@ -69,13 +75,14 @@ do
 					#operations=${rate2}
 					#echo "$bench,$pmodel," >> ${DIMP_FILE}
 					#echo "$pmodel" >> ${DATA_FILE}
+					#/shared-llc
 					
 					mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 \
 					-np 1 ${HOME}/repos/primesim/bin/prime \
-					${HOME}/repos/primesim/xml/config_mbank_300cycles_${pmodel}.xml \
+					${HOME}/repos/primesim/xml/shared-llc/config_mbank_300cycles_${pmodel}.xml \
 					${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/config_${threads}_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out : \
 					-np 1 pin.sh -ifeellucky -t ${HOME}/repos/primesim/bin/prime.so \
-					-c ${HOME}/repos/primesim/xml/config_mbank_300cycles_${pmodel}.xml \
+					-c ${HOME}/repos/primesim/xml/shared-llc/config_mbank_300cycles_${pmodel}.xml \
 					-o ${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/config_${threads}_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out \
 					-- ${HOME}/repos/primesim/pbench/syncbench/bin/${bench}_${optype} -t ${threads} -i ${rate} -r ${rate2} -o ${operations} -d 10 -x 6 -u ${urate}
 					

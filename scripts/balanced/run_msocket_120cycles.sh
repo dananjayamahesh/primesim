@@ -6,13 +6,14 @@
 #remove delay from natural write back. it may have effected core 1
 
 #balanced, addony, mremoved
-optype=balanced
+#optype=balanced
+optype=regular
 #RUn History
 #syncbench-mbank-120cycles-nopfixed-4 ->initial run after fixing rp writeback delays
 #syncbench-mbank-120cycles-nopfixed-4-1 ->same
 #syncbench-mbank-120cycles-nopfixed-4-2 ->add more counters for write backs and epoch sizes, add thread 1,
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
-CONF_NAME=syncbench-msocket-120cycles-nopfixed-9
+CONF_NAME=syncbench-msocket-120cycles-nopfixed-23
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DIMP2_FILE=${HOME}/repos/primesim/output/${optype}/stat2.txt
@@ -41,16 +42,21 @@ fi
 urate=100
 
 rate=1000
-rate2=64000
+#rate2=64000
+#rate2=1000000
+#rate2=8000
+#rate2=4000000
+rate2=1024
 
 #for threads in 8 16 32
 for operations in 1000 
 do
 	#for operations in 1000 4000
-	for threads in 8 1 16 32
+	for threads in 1 8 16 32
 	do
 			
-			for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
+			for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
+			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
 			#for bench in bstree skiplist-rotating-c
 			do	

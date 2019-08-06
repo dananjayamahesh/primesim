@@ -13,6 +13,9 @@ optype=balanced
 #syncbench-mbank-120cycles-nopfixed-4-1 ->same
 #syncbench-mbank-120cycles-nopfixed-4-2 ->add more counters for write backs and epoch sizes, add thread 1,
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
+
+#This wa run with nopfixed8 not wqith 9, 9 has the new scripts
+
 CONF_NAME=syncbench-mbank-120cycles-nopfixed-8_lfqueue_nmc
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
