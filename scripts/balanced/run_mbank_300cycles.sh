@@ -7,13 +7,13 @@
 
 #balanced, addony, mremoved
 #optype=balanced
-optype=regular
+optype=balanced
 #RUn History
 #syncbench-mbank-120cycles-nopfixed-4 ->initial run after fixing rp writeback delays
 #syncbench-mbank-120cycles-nopfixed-4-1 ->same
 #syncbench-mbank-120cycles-nopfixed-4-2 ->add more counters for write backs and epoch sizes, add thread 1,
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
-CONF_NAME=syncbench-mbank-300cycles-nopfixed-23
+CONF_NAME=syncbench-mbank-300cycles-nopfixed-11-wbfixed
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DIMP2_FILE=${HOME}/repos/primesim/output/${optype}/stat2.txt
@@ -46,7 +46,8 @@ rate=1000
 #rate2=1000000
 #rate2=8000
 #rate2=4000000
-rate2=1024
+#rate2=1024
+rate2=64000
 
 #for threads in 8 16 32
 for operations in 1000 

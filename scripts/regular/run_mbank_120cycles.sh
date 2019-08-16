@@ -13,7 +13,7 @@ optype=regular
 #syncbench-mbank-120cycles-nopfixed-4-1 ->same
 #syncbench-mbank-120cycles-nopfixed-4-2 ->add more counters for write backs and epoch sizes, add thread 1,
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
-CONF_NAME=syncbench-mbank-120cycles-nopfixed-22
+CONF_NAME=syncbench-mbank-120cycles-nopfixed-25
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DIMP2_FILE=${HOME}/repos/primesim/output/${optype}/stat2.txt
@@ -43,15 +43,16 @@ DATA2_FILE=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/data2.txt
 #Parity: load
 #20 11 with 64K and 32B parity load, 32B, shared-llc mbank, With 64k nodes.
 
-#21 11 with 64K and 32B parity load, 64B, shared-llc mbank, With 64k nodes. - Stop in the moddle. Regula is finished
+#21 11 with 64K and 32B parity load, 64B, shared-llc mbank, With 64k nodes.- Stop in the moddle. Regula is finished
 
 
-#22 11 with 64K and 32B parity load, 4B, shared-llc mbank, With 32k nodes.
-#23 11 with 64K and 32B parity load, 64B, shared-llc mbank, With 1024 nodes.
+#22 11 with 64K and 4B parity load, 4B, shared-llc mbank, With 32k nodes. only in Regular
+#23 11 with 64K and 4B parity load, 4B, shared-llc mbank, With 1024 nodes. Only in regular
 
-#22 is unsuccessful. Run aagin
-#24 22 again with 64K and 32B parity load, 4B, shared-llc mbank, With 32K nodes.
+#11-wbfixed as same as 11 running only on balanced mode. After fixing WB count.
 
+#24 chaning L1 cache size to 64k , 65536 from  32768
+#25- chaning L1 cache size to 62K again and change to 4-ways 
 
 #L1 cache sizes
 
@@ -79,7 +80,8 @@ urate=100
 #rate2=1000000
 #rate2=8000
 #rate2=4000000
-rate2=32000
+#rate2=32000
+rate2=64000
 
 #for threads in 8 16 32
 for rate in 1000 
