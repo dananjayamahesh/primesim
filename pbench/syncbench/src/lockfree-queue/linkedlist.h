@@ -59,7 +59,8 @@ typedef intptr_t val_t;
 #define VAL_MIN                         INT_MIN
 #define VAL_MAX                         INT_MAX
 
-#define B4
+//#define B4 - Original result for run11-paper
+#define B96
 
 typedef long load_t;
 
@@ -103,6 +104,35 @@ typedef struct node {
 	load_t load14;
 	load_t load15;
 	load_t load16;
+	#endif
+
+
+	#ifdef B96
+	load_t load1;
+	load_t load2;
+	load_t load3;
+	load_t load4;
+	load_t load5;
+	load_t load6;
+	load_t load7;
+	load_t load8;
+	load_t load9;
+	load_t load10;
+	load_t load11;
+	load_t load12;
+	load_t load13;
+	load_t load14;
+	load_t load15;
+	load_t load16;
+	
+	load_t load17;
+	load_t load18;
+	load_t load19;
+	load_t load20;
+	load_t load21;
+	load_t load22;
+	load_t load23;
+	load_t load24;
 	#endif
 
 	struct node *next;

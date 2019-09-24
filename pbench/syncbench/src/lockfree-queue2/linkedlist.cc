@@ -66,6 +66,34 @@ node_t *new_node(val_t val, node_t *next, int transactional)
     node->load16=val+16;
   #endif
 
+    #ifdef B96
+      node->load1=(long)val+1;
+      node->load2=(long)val+2;
+      node->load3=(long)val+3;
+      node->load4=(long)val+4;
+      node->load5=(long)val+5;
+      node->load6=(long)val+6;
+      node->load7=(long)val+7;
+      node->load8=(long)val+8;
+      node->load9=(long)val+9;
+      node->load10=(long)val+10;
+      node->load11=(long)val+11;
+      node->load12=(long)val+12;
+      node->load13=(long)val+13;
+      node->load14=(long)val+14;
+      node->load15=(long)val+15;
+      node->load16=(long)val+16;
+  
+      node->load17=(long)val+17;
+      node->load18=(long)val+18;
+      node->load19=(long)val+19;
+      node->load20=(long)val+20;
+      node->load21=(long)val+21;
+      node->load22=(long)val+22;
+      node->load23=(long)val+23;
+      node->load24=(long)val+24;    
+    #endif 
+
   return node;
 }
 
