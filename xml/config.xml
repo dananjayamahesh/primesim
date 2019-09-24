@@ -35,11 +35,11 @@
           <num_ways>16</num_ways>
           <access_time>10</access_time>
           <level>2</level>
-          <share>32</share>
+          <share>64</share>
           <block_size>64</block_size>
           <size>4194304</size>
        </cache>
-       <num_cores>32</num_cores>
+       <num_cores>64</num_cores>
        <page_size>4096</page_size>
        <persist_model>3</persist_model>
        <directory_cache>

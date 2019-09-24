@@ -90,33 +90,48 @@ cache = [
             'block_size' : 64,
             # associativity
             'num_ways' : 8 
-            },
+            }
+            ,
             # L2 cache
             {
             'level' : 1,
             #private L2
             'share' : 1,
             # hit latency
-            'access_time' : 5,
+            'access_time' : 1,
             # 256KB
-            'size' : 262144,
-            'block_size' : 64,
-            'num_ways' : 8 
-            },
-            # L3 cache
-            {
-            'level' : 2,
-            # each L3 is shared by 64 cores
-            'share' : 1, #initially 4
-            'access_time' : 10,
-            #4MB
-            'size' : 4194304,
+            'size' : 1048576,
             'block_size' : 64,
             'num_ways' : 16 
             }
+            #,
+            ## L2 cache
+            #{
+            #'level' : 1,
+            ##private L2
+            #'share' : 1,
+            ## hit latency
+            #'access_time' : 5,
+            ## 256KB
+            #'size' : 262144,
+            #'block_size' : 64,
+            #'num_ways' : 8 
+            #}
+            #,
+            ## L3 cache
+            #{
+            #'level' : 2,
+            ## each L3 is shared by 64 cores
+            #'share' : 1, #initially 4
+            #'access_time' : 10,
+            ##4MB
+            #'size' : 4194304,
+            #'block_size' : 64,
+            #'num_ways' : 16 
+            #}
 
         ]
-
+#1MB = 1048576
 # can be either distributed directory cache or shared llc with embedded 
 # directory cache determined by the shared_llc option in system config
 directory_cache = {
@@ -126,10 +141,12 @@ directory_cache = {
             'share' : 1,
             'access_time' : 10,
             # cache size per distributed slice
-            'size' : 31457280,
+            'size' : 1048576,
+            #'size' : 31457280,
             #need to change
             'block_size' : 64,
-            'num_ways' : 24 
+            #'num_ways' : 24 
+            'num_ways' : 16 
 }
 
 # TLB can be turned off by settng tlb_enable in system config to 0, address 
@@ -151,7 +168,7 @@ system = {
             # dram access latency
             'dram_access_time' : 120,
             # total # of levels in data cache hierarchy
-            'num_levels' : 3,
+            'num_levels' : 2,
             # avarage CPI for non-memory instructions, can be tuned to simulate different types of cores
             'cpi_nonmem' : 1,
             # core count

@@ -13,7 +13,7 @@ optype=regular
 #syncbench-mbank-120cycles-nopfixed-4-1 ->same
 #syncbench-mbank-120cycles-nopfixed-4-2 ->add more counters for write backs and epoch sizes, add thread 1,
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
-CONF_NAME=syncbench-mbank-120cycles-nopfixed-27
+CONF_NAME=syncbench-mbank-120cycles-nopfixed-10-shared-llc
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DIMP2_FILE=${HOME}/repos/primesim/output/${optype}/stat2.txt
@@ -23,45 +23,8 @@ DATA2_FILE=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/data2.txt
 #8 - parity load 4 bytes. NO pa
 #9 increasing parity load for 8bytes. 2 long variables. 
 #10 reduce it to 32 bit or no 
-#10 I identified my shared llc is buggy
+
 #benchmark - 32B 32byte load
-
-#11 is the base model of our results
-#11 4B, shared-llc for mbank , 64K
-#12 4B, non shared-llc as 8, but with 4B,64K
-#13 again 2nd run of 11. 11 seems good 4B, shared-llc mbank, 64K
-#14 again 3nd run of 11. 11 seems good 4B, shared-llc mbank, 64K
-
-#15 again 2nd run of 11. 11 seems good 4B, shared-llc mbank, With 1 Million nodes
-#16 again 2nd run of 11. 11 seems good 4B, shared-llc mbank, With 1 Million nodes, 15 again
-
-#17 again 2nd run of 11. 11 seems good 4B, shared-llc mbank, With 8k nodes, 15 again
-#18 again 2nd run of 11. 11 seems good 4B, shared-llc mbank, With 8k nodes, 15 again
-
-#19 again 2nd run of 11. 11 seems good 4B, shared-llc mbank, With 4M nodes, 15 again
-
-#Parity: load
-#20 11 with 64K and 32B parity load, 32B, shared-llc mbank, With 64k nodes.
-
-#21 11 with 64K and 32B parity load, 64B, shared-llc mbank, With 64k nodes.- Stop in the moddle. Regula is finished
-
-
-#22 11 with 64K and 4B parity load, 4B, shared-llc mbank, With 32k nodes. only in Regular
-#23 11 with 64K and 4B parity load, 4B, shared-llc mbank, With 1024 nodes. Only in regular
-
-#11-wbfixed as same as 11 running only on balanced mode. After fixing WB count.
-
-#24 chaning L1 cache size to 64k , 65536 from  32768
-#Originally L1 num of ways are 4-way
-#25- chaning L1 cache size to 32K again and change to 4-ways 
-
-#New runs after the asplos paper
-#26- chaning L1 cache size to 32K again and change to 8-ways 
-
-#26 failed unexpectedly: only 120, 300 regular and balanced
-#27  26- changing L1 cache size to 32K again and change to 8-ways 
-
-#L1 cache sizes
 
 if [ ! -d ${CONF_PATH} ] 
 then
@@ -83,11 +46,6 @@ urate=100
 
 
 #rate=1000
-#rate2=64000
-#rate2=1000000
-#rate2=8000
-#rate2=4000000
-#rate2=32000
 rate2=64000
 
 #for threads in 8 16 32
@@ -99,7 +57,7 @@ do
 	for threads in 1 8 16 32
 	do
 			
-			for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
+			for bench in linkedlist hashmap bstree skiplist lfqueue
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
 			#for bench in lfqueue
@@ -122,7 +80,6 @@ do
 					#operations=${rate2}
 					#echo "$bench,$pmodel," >> ${DIMP_FILE}
 					#echo "$pmodel" >> ${DATA_FILE}
-					#${HOME}/repos/primesim/xml/shared-llc/config_mbank_120cycles_${pmodel}.xml \
 					
 					mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 \
 					-np 1 ${HOME}/repos/primesim/bin/prime \
