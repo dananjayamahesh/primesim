@@ -1,0 +1,20 @@
+Experimental ssetup
+
+#8th is the new starting point
+
+#8 fixed the peristent queue and extend it to lfqueue
+#9 -> change the parity to 8B
+#10 - change the parity to 32B
+
+
+find the topology is incorrect
+right 32K private L1 and 1MB per slice shared LLC/L2
+
+#11 should be : fixed the topology and run 4B in all nbenchmarks, which i have never done before.
+
+Shared-llc represent the banked llc with only last level cache. netwrok=1 hop, shared-llc acess time=10cycles.
+
+
+#10 is 32B load
+both regular, balanced and now shared-lls setup
+#10 does not include linkedlist
