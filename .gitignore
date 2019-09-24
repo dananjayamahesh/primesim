@@ -16,6 +16,8 @@ ppin/acqrel/dep
 ppin/acqrel/bin
 
 pbench/syncbench/bin
+pbench/syncbench/build/
+
 ppin/acqrel/bin
 ppin/acqrel/dep
 ppin/acqrel/obj
