@@ -71,7 +71,16 @@ enum MemType
 {
     RD    = 0,  //read
     WR    = 1,  //write
-    WB    = 2   //writeback
+    WB    = 2,   //writeback
+    CLWB  = 3
+};
+
+enum PersistSource
+{
+    VIS    = 0,  //visibility
+    EVI    = 1,  //Evcitions/Replacements
+    WRB    = 2,  //writeback
+    OTH    = 3
 };
 
 typedef enum PersistModel
@@ -89,5 +98,8 @@ typedef enum PersistModel
 //#define PDEBUG
 #define LOWER_EPOCH_FLUSH
 //#define ACQREL
+
+//Changes After the ASPLOS Submission
+#define ASPLOS_AFTER
 
 #endif  // COMMON_H

@@ -78,6 +78,8 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
         rmw_count               = 0;
         wrt_relaxed_count       = 0;
 
+        rd_count                = 0;
+
         sync_conflict_count     = 0;
         sync_conflict_persists  = 0;
         sync_conflict_persist_cycles = 0;
@@ -113,6 +115,32 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
         epoch_min_set =false;
         epoch_updated_id=0;
         epoch_counted_id=0;
+
+        intra_vis_conflicts=0; 
+        intra_evi_conflicts=0; 
+        intra_evi_M_conflicts=0; 
+        intra_allconflicts=0; 
+        intra_vis_allconflicts=0; 
+        intra_evi_allconflicts=0; 
+        intra_evi_M_allconflicts=0; 
+
+        intra_M_allconflicts=0; 
+        intra_vis_persists=0; 
+        intra_evi_persists=0; 
+        intra_evi_M_persists=0; 
+        intra_evi_persists=0; 
+        inter_M_conflicts=0; 
+        inter_allconflicts=0; 
+        inter_M_allconflicts=0; 
+        inter_M_persists=0;
+
+        lowest_epoch_size = 0;
+        largest_lowest_epoch_size = 0;
+        num_epochs_flushed = 0;
+        num_nzero_epochs_flushed = 0;
+        largest_epoch_size = 0;
+        nzero_conflicts = 0;
+
 
     if (cache_type == TLB_CACHE) {
         offset_bits = (int) (log2(page_size));
@@ -838,7 +866,23 @@ void Cache::report(ofstream* result)
     *result << "WRT acq: " << wrt_acq_count <<endl;
     *result << "WRT rel: " << wrt_rel_count <<endl;
     *result << "RMW/WRT: " << (double)rmw_count /wrt_relaxed_count<<endl;
+    *result << "Read: " << rd_count << endl;
+    *result << "Read/write: " << (double)rd_count/wrt_relaxed_count << endl;
+
     *result << "=================================================================\n\n";
+
+    *result << "Non-zero conflicts " << nzero_conflicts <<endl;
+    *result << "Lowest-Epoch Size " << lowest_epoch_size <<endl;
+    *result << "Avg. Lowest-Epoch Size " << (double) lowest_epoch_size/(nzero_conflicts+1) <<endl;    
+    *result << "Largest Lowest Epoch " << largest_lowest_epoch_size <<endl;
+    *result << "Epochs flushed" << num_epochs_flushed <<endl;
+    *result << "NZ EPochs flushed" << num_nzero_epochs_flushed <<endl;
+    *result << "NZ EPochs flushed" << num_nzero_epochs_flushed <<endl;
+    *result << "Epochs/Conflict" << (double) num_nzero_epochs_flushed/(nzero_conflicts+1) <<endl;
+    *result << "Largest EPoch flushed" << largest_epoch_size <<endl;
+    
+    *result << "=================================================================\n\n";
+
 
     if(level==0 and cache_type==DATA_CACHE) printf("Cache ID: %d of Level %d , The # of persist counts: %lu The # of persist delays: %lu, Inter: %lu Intra: %lu Ratio %f, P-Inter-P: %lu P-Intra-P: %lu P-Ratio-P %f, PC-Inter: %lu PC-Intra: %lu PC-Ratio %f  \n" 
             , cache_id, level, persist_count, persist_delay 

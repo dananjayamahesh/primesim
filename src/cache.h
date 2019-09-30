@@ -104,7 +104,7 @@ typedef map<int, Line*> LineMap;
 
 typedef struct InsMem
 {
-    char        mem_type; // 2 means writeback, 1 means write, 0 means read
+    char        mem_type; // 2 means writeback, 1 means write, 0 means read , 3 clwb, 4 clflush
     int         prog_id;
     int         thread_id;
     int         rec_thread_id;
@@ -203,10 +203,36 @@ class Cache
         uint64_t          intra_conflicts;
         uint64_t          intra_persists;
         uint64_t          intra_persist_cycles;
+
+        //asplos-after
+        uint64_t intra_allconflicts;
+        uint64_t intra_M_allconflicts;
+
+        uint64_t intra_vis_conflicts;
+        uint64_t intra_vis_allconflicts;
+        uint64_t intra_evi_conflicts; 
+        uint64_t intra_evi_M_conflicts; 
+
+         uint64_t intra_evi_allconflicts; 
+        uint64_t intra_evi_M_allconflicts; 
+        // /uint64_t intra_M_allconflicts; 
+
+        uint64_t intra_vis_persists;
+        uint64_t intra_evi_persists; 
+        uint64_t intra_evi_M_persists; 
+        uint64_t intra_vis_persist_cycles;
+        uint64_t intra_evi_persist_cycles;
+
         //Inter thread conflicts
         uint64_t          inter_conflicts;
+        uint64_t          inter_M_conflicts;
         uint64_t          inter_persists;
+        uint64_t          inter_M_persists;
         int64_t           inter_persist_cycles;
+
+        //asplos-after
+        uint64_t inter_allconflicts;
+        uint64_t inter_M_allconflicts;
 
         uint64_t        rmw_acq_count; //Write acquire as well
         uint64_t        rmw_rel_count;
@@ -217,6 +243,8 @@ class Cache
         uint64_t        wrt_acq_count;
          uint64_t       wrt_full_count;
         uint64_t        wrt_relaxed_count;
+
+        uint64_t        rd_count; //Reads
 
         uint64_t sync_conflict_count; //Sync Write backs.
         uint64_t sync_conflict_persists;
@@ -254,6 +282,13 @@ class Cache
         uint64_t epoch_updated_id;
         uint64_t epoch_counted_id;
 
+        //all counts are in cachelines
+        uint64_t lowest_epoch_size;
+        uint64_t largest_lowest_epoch_size;
+        uint64_t num_epochs_flushed; //number of conficting epochs
+        uint64_t num_nzero_epochs_flushed;
+        uint64_t largest_epoch_size;
+        uint64_t nzero_conflicts;
 
         //Epoch Size?
 
