@@ -18,3 +18,103 @@ Shared-llc represent the banked llc with only last level cache. netwrok=1 hop, s
 #10 is 32B load
 both regular, balanced and now shared-lls setup
 #10 does not include linkedlist
+
+
+
+
+
+11 is the best so far.
+11 was in the ASPLOS paper
+
+#8 - parity load 4 bytes. NO pa
+#9 increasing parity load for 8bytes. 2 long variables. 
+#10 reduce it to 32 bit or no 
+#10 I identified my shared llc is buggy
+#benchmark - 32B 32byte load
+
+#11 is the base model of our results
+#11 4B, shared-llc for mbank , 64K elements
+#12 4B, non shared-llc as 8, but with 4B,64K
+#13 again 2nd run of 11. 11 seems good 4B, shared-llc mbank, 64K
+#14 again 3nd run of 11. 11 seems good 4B, shared-llc mbank, 64K
+
+#15 again 2nd run of 11. 11 seems good 4B, shared-llc mbank, With 1 Million nodes
+#16 again 2nd run of 11. 11 seems good 4B, shared-llc mbank, With 1 Million nodes, 15 again
+
+#17 again 2nd run of 11. 11 seems good 4B, shared-llc mbank, With 8k nodes, 15 again
+#18 again 2nd run of 11. 11 seems good 4B, shared-llc mbank, With 8k nodes, 15 again
+
+#19 again 2nd run of 11. 11 seems good 4B, shared-llc mbank, With 4M nodes, 15 again
+
+#Parity: load
+#20 11 with 64K and 32B parity load, 32B, shared-llc mbank, With 64k nodes.
+
+#21 11 with 64K and 32B parity load, 64B, shared-llc mbank, With 64k nodes.- Stop in the moddle. Regula is finished
+
+
+#22 11 with 64K and 4B parity load, 4B, shared-llc mbank, With 32k nodes. only in Regular
+#23 11 with 64K and 4B parity load, 4B, shared-llc mbank, With 1024 nodes. Only in regular
+
+#11-wbfixed as same as 11 running only on balanced mode. After fixing WB count.
+
+#24 chaning L1 cache size to 64k , 65536 from  32768
+#Originally L1 num of ways are 4-way
+#25- chaning L1 cache size to 32K again and change to 4-ways 
+
+#New runs after the asplos paper
+#26- chaning L1 cache size to 32K again and change to 8-ways 
+
+#26 failed unexpectedly: only 120, 300 regular and balanced
+#27  26- changing L1 cache size to 32K again and change to 8-ways 
+
+
+
+TAG:AFTER-ASPLOS
+possible changes:
+
+2019/09/25: N
+1. NOP need to be fixed.
+2. Release on non-release cacheline conflicts
+3. Number of epochs flushed and average. Number of writes per epoch flushed. 
+4. Average Writes per epoch flushed and number of flushes in BEP and LEP.
+5. CLWB needs to be fixed and so same-block visibility. May increase the LB++.
+6. Need more statistics to underestand the RP's behaviour. RP's self-evictions are lazy. But hwo about inter-thread?. How many evictions are at the LLC?. Sensitivity to the LLC access time?. 
+7. LCLWB: Lazy Cache-line writebacks need a mechanism on PRiME.
+8. Max size of the list with 1:1 read:write ratios.
+
+
+
+2019/09/19:
+issue;
+M and E persist invoke Issue: Has not effected the design. BEP and RP both handled it. 
+
+solution: change the check to dirty==1 of the invoking cacheline.
+
+Need a test run
+
+
+issue:
+M->S transition in LLC in BEP?. data needs to be written back to memory before shared.
+
+issue:
+writeback and Inv issue: 
+
+
+issue: Need additional epoch table for BEP. (for proactive flushing)
+Keep all the epoch id and cacheline tag.
+
+issue: BEP. Good for RP. M->S force cacheline to writeback. To avoid that.  It need to be persisted first. Creating more conflicts in the LLC. Inter-thread ---> creates these conflicts in the LLC.
+
+
+2019/10/03
+Thisngs to do:
+Check PF. 
+Integrate PF with and without. becuase original BEP is affected by the PF.
+Add ocorrect persist counts to PF.
+Add epoch meters to RP.
+
+
+//
+34: diferent Epoch Persistency numbers to 32. 33 was running with PF.
+ possible cause: lazy_wb random.
+ 32 was un without PF and lazy_wb.
