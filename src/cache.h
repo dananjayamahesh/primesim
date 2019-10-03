@@ -112,6 +112,7 @@ typedef struct InsMem
     AtomicType  atom_type;
     int         epoch_id; //timestamp
     char        mem_op; //2-RMW, 1-Write, 0-Read 
+    bool        lazy_wb;
     //int         min_epoch; //Should be < Byte (only for L1)
     //int         max_epoch; //Shouls be < Byte (only for L1)
 } InsMem;
@@ -289,6 +290,15 @@ class Cache
         uint64_t num_nzero_epochs_flushed;
         uint64_t largest_epoch_size;
         uint64_t nzero_conflicts;
+
+        int largest_epoch_id;
+
+        //Proactive Flushing
+        uint64_t all_persists;
+        uint64_t all_pf_persists;
+        uint64_t vis_pf_persists; //Intra
+        uint64_t evi_pf_persists; //Intra
+        uint64_t inter_pf_persists; //inter
 
         //Epoch Size?
 

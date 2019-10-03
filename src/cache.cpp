@@ -141,6 +141,15 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
         largest_epoch_size = 0;
         nzero_conflicts = 0;
 
+        largest_epoch_id = 0;
+
+        //Proactive Flushing
+        all_persists = 0;
+        all_pf_persists = 0;
+        vis_pf_persists = 0; //Intra
+        evi_pf_persists = 0; //Intra
+        inter_pf_persists = 0; //inter
+
 
     if (cache_type == TLB_CACHE) {
         offset_bits = (int) (log2(page_size));
@@ -846,6 +855,14 @@ void Cache::report(ofstream* result)
     *result << "All perisist (Persistence)" <<  getPersistCount() << " \t" << getPersistDelay() << endl;
 
     *result << "\n---------------------------------------------------------------------- " << endl;
+    *result << "Total Persists " <<  all_persists << endl;
+    *result << "all_pf_persists " <<  all_pf_persists << endl;
+    *result << "vis_pf_persists " <<  vis_pf_persists << endl;
+    *result << "evi_pf_persists " <<  evi_pf_persists << endl;
+    *result << "inter_pf_persists " <<  inter_pf_persists << endl;    
+
+
+     *result << "\n---------------------------------------------------------------------- " << endl;
     *result << "Updated Epoch ID : " << epoch_updated_id <<endl;
     *result << "Counted Epoch ID : " << epoch_counted_id <<endl;    
     *result << "Epoch Sum : " << epoch_sum <<endl;
@@ -854,6 +871,7 @@ void Cache::report(ofstream* result)
     *result << "Epoch Max: " << epoch_max <<endl;
     *result << "Epoch Remaining Persiss: " << epoch_size <<endl;
     *result << "Average Writes per Epoch: " << (double)epoch_sum/epoch_updated_id << endl;
+    *result << "Largest Epoch ID: " << largest_epoch_id <<endl;
     
     *result << "=================================================================\n\n";
 

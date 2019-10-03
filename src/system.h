@@ -91,6 +91,8 @@ class System
         int epoch_meters(int core_id, InsMem * ins_mem);
         int bepochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
         int epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
+        int epochPersistWithPF(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
+        int epochPersistWithoutPF(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
         int fullFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc);
         int releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc);
         int persist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id);
@@ -137,6 +139,7 @@ class System
         Network    network;
         Dram       dram;
         PersistModel pmodel;
+        bool proactive_flushing;
         int*       delay_persist;
 
 };

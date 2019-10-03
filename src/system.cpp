@@ -63,9 +63,18 @@ void System::init(XmlSys* xml_sys_in)
     directory_cache = NULL;
     tlb_cache = NULL;
 
-    pmodel = RLSB; //FULL BARRIER SEMANTICS
+    proactive_flushing = false; //always false unless PF+
+
+    pmodel = NONB; //FULL BARRIER SEMANTICS
     pmodel = (PersistModel) xml_sys->pmodel;
     printf("Persistent Model %d \n", pmodel);
+
+    if(pmodel== BBPF){
+        pmodel = BEPB;
+        proactive_flushing = true; //BEPB with PF: LB++
+    }
+    printf("Persistent Model %d and Proactive-Flushing Enabled:%s \n", pmodel, (proactive_flushing)?"Yes":"No");
+
 
     hit_flag = new bool [num_cores];
     delay = new int [num_cores];
@@ -156,6 +165,7 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
 {    
     //uint64_t tmp_addr = ins_mem->addr_dmem;  
     #ifdef DEBUG
+        printf("\n[System] Core: %d, Atomic Type: %d \n", core_id, ins_mem->epoch_id);
         if(ins_mem->atom_type == FULL) printf("\n[System] Core: %d, Atomic Type: FULL to Address 0x%lx Memory Type: %d \n", core_id, (uint64_t) ins_mem->addr_dmem, ins_mem->mem_type);
         else if(ins_mem->atom_type == RELEASE) printf("\n[System] Core: %d, Atomic Type: Release to Address 0x%lx Memory Type: %d \n", core_id, (uint64_t) ins_mem->addr_dmem, ins_mem->mem_type);
         else if(ins_mem->atom_type == ACQUIRE) printf("\n[System] Core: %d, Atomic Type: Acquire to Address 0x%lx Memory Type: %d \n", core_id, (uint64_t) ins_mem->addr_dmem, ins_mem->mem_type);
@@ -485,12 +495,14 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
             else if(ins_mem->atom_type==RELEASE)cache_cur->wrt_rel_count++;
         }
     }
-    else if(ins_mem->mem_type==WR && level==0){
+    else if(ins_mem->mem_type==RD){
         //after-asplos //Whatever read. 
         cache_cur->rd_count++;
     }else{
         //Do nothing.        
     }
+
+    if(cache_cur->largest_epoch_id < ins_mem->epoch_id) cache_cur->largest_epoch_id = ins_mem->epoch_id; 
 
 
     if(level==0){
@@ -560,6 +572,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                                 //writing back cacheline with clwb with non-invalidations. //mesi writeback without invalidating. clwb
                                 //1. create the new ins_mem with mem_type.                                  
                                     ins_mem->mem_type = CLWB;
+                                    ins_mem->lazy_wb = false; //No-Need
 
                                 //2. MESI write-backs. return the same cache state
                                     mesi_directory(cache_cur->parent, level+1, 
@@ -700,11 +713,17 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     delay[core_id] += network.transmit(cache_id, id_home, 0, timer+delay[core_id]);
                    
                     if (shared_llc) {
-                       delay[core_id] += accessSharedCache(cache_id, id_home, ins_mem, timer+delay[core_id], &state_tmp, core_id);
-                    
+                        if(!ins_mem->lazy_wb)
+                            delay[core_id] += accessSharedCache(cache_id, id_home, ins_mem, timer+delay[core_id], &state_tmp, core_id);
+                        else
+                            accessSharedCache(cache_id, id_home, ins_mem, timer+delay[core_id], &state_tmp, core_id);
                     }    
                     else {
-                       delay[core_id] += accessDirectoryCache(cache_id, id_home, ins_mem, timer+delay[core_id], &state_tmp, core_id);
+                        if(!ins_mem->lazy_wb)
+                            delay[core_id] += accessDirectoryCache(cache_id, id_home, ins_mem, timer+delay[core_id], &state_tmp, core_id);
+                        else{
+                            accessDirectoryCache(cache_id, id_home, ins_mem, timer+delay[core_id], &state_tmp, core_id);
+                        }
                     }
                     delay[core_id] += network.transmit(id_home, cache_id, 0, timer+delay[core_id]);
 
@@ -979,7 +998,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     }                    
 
                     ins_mem_old.mem_type = WB;
-                    
+                    ins_mem_old.lazy_wb = false;
                     //asplos-after:
                     //1. WB has to be fixed for NONB.                   
                         int before_delay = delay[core_id];
@@ -1158,7 +1177,8 @@ int System::fullBarrierFlush(Cache *cache_cur, int epoch_id, int req_core_id, in
                         //Cacheline needs to be written back
                         //uint64_t address_tag = line_cur->tag;
                         ins_mem.mem_type = WB;   
-                        ins_mem.atom_type = NON;                                             
+                        ins_mem.atom_type = NON; 
+                        ins_mem.lazy_wb = false;     //Precaution. 34 probelm.                                       
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
@@ -1251,7 +1271,8 @@ int System::syncConflict(Cache * cache_cur, SyncLine * syncline, Line* line_call
                  
                     if(true){ //Epoch Id < conflictigng epoch id - similar to full flush
                         ins_mem.mem_type = WB;   
-                        ins_mem.atom_type = NON;                                             
+                        ins_mem.atom_type = NON; 
+                        ins_mem.lazy_wb = false;                                             
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
@@ -1411,7 +1432,9 @@ int System::bepochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, in
 
 //Buffered Epoch Persistence- Inv-version
 //asplos-after: adding psrc bit
-int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
+//Original BEP persistency model withot counters or PF. This was the testing algo.
+//Without PF nut after originally changed version. 33, 34 run. 34 has different SB resutls to previous.
+int System::epochPersistWithoutPF(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
     
     //after-asplos
     //persist source: psrc: 0-same-block, 1-evctions/replacements, 2-inter-thread/writebacks
@@ -1434,14 +1457,44 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
     int level = cache_cur->getLevel(); 
     int persist_count =0;
 
-    uint64_t writes_per_epoch [10000] ;
-    uint64_t is_epoch_checked [10000]; //This can be improved with last epoch checked. Without keeping 10000 size which is a waste.
+    //Check thi: method-local intialization
+    
+    uint64_t writes_per_epoch [20000];
+    uint64_t is_epoch_checked [20000]; //This can be improved with last epoch checked. Without keeping 10000 size which is a waste.
     //int last_checked_epoch = 0; //this could be set global.
-    int lowest_epoch_id = 10000;    
+
+    for(int ei=0;ei<20000;ei++){
+        writes_per_epoch[ei] = 0;
+        is_epoch_checked[ei] = false;
+    }
+
+    int lowest_epoch_id = 20000;    
     int largest_max_epoch_id = 0;
 
+    //asplos-after: build the epoch table from the cache?. Can be implemented as a linkedlist or hashmap. But not good.
+    //asplos-after: we need to know what to flush. Building Epoch table
+    int et_lowest_epoch_id = 20000; //lowest epoch id.
+    // /int et_lowest_epoch_size = 0;
+    
     for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {            
-            for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) {                
+        for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) { 
+            InsMem ins_mem;
+            line_cur = cache_cur->directAccess(i,j,&ins_mem);
+            if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M)){ //dirty-lines
+                //asplos-after: only need the lowest epoch id and size.
+                if(line_cur->max_epoch_id < conflict_epoch_id){    
+                    if(line_cur->max_epoch_id < et_lowest_epoch_id) et_lowest_epoch_id = line_cur->max_epoch_id;
+                    //lowest epoch first epoch to be flushed.
+                }
+            }
+        }
+    }
+
+    //Proactive Flushing (PF): reduce the conflicts. allow lazy write-backs and coalecsing inside the cache-line.
+
+    //Actual flush: min epoch id flushed = et_lowest_epoch_id
+    for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {            
+        for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) {                
                 //printf("A Epoch %d\n", rel_epoch_id);
                 InsMem ins_mem;
                 line_cur = cache_cur->directAccess(i,j,&ins_mem);    
@@ -1457,22 +1510,36 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
                     #endif
                         ins_mem.mem_type = WB;   
                         ins_mem.atom_type = NON;                                             
-                        
+                        ins_mem.lazy_wb =false; 
+                        //asplos-after: et_lowest_epoch_id: proactive_flushing
+                        if(proactive_flushing && (line_cur->max_epoch_id == et_lowest_epoch_id))
+                            ins_mem.lazy_wb =true; //new lazy write-backs: no delay is added.
+                       
+
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
+
+                        ins_mem.lazy_wb =false;
                         
                         cache_cur->incPersistCount();
                         persist_count++;                       
 
                         //asplos-after: counting the average number of cachelines per epoch that is flushing
-                        if(!is_epoch_checked[line_cur->max_epoch_id]) is_epoch_checked[line_cur->max_epoch_id]=true;
+                        if(line_cur->max_epoch_id >= 20000){
+                            //Error
+                            cerr<<"Error: Wrong home id\n";
+                            printf("Errorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
+                            return -1;
+                        }
+
+                        if(!is_epoch_checked[line_cur->max_epoch_id ]) is_epoch_checked[line_cur->max_epoch_id]=true;
                         writes_per_epoch[line_cur->max_epoch_id]++;
 
                         if(line_cur->max_epoch_id < lowest_epoch_id) lowest_epoch_id = line_cur->max_epoch_id;
                         if(line_cur->max_epoch_id > largest_max_epoch_id) largest_max_epoch_id = line_cur->max_epoch_id;
 
-                        
+                        //bug fixed. this must come after the above.
                         line_cur->dirty = 0;
                         line_cur->state = I; //changed the 
                         line_cur->min_epoch_id = 0;
@@ -1509,7 +1576,7 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
     if(largest_epoch_size > cache_cur->largest_epoch_size) cache_cur->largest_epoch_size = largest_epoch_size; //cacheline_size.
     
     //if(cache_cur->largest_epoch_id_flushed < largest_max_epoch_id) cache_cur->largest_epoch_id_flushed = largest_max_epoch_id;
-    //then it is better to get the breakdown to intra-inter seperately.
+    //then it is better to get the breakdown to intra-inter seperately. NEXT step:
 
     //Counts
     if(core_id == req_core_id){
@@ -1564,7 +1631,6 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
     }else{
 
         //asplos-after: psrc: 2-writebacks
-
         if(persist_count>0){
              cache_cur->inter_conflicts++;
              if(line_call->state==M)cache_cur->inter_M_conflicts++;
@@ -1594,11 +1660,416 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
 
     //Buffered Eopch Persistence
     #ifdef DEBUG
-    printf("Number of persists (Buffered Epoch Persistency): %d \n", persist_count); 
+    printf("Number of persists (Buffered Epoch Persistency END): %d \n", persist_count); 
     #endif
     cache_cur->incPersistDelay(delay[core_id]);
     return delay[core_id];
 }
+
+
+int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
+    
+    //after-asplos
+    //persist source: psrc: 0-same-block, 1-evctions/replacements, 2-inter-thread/writebacks
+
+    //Buffered Epoch Persistency on caches
+    int conflict_epoch_id = line_call->max_epoch_id; //Not sure! Check
+    #ifdef DEBUG
+    printf("Buffered Epoch Persistency Cache:%d Conflict Epoch:%d \n", req_core_id, conflict_epoch_id);
+    #endif
+    int delay_flush = 0;
+    delay_flush++;
+    int core_id = cache_cur->getId(); int cache_id = cache_cur->getId();
+    Line *line_cur;
+    int timer = 0;
+    //delay[core_id] = 0;   //Check this. Need to chaneg.  
+    if(core_id != req_core_id){
+        delay[core_id]  = 0;
+    }
+
+    int level = cache_cur->getLevel(); 
+    int persist_count =0;
+
+    
+    //Check thi: method-local intialization
+
+    //Proactive Flushing (PF): reduce the conflicts. allow lazy write-backs and coalecsing inside the cache-line.
+
+    //Actual flush: min epoch id flushed = et_lowest_epoch_id
+    for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {            
+        for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) {                
+                //printf("A Epoch %d\n", rel_epoch_id);
+                InsMem ins_mem;
+                line_cur = cache_cur->directAccess(i,j,&ins_mem);    
+                            
+                if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M)){ //|| line_cur->state==E  //Need to think about E here
+                    //Only dirty data
+                    //if(line_cur->max_epoch_id <= conflict_epoch_id){ //Epoch Id < conflictigng epoch id - similar to full flush
+                    if(line_cur->max_epoch_id < conflict_epoch_id){    
+
+                    #ifdef DEBUG
+                    printf("[Release Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
+                    i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
+                    #endif
+                        ins_mem.mem_type = WB;   
+                        ins_mem.atom_type = NON;                                             
+                        ins_mem.lazy_wb =false; 
+                        //asplos-after: et_lowest_epoch_id: proactive_flushing
+                        //if(proactive_flushing && (line_cur->max_epoch_id == et_lowest_epoch_id))
+                        //    ins_mem.lazy_wb =true; //new lazy write-backs: no delay is added.                      
+
+                        line_cur->state = mesi_directory(cache_cur->parent, level+1, 
+                                          cache_id*cache_level[level].share/cache_level[level+1].share, 
+                                          core_id, &ins_mem, timer + delay[core_id]);
+
+                        //ins_mem.lazy_wb =false;
+                        
+                        cache_cur->incPersistCount();
+                        persist_count++;                       
+
+                        //asplos-after: counting the average number of cachelines per epoch that is flushing
+                        //bug fixed. this must come after the above.
+                        line_cur->dirty = 0;
+                        line_cur->state = I; //changed the 
+                        line_cur->min_epoch_id = 0;
+                        line_cur->max_epoch_id = 0;
+
+                    }
+                }
+        }
+    } 
+
+    //Counts
+    if(core_id == req_core_id){
+        //asplos-after: psrc: 0-visibility conflics, 1-evictions         
+        if(persist_count>0){
+             cache_cur->intra_conflicts++;
+
+             if(psrc==VIS){
+                cache_cur->intra_vis_conflicts++;
+             }else if(psrc == EVI){
+                cache_cur->intra_evi_conflicts++;
+                if(line_call->state==M) cache_cur->intra_evi_M_conflicts++;
+                //else cache_cur->intra_evi_E_conflicts++;
+             }
+        }
+
+        cache_cur->intra_allconflicts++;
+        if(line_call->state == M) cache_cur->intra_M_allconflicts++;
+
+        if(psrc==VIS){
+               cache_cur->intra_vis_allconflicts++;
+        }else if(psrc == EVI){
+                cache_cur->intra_evi_allconflicts++;
+                if(line_call->state==M) cache_cur->intra_evi_M_allconflicts++;
+                //else cache_cur->intra_evi_E_allconflicts++;
+        }
+
+        cache_cur->intra_persists += persist_count;
+        cache_cur->intra_persist_cycles += delay[core_id]; //Not correct, but not effects the core
+
+        //psrc?
+        if(psrc==VIS){
+            cache_cur->intra_vis_persists += persist_count;
+            cache_cur->intra_vis_persist_cycles += delay[core_id];
+        }
+        else if(psrc==EVI){            
+            cache_cur->intra_evi_persists += persist_count;
+            cache_cur->intra_evi_persist_cycles += delay[core_id];
+            if(line_call->state == M) cache_cur->intra_evi_M_persists += persist_count;
+            //else cache_cur->intra_evi_E_persists += persist_count;
+        } 
+
+        cache_cur->critical_conflict_persists += persist_count; //Should be equal to both intra-thread and inter-thread
+        cache_cur->critical_conflict_persist_cycles += delay[core_id]; //Delay
+
+        cache_cur->write_back_count += persist_count;
+        cache_cur->write_back_delay += delay[core_id];
+
+        cache_cur->critical_write_back_count += persist_count;   //Write will be added later in the thread.
+        cache_cur->critical_write_back_delay += delay[core_id];
+        
+    }else{
+
+        //asplos-after: psrc: 2-writebacks
+        if(persist_count>0){
+             cache_cur->inter_conflicts++;
+             if(line_call->state==M)cache_cur->inter_M_conflicts++;
+             //else cache_cur->inter_E_conflicts++;
+
+        }  
+        cache_cur->inter_allconflicts++;
+            if(line_call->state==M) cache_cur->inter_M_allconflicts++;
+            //else cache_cur->inter_E_allconflicts++;
+
+        cache_cur->inter_persists += persist_count;
+        cache_cur->inter_persist_cycles += delay[core_id]; 
+
+        if(line_call->state == M) cache_cur->inter_M_persists += persist_count;
+        //else cache_cur->inter_E_persists += persist_count;
+        //New
+        cache_cur->write_back_count += persist_count+1;
+        cache_cur->noncritical_write_back_count += persist_count+1; //Is this true
+
+        cache_cur->write_back_delay += delay[core_id]+1;
+        cache_cur->noncritical_write_back_delay += delay[core_id]+1;
+        
+        cache[0][req_core_id]->external_critical_wb_count += persist_count;
+        cache[0][req_core_id]->external_critical_wb_delay += delay[core_id];  
+    }
+
+
+    //Buffered Eopch Persistence
+    #ifdef DEBUG
+    printf("Number of persists (Buffered Epoch Persistency END): %d \n", persist_count); 
+    #endif
+    cache_cur->incPersistDelay(delay[core_id]);
+    return delay[core_id];
+}
+
+//Originally changed epochPersist in 32, 33, 34:
+int System::epochPersistWithPF(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
+    
+    //after-asplos
+    //persist source: psrc: 0-same-block, 1-evctions/replacements, 2-inter-thread/writebacks
+
+    //Buffered Epoch Persistency on caches
+    int conflict_epoch_id = line_call->max_epoch_id; //Not sure! Check
+    #ifdef DEBUG
+    printf("Buffered Epoch Persistency Cache:%d Conflict Epoch:%d \n", req_core_id, conflict_epoch_id);
+    #endif
+    int delay_flush = 0;
+    delay_flush++;
+    int core_id = cache_cur->getId(); int cache_id = cache_cur->getId();
+    Line *line_cur;
+    int timer = 0;
+    //delay[core_id] = 0;   //Check this. Need to chaneg.  
+    if(core_id != req_core_id){
+        delay[core_id]  = 0;
+    }
+
+    int level = cache_cur->getLevel(); 
+    int persist_count =0;
+
+    //Check thi: method-local intialization
+    
+    uint64_t writes_per_epoch [20000];
+    uint64_t is_epoch_checked [20000]; //This can be improved with last epoch checked. Without keeping 10000 size which is a waste.
+    //int last_checked_epoch = 0; //this could be set global.
+
+    for(int ei=0;ei<20000;ei++){
+        writes_per_epoch[ei] = 0;
+        is_epoch_checked[ei] = false;
+    }
+
+    int lowest_epoch_id = 20000;    
+    int largest_max_epoch_id = 0;
+
+    //asplos-after: build the epoch table from the cache?. Can be implemented as a linkedlist or hashmap. But not good.
+    //asplos-after: we need to know what to flush. Building Epoch table
+    int et_lowest_epoch_id = 20000; //lowest epoch id.
+    // /int et_lowest_epoch_size = 0;
+    
+    for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {            
+        for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) { 
+            InsMem ins_mem;
+            line_cur = cache_cur->directAccess(i,j,&ins_mem);
+            if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M)){ //dirty-lines
+                //asplos-after: only need the lowest epoch id and size.
+                if(line_cur->max_epoch_id < conflict_epoch_id){    
+                    if(line_cur->max_epoch_id < et_lowest_epoch_id) et_lowest_epoch_id = line_cur->max_epoch_id;
+                    //lowest epoch first epoch to be flushed.
+                }
+            }
+        }
+    }
+
+    //Proactive Flushing (PF): reduce the conflicts. allow lazy write-backs and coalecsing inside the cache-line.
+
+    //Actual flush: min epoch id flushed = et_lowest_epoch_id
+    for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {            
+        for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) {                
+                //printf("A Epoch %d\n", rel_epoch_id);
+                InsMem ins_mem;
+                line_cur = cache_cur->directAccess(i,j,&ins_mem);    
+                            
+                if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M)){ //|| line_cur->state==E  //Need to think about E here
+                    //Only dirty data
+                    //if(line_cur->max_epoch_id <= conflict_epoch_id){ //Epoch Id < conflictigng epoch id - similar to full flush
+                    if(line_cur->max_epoch_id < conflict_epoch_id){    
+
+                    #ifdef DEBUG
+                    printf("[Release Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
+                    i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
+                    #endif
+                        ins_mem.mem_type = WB;   
+                        ins_mem.atom_type = NON;                                             
+                        ins_mem.lazy_wb =false;
+                        //asplos-after: et_lowest_epoch_id: proactive_flushing
+                        if(proactive_flushing && (line_cur->max_epoch_id == et_lowest_epoch_id)){
+                            ins_mem.lazy_wb =true; //new lazy write-backs: no delay is added.
+                            
+                            //counters.                            
+                            if (psrc==0) cache_cur->vis_pf_persists++; //Intra
+                            else if (psrc==1)   cache_cur->evi_pf_persists++; //Intra
+                            else if (psrc==2) cache_cur->inter_pf_persists++; //inter
+
+                        }                       
+
+                        line_cur->state = mesi_directory(cache_cur->parent, level+1, 
+                                          cache_id*cache_level[level].share/cache_level[level+1].share, 
+                                          core_id, &ins_mem, timer + delay[core_id]);
+
+                        ins_mem.lazy_wb =false;
+
+                        //FUTURE NOTE: also we can do eager when epoch count>20000 or the limit. 
+                        
+                        cache_cur->incPersistCount();
+                        persist_count++;   
+
+                        cache_cur->all_pf_persists++;
+
+                        //asplos-after: counting the average number of cachelines per epoch that is flushing
+                        if(line_cur->max_epoch_id >= 20000){
+                            //Error
+                            cerr<<"Error: Wrong home id\n";
+                            printf("Errorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
+                            return -1;
+                        }
+
+                        if(!is_epoch_checked[line_cur->max_epoch_id ]) is_epoch_checked[line_cur->max_epoch_id]=true;
+                        writes_per_epoch[line_cur->max_epoch_id]++;
+
+                        if(line_cur->max_epoch_id < lowest_epoch_id) lowest_epoch_id = line_cur->max_epoch_id;
+                        if(line_cur->max_epoch_id > largest_max_epoch_id) largest_max_epoch_id = line_cur->max_epoch_id;
+
+                        //bug fixed. this must come after the above.
+                        line_cur->dirty = 0;
+                        line_cur->state = I; //changed the 
+                        line_cur->min_epoch_id = 0;
+                        line_cur->max_epoch_id = 0;
+
+                    }
+                }
+        }
+    } 
+
+    //Check. Need to flush the calling line as well
+    //printf("Here \n");
+
+    //asplos-after: distinct epochs that is flushed and the amount of writes in the lowest epoch id
+    //1. average number of writes in the minimum epoch.
+    uint64_t lowest_epoch_size = writes_per_epoch[lowest_epoch_id];//persists per lowest id epoch
+    if(persist_count>0) cache_cur->nzero_conflicts++; // meaning that size of the lowest epoch id is not zero.
+    uint64_t total_epochs_flushed = 0;    
+    uint64_t largest_epoch_size = 0;
+
+    for(int e = lowest_epoch_id;e<=largest_max_epoch_id;e++){
+        if(is_epoch_checked[e]){
+            if(writes_per_epoch[e]>0){
+                total_epochs_flushed++;
+                if(writes_per_epoch[e]>largest_epoch_size) largest_epoch_size=writes_per_epoch[e];
+            }
+        }
+    }    
+    //find epoch flushes per conflict
+    cache_cur->lowest_epoch_size += lowest_epoch_size;
+    if(lowest_epoch_size > cache_cur->largest_lowest_epoch_size) cache_cur->largest_lowest_epoch_size = lowest_epoch_size;
+    cache_cur->num_epochs_flushed += (largest_max_epoch_id-lowest_epoch_id+1); //Totoal non-zeor epochs flushed //conflicting epochs.
+    cache_cur->num_nzero_epochs_flushed += total_epochs_flushed; //Totoal non-zeor epochs flushed //conflicting epochs.
+    if(largest_epoch_size > cache_cur->largest_epoch_size) cache_cur->largest_epoch_size = largest_epoch_size; //cacheline_size.
+    
+    //if(cache_cur->largest_epoch_id_flushed < largest_max_epoch_id) cache_cur->largest_epoch_id_flushed = largest_max_epoch_id;
+    //then it is better to get the breakdown to intra-inter seperately. NEXT step:
+
+    //Counts
+    if(core_id == req_core_id){
+        //asplos-after: psrc: 0-visibility conflics, 1-evictions         
+        if(persist_count>0){
+             cache_cur->intra_conflicts++;
+
+             if(psrc==VIS){
+                cache_cur->intra_vis_conflicts++;
+             }else if(psrc == EVI){
+                cache_cur->intra_evi_conflicts++;
+                if(line_call->state==M) cache_cur->intra_evi_M_conflicts++;
+                //else cache_cur->intra_evi_E_conflicts++;
+             }
+        }
+
+        cache_cur->intra_allconflicts++;
+        if(line_call->state == M) cache_cur->intra_M_allconflicts++;
+
+        if(psrc==VIS){
+               cache_cur->intra_vis_allconflicts++;
+        }else if(psrc == EVI){
+                cache_cur->intra_evi_allconflicts++;
+                if(line_call->state==M) cache_cur->intra_evi_M_allconflicts++;
+                //else cache_cur->intra_evi_E_allconflicts++;
+        }
+
+        cache_cur->intra_persists += persist_count;
+        cache_cur->intra_persist_cycles += delay[core_id]; //Not correct, but not effects the core
+
+        //psrc?
+        if(psrc==VIS){
+            cache_cur->intra_vis_persists += persist_count;
+            cache_cur->intra_vis_persist_cycles += delay[core_id];
+        }
+        else if(psrc==EVI){            
+            cache_cur->intra_evi_persists += persist_count;
+            cache_cur->intra_evi_persist_cycles += delay[core_id];
+            if(line_call->state == M) cache_cur->intra_evi_M_persists += persist_count;
+            //else cache_cur->intra_evi_E_persists += persist_count;
+        } 
+
+        cache_cur->critical_conflict_persists += persist_count; //Should be equal to both intra-thread and inter-thread
+        cache_cur->critical_conflict_persist_cycles += delay[core_id]; //Delay
+
+        cache_cur->write_back_count += persist_count;
+        cache_cur->write_back_delay += delay[core_id];
+
+        cache_cur->critical_write_back_count += persist_count;   //Write will be added later in the thread.
+        cache_cur->critical_write_back_delay += delay[core_id];
+        
+    }else{
+
+        //asplos-after: psrc: 2-writebacks
+        if(persist_count>0){
+             cache_cur->inter_conflicts++;
+             if(line_call->state==M)cache_cur->inter_M_conflicts++;
+             //else cache_cur->inter_E_conflicts++;
+
+        }  
+        cache_cur->inter_allconflicts++;
+            if(line_call->state==M) cache_cur->inter_M_allconflicts++;
+            //else cache_cur->inter_E_allconflicts++;
+
+        cache_cur->inter_persists += persist_count;
+        cache_cur->inter_persist_cycles += delay[core_id]; 
+
+        if(line_call->state == M) cache_cur->inter_M_persists += persist_count;
+        //else cache_cur->inter_E_persists += persist_count;
+        //New
+        cache_cur->write_back_count += persist_count+1;
+        cache_cur->noncritical_write_back_count += persist_count+1; //Is this true
+
+        cache_cur->write_back_delay += delay[core_id]+1;
+        cache_cur->noncritical_write_back_delay += delay[core_id]+1;
+        
+        cache[0][req_core_id]->external_critical_wb_count += persist_count;
+        cache[0][req_core_id]->external_critical_wb_delay += delay[core_id];  
+    }
+
+
+    //Buffered Eopch Persistence
+    #ifdef DEBUG
+    printf("Number of persists (Buffered Epoch Persistency END): %d \n", persist_count); 
+    #endif
+    cache_cur->incPersistDelay(delay[core_id]);
+    return delay[core_id];
+}
+
 
 
 int System::fullFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc){
@@ -1638,7 +2109,8 @@ int System::fullFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, in
                         //Cacheline needs to be written back
                         //uint64_t address_tag = line_cur->tag;
                         ins_mem.mem_type = WB;   
-                        ins_mem.atom_type = NON;                                             
+                        ins_mem.atom_type = NON; 
+                        ins_mem.lazy_wb = false;                                            
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
@@ -1761,6 +2233,8 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
     int level = cache_cur->getLevel(); 
     int persist_count =0;   
 
+    //line_call is the release. 
+
     for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {
             
             for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) {
@@ -1784,11 +2258,19 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
                         #endif
                         //uint64_t address_tag = line_cur->tag;
                         ins_mem.mem_type = WB;   
-                        ins_mem.atom_type = NON;                                             
+                        ins_mem.atom_type = NON;     
+                        ins_mem.lazy_wb = false;                                        
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
                         
+                        //asplos-after: changes needed.
+                        //1. average epochs. writes per epoch. lowest epoch and size.
+                        //2. count inter- and -thra thread conflicts sepeartely.
+                        //3. non conflicting evictions.
+                        //4. count the number of release flushing. -> may be epoch boundaries.
+
+
                         cache_cur->incPersistCount(); //all
                         persist_count++;
                         //cache_cur->critical_conflict_persists++; //But not in the critical path of this core
@@ -1869,11 +2351,11 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
         cache_cur->inter_persist_cycles += delay[core_id]; 
         if(line_call->state==M)cache_cur->inter_M_persists += persist_count;
 
-        //New
+        //New-
         cache_cur->write_back_count += persist_count+1; //1 is for release
         cache_cur->write_back_delay += delay[core_id]+1;
 
-        cache_cur->noncritical_write_back_count += persist_count+1; //Is this true        , 1 is for the release
+        cache_cur->noncritical_write_back_count += persist_count+1; //Is this true, 1 is for the release
         cache_cur->noncritical_write_back_delay += delay[core_id]+ 1;
         
         cache[0][req_core_id]->external_critical_wb_count += persist_count;
@@ -1894,7 +2376,6 @@ int System::persist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_c
 
     //ASPLOS-AFTER
     //printf("Persist Source: %d \n", psrc);
-
     if(pmodel == NONB){
         //Do nothing - no persist;
         return 0;
@@ -1905,9 +2386,13 @@ int System::persist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_c
         #ifdef DEBUG
         printf("\n[BEP] Start Buffered Epoch Persistency\n");
         #endif
+        int delay_tmp=0;
+        if(!proactive_flushing)
+            delay_tmp = epochPersist(cache_cur, ins_mem, line_cur, req_core_id, psrc); //need to add calling cacheline
+        else 
+            delay_tmp = epochPersistWithPF(cache_cur, ins_mem, line_cur, req_core_id, psrc); //need to add calling cacheline
 
-        int delay_tmp = epochPersist(cache_cur, ins_mem, line_cur, req_core_id, psrc); //need to add calling cacheline
-        
+
         #ifdef DEBUG
         printf("[BEP] End Buffered Epoch Persistency Persist [delay : %d]\n", delay_tmp);  
         #endif
@@ -2000,7 +2485,7 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
     }
     else
     {
-         //printf("No Persistence \n");
+        //printf("No Persistence \n");
         //NO need to check syncmap
         delay_tmp = 0;
     }
@@ -2710,6 +3195,8 @@ void System::report(ofstream* result, ofstream* stat)
    uint64_t epoch_id_tot = 0, epoch_id2_tot=0;
    uint64_t intra_vis_conflicts_tot=0, intra_evi_conflicts_tot=0, intra_evi_M_conflicts_tot=0, intra_allconflicts_tot=0, intra_vis_allconflicts_tot=0, intra_evi_allconflicts_tot=0, intra_evi_M_allconflicts_tot=0, intra_M_allconflicts_tot=0, intra_vis_persists_tot=0, intra_evi_persists_tot=0, intra_evi_M_persists_tot=0, inter_M_conflicts_tot=0, inter_allconflicts_tot=0, inter_M_allconflicts_tot=0, inter_M_persists_tot=0;
    uint64_t nzero_conflicts_tot=0, lowest_epoch_size_tot = 0, largest_lowest_epoch_size_tot = 0, max_largest_lowest_epoch_size = 0, num_epochs_flushed_tot = 0, num_nzero_epochs_flushed_tot = 0, max_largest_epoch_size = 0, largest_epoch_size_tot = 0 ;
+ 
+   uint64_t all_persists_tot =0, all_pf_persists_tot=0, vis_pf_persists_tot = 0, evi_pf_persists_tot=0, inter_pf_persists_tot=0; 
 
     network.report(result); 
     dram.report(result); 
@@ -2836,6 +3323,12 @@ void System::report(ofstream* result, ofstream* stat)
         max_largest_epoch_size = 0; 
         largest_epoch_size_tot = 0;
 
+        all_persists_tot = 0;
+        all_pf_persists_tot = 0;
+        vis_pf_persists_tot = 0;
+        evi_pf_persists_tot = 0;
+        inter_pf_persists_tot = 0;
+
 
         for (j=0; j<cache_level[i].num_caches; j++) {
             if (cache[i][j] != NULL) {
@@ -2906,6 +3399,12 @@ void System::report(ofstream* result, ofstream* stat)
                 epoch_sum_tot += cache[i][j]->epoch_sum;
                 epoch_id_tot += cache[i][j]->epoch_updated_id;
                 epoch_id2_tot += cache[i][j]->epoch_counted_id;
+
+                all_persists_tot += cache[i][j]-> all_persists;
+                all_pf_persists_tot += cache[i][j]->all_pf_persists;
+                vis_pf_persists_tot += cache[i][j]->vis_pf_persists;
+                evi_pf_persists_tot += cache[i][j]->evi_pf_persists;
+                inter_pf_persists_tot += cache[i][j]->inter_pf_persists;
 
 
             }
@@ -2991,8 +3490,16 @@ void System::report(ofstream* result, ofstream* stat)
 
         *result << "Largest Epoch flushed (across all threads) " <<  max_largest_epoch_size << endl;
         *result << "Average largest epoch flushed (/num-threads) " <<  largest_epoch_size_tot << endl;
-        *result << "=================================================================\n\n";
+        
+        *result << "-----------------------------------------------------------------------\n\n\n";
 
+        *result << "Total Persists " <<  all_persists_tot << endl;
+        *result << "all_pf_persists " <<  all_pf_persists_tot << endl;
+        *result << "vis_pf_persists " <<  vis_pf_persists_tot << endl;
+        *result << "evi_pf_persists " <<  evi_pf_persists_tot << endl;
+        *result << "inter_pf_persists " <<  inter_pf_persists_tot << endl;    
+
+        *result << "=================================================================\n\n";
         //Statistic FIle
         double conf_rate =(double)inter_persist_tot/(inter_persist_tot+intra_persist_tot);
         double wbdelay_rate = (double)delay_critical_clwb/(delay_critical_clwb+delay_noncritical_clwb);

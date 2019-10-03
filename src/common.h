@@ -91,10 +91,13 @@ typedef enum PersistModel
     RLSB = 3, //RELEASE BARRIER
     BEPB = 4, //BEP BARRIER - ARPIT, not arpit LB++ needs proactive flushing
     FBRP = 6, //Full barrier on Release Persistency
+
+    BBPF = 7 // BEP with proactive flushing. LB++. PF
 } PersistModel;
 
 #define SYNCBENCH
-//s#define DEBUG
+
+//#define DEBUG
 //#define PDEBUG
 #define LOWER_EPOCH_FLUSH
 //#define ACQREL
