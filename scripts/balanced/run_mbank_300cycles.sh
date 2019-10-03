@@ -15,7 +15,7 @@ optype=balanced
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
 
 #wb-fixed then 26
-CONF_NAME=syncbench-mbank-300cycles-nopfixed-27
+CONF_NAME=syncbench-mbank-300cycles-nopfixed-33
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DIMP2_FILE=${HOME}/repos/primesim/output/${optype}/stat2.txt
@@ -55,10 +55,11 @@ rate2=64000
 for operations in 1000 
 do
 	#for operations in 1000 4000
-	for threads in 1 8 16 32
+	#for threads in 1 8 16 32
+	for threads in 32
 	do
 			
-			for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
+			for bench in hashmap bstree skiplist lfqueue lfqueue2 linkedlist
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
 			#for bench in bstree skiplist-rotating-c

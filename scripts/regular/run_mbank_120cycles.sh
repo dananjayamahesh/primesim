@@ -13,7 +13,7 @@ optype=regular
 #syncbench-mbank-120cycles-nopfixed-4-1 ->same
 #syncbench-mbank-120cycles-nopfixed-4-2 ->add more counters for write backs and epoch sizes, add thread 1,
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
-CONF_NAME=syncbench-mbank-120cycles-nopfixed-27
+CONF_NAME=syncbench-mbank-120cycles-nopfixed-35
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DIMP2_FILE=${HOME}/repos/primesim/output/${optype}/stat2.txt
@@ -61,7 +61,35 @@ DATA2_FILE=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/data2.txt
 #26 failed unexpectedly: only 120, 300 regular and balanced
 #27  26- changing L1 cache size to 32K again and change to 8-ways 
 
+#asplos after
+#28 balanced and regular with M and E states counters. 
+#Add writeback to the visibility conflicts. CLWB
+
+#starting to change the cache hierarchy
+#29 96B, 64K elements, 32K caches eveythig as old. but, No persistency: WB no dram access and Invalidations. only M->S
+#30 - 29 same. with more counters to lowest epoch sizes. path for proactive flushing.
+#30 has a bug. 31 again
+
+#31 had a segmentation faults in skiplist and queue (balanced) in BEP. queue (regular).
+#issue: epoch counter goes beyond 10k
+
+#Seems like we have a problem with the epoch ID. Epoch COunter > 10000. is operations == 10000.
 #L1 cache sizes
+
+#asplos after: with visibility write back and nop fixed.
+
+#32 fixed and run. runnign ok. Without PF. RP, SB and BB numbbers are fine.
+
+#33. BEP+Poactive flushing (with lowest epoch id). BB+PF is working/
+
+#Check.... There is a difference between BEP+PF and Epoch Persistency in 33.
+
+#34: Run all benchmarks with all persistency models including BEP+PF=7. 0 3 7 4 6. 
+#- Original BEP results were changed from 32. 32 without PF.
+#34: SB went viral. lower values.
+
+
+#35: Changes: Add lazy_wb=false to RP, FB, BEP properly. I think the problem of SB (FB) is that lazy_wb is randomly set. method-local.
 
 if [ ! -d ${CONF_PATH} ] 
 then
@@ -96,10 +124,11 @@ do
 for operations in 1000
 do
 	#for operations in 1000 4000
-	for threads in 1 8 16 32
+    #for threads in 1 8 16 32
+    for threads in 32
 	do
 			
-			for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
+			for bench in  lfqueue hashmap bstree skiplist lfqueue2 linkedlist
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
 			#for bench in lfqueue
@@ -116,7 +145,8 @@ do
               		urate=100
             	fi
 
-				for pmodel in 0 3 4 6
+				for pmodel in 6 0 3 7 4
+							 
 				do
 					echo "Executing $pmodel"
 					#operations=${rate2}

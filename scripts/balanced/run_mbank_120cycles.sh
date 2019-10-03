@@ -14,7 +14,7 @@ optype=balanced
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
 
 ##Did not run for 25
-CONF_NAME=syncbench-mbank-120cycles-nopfixed-27
+CONF_NAME=syncbench-mbank-120cycles-nopfixed-35
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DIMP2_FILE=${HOME}/repos/primesim/output/${optype}/stat2.txt
@@ -41,7 +41,6 @@ fi
 #make -B
 
 urate=100
-
 rate=1000
 #rate2=64000
 #rate2=1000000
@@ -54,10 +53,11 @@ rate2=64000
 for operations in 1000
 do
 	#for operations in 1000 4000
-	for threads in 1 8 16 32
+	#for threads in 1 8 16 32
+	for threads in 32
 	do
 			
-			for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
+			for bench in lfqueue hashmap bstree skiplist lfqueue2 linkedlist
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
 			#for bench in bstree skiplist-rotating-c
@@ -71,7 +71,7 @@ do
               		urate=100
             	fi
             	
-				for pmodel in 0 3 4 6
+				for pmodel in 6 0 3 7 4
 				do
 					echo "Executing $pmodel"
 					#operations=${rate2}
