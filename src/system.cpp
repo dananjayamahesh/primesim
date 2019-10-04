@@ -73,6 +73,10 @@ void System::init(XmlSys* xml_sys_in)
         pmodel = BEPB;
         proactive_flushing = true; //BEPB with PF: LB++
     }
+    else if(pmodel == RPPF){
+        pmodel = RLSB;
+        proactive_flushing = true; //BEPB with PF: LB++
+    }
     printf("Persistent Model %d and Proactive-Flushing Enabled:%s \n", pmodel, (proactive_flushing)?"Yes":"No");
 
 
@@ -2263,13 +2267,181 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
+                      
+                        cache_cur->incPersistCount(); //all
+                        persist_count++;
+                        //cache_cur->critical_conflict_persists++; //But not in the critical path of this core
+                        cache_cur->write_back_count++;
+                        cache_cur->noncritical_write_back_count++;
                         
+                        line_cur->dirty = 0;
+                        line_cur->state = I; //Flushing
+                        line_cur->min_epoch_id = 0;
+                        line_cur->max_epoch_id = 0;
+                    }
+                }
+        }
+    } 
+
+    //printf("Here\n"); 
+    //Counts
+    if(core_id == req_core_id){
+
+        if(persist_count>0){
+            cache_cur->intra_conflicts++;
+
+            if(psrc==VIS){
+               cache_cur->intra_vis_conflicts++;
+            }else if(psrc == EVI){
+               cache_cur->intra_evi_conflicts++;
+               if(line_call->state==M) cache_cur->intra_evi_M_conflicts++;
+            }
+        }
+        
+
+        cache_cur->intra_allconflicts++; //conflistc+ persist count=0 conflicts
+        if(line_call->state == M) cache_cur->intra_M_allconflicts++;
+
+        if(psrc==VIS){
+               cache_cur->intra_vis_allconflicts++;
+        }else if(psrc == EVI){
+               cache_cur->intra_evi_allconflicts++;
+               if(line_call->state == M) cache_cur->intra_evi_M_allconflicts++;
+        }
+
+        cache_cur->intra_persists += persist_count;
+        cache_cur->intra_persist_cycles += delay[core_id]; //Not correct, but not effects the core
+
+        if(psrc==VIS){
+            cache_cur->intra_vis_persists += persist_count;
+            cache_cur->intra_vis_persist_cycles += delay[core_id];
+        }
+        else if(psrc==EVI){            
+            cache_cur->intra_evi_persists += persist_count;
+            cache_cur->intra_evi_persist_cycles += delay[core_id];
+            if(line_call->state == M) cache_cur->intra_evi_M_persists += persist_count;
+        } 
+
+        //New
+        cache_cur->critical_conflict_persists += persist_count; //Should be equal to both intra-thread and inter-thread
+        cache_cur->critical_conflict_persist_cycles += delay[core_id]; //Delay
+
+        //+1 non-critical does not require. Its happening in the evicting thread.
+        cache_cur->write_back_count += persist_count;
+        cache_cur->write_back_delay += delay[core_id];
+
+        cache_cur->critical_write_back_count += persist_count;       
+        cache_cur->critical_write_back_delay += delay[core_id];
+
+        
+    }else{ // Inter conflicts are not in the critical path of the receiving core.
+        
+        if(persist_count>0){
+            cache_cur->inter_conflicts++;
+            if(line_call->state == M) cache_cur->inter_M_conflicts++;
+        }
+
+        cache_cur->inter_allconflicts++; 
+        if(line_call->state == M) cache_cur->inter_M_allconflicts++; 
+
+        cache_cur->inter_persists += persist_count;
+        cache_cur->inter_persist_cycles += delay[core_id]; 
+        if(line_call->state==M)cache_cur->inter_M_persists += persist_count;
+
+        //New-
+        cache_cur->write_back_count += persist_count+1; //1 is for release
+        cache_cur->write_back_delay += delay[core_id]+1;
+
+        cache_cur->noncritical_write_back_count += persist_count+1; //Is this true, 1 is for the release
+        cache_cur->noncritical_write_back_delay += delay[core_id]+ 1;
+        
+        cache[0][req_core_id]->external_critical_wb_count += persist_count;
+        cache[0][req_core_id]->external_critical_wb_delay += delay[core_id];        
+    }
+
+    #ifdef DEBUG
+    printf("Number of persists on release : %d \n", persist_count);    
+    #endif
+    
+    return delay[core_id];
+}
+
+
+//asplos-after: adding psrc bit. 
+int System::releaseFlushWithPF(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc){
+    //Need to send write-back instruction to all upper level. from M or E state
+    //Write-back
+    int delay_flush = 0;
+    delay_flush++;
+    int core_id = cache_cur->getId();
+    int cache_id = cache_cur->getId();
+    Line *line_cur;
+    int timer = 0;
+    #ifdef DEBUG
+    printf("Delay on flush %d of core %d by core %d \n", delay[core_id], core_id, req_core_id);
+    #endif
+    //delay[core_id] = 0;
+    if(core_id != req_core_id){
+        delay[core_id]  = 0;
+    }
+
+    int level = cache_cur->getLevel(); 
+    int persist_count =0;   
+
+   /*
+    //line_call is the release. 
+    uint64_t writes_per_epoch [20000];
+    uint64_t is_epoch_checked [20000]; //This can be improved with last epoch checked. Without keeping 10000 size which is a waste.
+    //int last_checked_epoch = 0; //this could be set global.
+
+    for(int ei=0;ei<20000;ei++){
+        writes_per_epoch[ei] = 0;
+        is_epoch_checked[ei] = false;
+    }
+    */
+
+    bool flipped = false;
+
+    for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {
+            
+            for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) {
+                
+                //printf("A Epoch %d\n", rel_epoch_id);
+                InsMem ins_mem;
+                line_cur = cache_cur->directAccess(i,j,&ins_mem);                
+                //printf("B (%lu,%lu) 0x%lx 0x%lx %d \n", i,j, line_cur->tag, ins_mem.addr_dmem, line_cur->state);                
+                if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M || line_cur->state==E )){ //Need to think about E here
+                    //M stads for dirty lines as well. this condition checks dirty==1
+                    //printf("[Release Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
+                     //  i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
+                     //without sync conflicts                    
+                    if((line_cur->min_epoch_id <= rel_epoch_id) && line_cur->dirty){ //This  covers modified vs exclusive as well
+                    //if(true){
+                        //Cacheline needs to be written back
+                        //printf();
+                        #ifdef DEBUG
+                        printf("[Release Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
+                        i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
+                        #endif
+                        //uint64_t address_tag = line_cur->tag;
+                        ins_mem.mem_type = WB;   
+                        ins_mem.atom_type = NON;     
+                        ins_mem.lazy_wb = false;
+
+                        //option 1: randomly flush. Option 2: minimal epoch flush.
+                        flipped = !flipped; //Interleaved Release Flush. NOTE: THIS SEEMS BUGGY.
+                        if(!flipped) ins_mem.lazy_wb = true;
+
+                        line_cur->state = mesi_directory(cache_cur->parent, level+1, 
+                                          cache_id*cache_level[level].share/cache_level[level+1].share, 
+                                          core_id, &ins_mem, timer + delay[core_id]);
+
                         //asplos-after: changes needed.
                         //1. average epochs. writes per epoch. lowest epoch and size.
                         //2. count inter- and -thra thread conflicts sepeartely.
                         //3. non conflicting evictions.
                         //4. count the number of release flushing. -> may be epoch boundaries.
-
+                        ins_mem.lazy_wb = false;
 
                         cache_cur->incPersistCount(); //all
                         persist_count++;
@@ -2467,7 +2639,11 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
     #endif
     if(pmodel == RLSB){
         //printf("Release Persistence \n");
-        delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc); 
+        if(!proactive_flushing)
+            delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc);
+        else 
+            delay_tmp = releaseFlushWithPF(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc);
+        
         cache_cur->incPersistDelay(delay_tmp); //Counters
         //delay_tmp =  delay_tmp/2;
     }

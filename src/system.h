@@ -95,6 +95,7 @@ class System
         int epochPersistWithoutPF(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
         int fullFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc);
         int releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc);
+        int releaseFlushWithPF(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc);
         int persist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id);
         int persist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
         int releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
