@@ -273,6 +273,9 @@ class Cache
         uint64_t natural_eviction_count;
         uint64_t natural_eviction_delay;
 
+        uint64_t all_natural_eviction_count;
+        uint64_t all_natural_eviction_delay;
+
         uint64_t epoch_sum;
         uint64_t epoch_max;
         uint64_t epoch_min;
@@ -300,6 +303,17 @@ class Cache
         uint64_t evi_pf_persists; //Intra
         uint64_t inter_pf_persists; //inter
 
+        uint64_t last_rel_conflicts;
+        uint64_t last_rel_persists; 
+        uint64_t last_rel_persists_cycles; 
+
+        uint64_t invals;
+        uint64_t invals_M;
+        uint64_t invals_E;
+
+        uint64_t shares;
+        uint64_t shares_M;
+        uint64_t shares_E;
         //Epoch Size?
 
     private:

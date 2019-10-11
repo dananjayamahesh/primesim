@@ -150,6 +150,16 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
         evi_pf_persists = 0; //Intra
         inter_pf_persists = 0; //inter
 
+        last_rel_conflicts = 0;
+        last_rel_persists = 0; 
+        last_rel_persists_cycles = 0;
+
+        invals = 0;
+        invals_M = 0;
+        invals_E = 0;
+        shares = 0;
+        shares_M = 0;
+        shares_E = 0;
 
     if (cache_type == TLB_CACHE) {
         offset_bits = (int) (log2(page_size));

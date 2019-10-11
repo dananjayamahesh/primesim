@@ -758,7 +758,6 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                     return I;
                 }
             }
-
             
         }
         //afterasplos: new CLWB support without invalidating and lazy options. (also clflush)
@@ -1020,11 +1019,15 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             cache_cur->natural_eviction_delay += delay_wb;
                         }
 
+                        cache_cur->all_natural_eviction_count++;
+                        cache_cur->all_natural_eviction_delay += delay_wb;
+
+
                         if(level ==0){
                             if(pmodel == RLSB){ //Becuase write-backs happenes in the criticial path
                                 delay[core_id] = before_delay; //No write-back cost. happenes outside the critical path of execution
                             }else if(pmodel != NONB){
-                                if(core_id ==0){
+                                if(core_id == 0){
                                     delay[core_id] = before_delay;  //Check this correctness
                                 }
                             }
@@ -1729,7 +1732,8 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
                         //ins_mem.lazy_wb =false;
                         
                         cache_cur->incPersistCount();
-                        persist_count++;                       
+                        persist_count++;      
+                        cache_cur->all_persists++;                 
 
                         //asplos-after: counting the average number of cachelines per epoch that is flushing
                         //bug fixed. this must come after the above.
@@ -1912,7 +1916,7 @@ int System::epochPersistWithPF(Cache *cache_cur, InsMem *ins_mem, Line *line_cal
                         //asplos-after: et_lowest_epoch_id: proactive_flushing
                         if(proactive_flushing && (line_cur->max_epoch_id == et_lowest_epoch_id)){
                             ins_mem.lazy_wb =true; //new lazy write-backs: no delay is added.
-                            
+                            cache_cur->all_pf_persists++;
                             //counters.                            
                             if (psrc==0) cache_cur->vis_pf_persists++; //Intra
                             else if (psrc==1)   cache_cur->evi_pf_persists++; //Intra
@@ -1930,8 +1934,9 @@ int System::epochPersistWithPF(Cache *cache_cur, InsMem *ins_mem, Line *line_cal
                         
                         cache_cur->incPersistCount();
                         persist_count++;   
+                        cache_cur->all_persists++;                        
 
-                        cache_cur->all_pf_persists++;
+                        //cache_cur->all_pf_persists++;
 
                         //asplos-after: counting the average number of cachelines per epoch that is flushing
                         if(line_cur->max_epoch_id >= 20000){
@@ -2261,7 +2266,7 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
                         i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
                         #endif
                         //uint64_t address_tag = line_cur->tag;
-                        ins_mem.mem_type = WB;   
+                        ins_mem.mem_type = WB;   //PutM
                         ins_mem.atom_type = NON;     
                         ins_mem.lazy_wb = false;                                        
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
@@ -2270,9 +2275,12 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
                       
                         cache_cur->incPersistCount(); //all
                         persist_count++;
+                        cache_cur->all_persists++;   
                         //cache_cur->critical_conflict_persists++; //But not in the critical path of this core
-                        cache_cur->write_back_count++;
-                        cache_cur->noncritical_write_back_count++;
+                        
+                        //asplos-after counter bug found.
+                        //cache_cur->write_back_count++;
+                        //cache_cur->noncritical_write_back_count++;
                         
                         line_cur->dirty = 0;
                         line_cur->state = I; //Flushing
@@ -2285,6 +2293,10 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
 
     //printf("Here\n"); 
     //Counts
+    //For the relese delays
+    cache_cur->last_rel_persists = persist_count; 
+    cache_cur->last_rel_persists_cycles = delay[core_id];
+
     if(core_id == req_core_id){
 
         if(persist_count>0){
@@ -2430,7 +2442,14 @@ int System::releaseFlushWithPF(Cache *cache_cur, SyncLine * syncline, Line *line
 
                         //option 1: randomly flush. Option 2: minimal epoch flush.
                         flipped = !flipped; //Interleaved Release Flush. NOTE: THIS SEEMS BUGGY.
-                        if(!flipped) ins_mem.lazy_wb = true;
+                        if(!flipped){
+                            ins_mem.lazy_wb = true;
+                            cache_cur->all_pf_persists++;
+                            //counters.                            
+                            if (psrc==0) cache_cur->vis_pf_persists++; //Intra
+                            else if (psrc==1)   cache_cur->evi_pf_persists++; //Intra
+                            else if (psrc==2) cache_cur->inter_pf_persists++; //inter
+                        }
 
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
@@ -2445,9 +2464,12 @@ int System::releaseFlushWithPF(Cache *cache_cur, SyncLine * syncline, Line *line
 
                         cache_cur->incPersistCount(); //all
                         persist_count++;
+                        cache_cur->all_persists++;   
                         //cache_cur->critical_conflict_persists++; //But not in the critical path of this core
-                        cache_cur->write_back_count++;
-                        cache_cur->noncritical_write_back_count++;
+                        
+                        //asplos-after counter bug
+                        //cache_cur->write_back_count++;
+                        //cache_cur->noncritical_write_back_count++;
                         
                         line_cur->dirty = 0;
                         line_cur->state = I; //Flushing
@@ -2459,6 +2481,10 @@ int System::releaseFlushWithPF(Cache *cache_cur, SyncLine * syncline, Line *line
     } 
 
     //printf("Here\n"); 
+    //For the relese delays
+    cache_cur->last_rel_persists = persist_count; 
+    cache_cur->last_rel_persists_cycles = delay[core_id];
+
     //Counts
     if(core_id == req_core_id){
 
@@ -2639,15 +2665,39 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
     #endif
     if(pmodel == RLSB){
         //printf("Release Persistence \n");
+        cache_cur->last_rel_conflicts = 0;
+        cache_cur->last_rel_persists = 0; 
+        cache_cur->last_rel_persists_cycles = 0;        
+
         if(!proactive_flushing)
             delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc);
         else 
             delay_tmp = releaseFlushWithPF(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc);
         
+        //piggy-backing.
+        int updated_delay_tmp = 0 ;
+        if(cache_cur->last_rel_persists > 0){
+            int avg_delay = cache_cur->last_rel_persists_cycles/cache_cur->last_rel_persists;
+            if(avg_delay > (signed) cache_cur->last_rel_persists){
+                updated_delay_tmp = 2*avg_delay;
+            }
+            else{
+                updated_delay_tmp = cache_cur->last_rel_persists + avg_delay;
+            }
+
+            delay_tmp = updated_delay_tmp;
+        }
+
         cache_cur->incPersistDelay(delay_tmp); //Counters
-        //delay_tmp =  delay_tmp/2;
+        
+        cache_cur->last_rel_conflicts = 0;
+        cache_cur->last_rel_persists = 0; 
+        cache_cur->last_rel_persists_cycles = 0; 
+
+        //simple solution is : delay_tmp =  delay_tmp/2;
     }
-    if(pmodel == FBRP){ //Epoch PErsistency
+    //Bug-fixed
+    else if(pmodel == FBRP){ //Epoch PErsistency
         //printf("Full barrier Release Persistence \n");
         delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc); 
         cache_cur->incPersistDelay(delay_tmp); //Counters
@@ -2666,7 +2716,7 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
         delay_tmp = 0;
     }
 
-    //printf("HERE Persistence \n");
+    //printf("Here Persistence \n");
     
     #ifdef DEBUG
     printf("Persistency Total Delay : %d \n", delay_tmp);  
@@ -2738,6 +2788,10 @@ int System::share(Cache* cache_cur, InsMem* ins_mem, int core_id)
                 #ifdef DEBUG
                 printf("[Share-Finish] Release Persist Ending.... \n");
                 #endif
+
+                cache_cur->shares++;
+                if(line_cur->state ==M) cache_cur->shares_M++;
+                else cache_cur->shares_E++;
 
             }
 
@@ -2832,9 +2886,13 @@ int System::inval(Cache* cache_cur, InsMem* ins_mem, int core_id)
                     #ifdef DEBUG
                     printf("[Inval-Finish] Release Persist Ending.... \n");
                     #endif
+
+                    cache_cur->invals++;
+                    if(line_cur->state ==M) cache_cur->invals_M++;
+                    else cache_cur->invals_E++;
+
                 }//Delay of invalidation and shar is added to the cycles by coherence itself.
-                //No need to write-back 
-                
+                //No need to write-back                 
             }
                   
             line_cur->state = I;
@@ -3155,7 +3213,7 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
         directory_cache[home_id]->incMissCount();
         line_cur->sharer_set.clear();
         line_cur->sharer_set.insert(cache_id);
-        delay += dram.access(ins_mem);
+        delay += dram.access(ins_mem); //Read data from DRAM
     }   
     //Shard llc hit
     else {
@@ -3173,7 +3231,7 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
                     //Do something: (1) this is important when non-invalidating write is used.
 
                 }else{
-                    //NOP
+                    //NOP-No need to do anything.
                     //delay += dram.access(ins_mem);
                 }
 
@@ -3228,7 +3286,7 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
                 }else{
                     //NOP: M->S transition.
                     delay += dram.access(ins_mem);
-                }              
+                }            
 
             }
             else if (line_cur->state == S) {
@@ -3364,8 +3422,8 @@ void System::report(ofstream* result, ofstream* stat)
     double  ratio_inter_intra_persists = 0.0;
     double  ratio_inter_intra_persist_cycles = 0.0;
     //double conflict_rate=0.0;
-    uint64_t clwb_tot=0, critical_clwb=0, noncritical_clwb=0, external_clwb=0, natural_clwb=0, sync_clwb=0, critical_persist_wb=0; //last one id related to total persist count
-    uint64_t delay_clwb_tot=0, delay_critical_clwb=0, delay_noncritical_clwb=0, delay_external_clwb=0, delay_natural_clwb=0, delay_sync_clwb=0, delay_critical_persist_wb=0;
+    uint64_t clwb_tot=0, critical_clwb=0, noncritical_clwb=0, external_clwb=0, all_natural_clwb=0, natural_clwb=0, sync_clwb=0, critical_persist_wb=0; //last one id related to total persist count
+    uint64_t delay_clwb_tot=0, delay_critical_clwb=0, delay_noncritical_clwb=0, delay_external_clwb=0, delay_all_natural_clwb=0, delay_natural_clwb=0, delay_sync_clwb=0, delay_critical_persist_wb=0;
    uint64_t delay_same_block_tot =0; uint64_t same_block_count_tot =0;
    uint64_t epoch_sum_tot = 0;
    uint64_t epoch_id_tot = 0, epoch_id2_tot=0;
@@ -3373,7 +3431,7 @@ void System::report(ofstream* result, ofstream* stat)
    uint64_t nzero_conflicts_tot=0, lowest_epoch_size_tot = 0, largest_lowest_epoch_size_tot = 0, max_largest_lowest_epoch_size = 0, num_epochs_flushed_tot = 0, num_nzero_epochs_flushed_tot = 0, max_largest_epoch_size = 0, largest_epoch_size_tot = 0 ;
  
    uint64_t all_persists_tot =0, all_pf_persists_tot=0, vis_pf_persists_tot = 0, evi_pf_persists_tot=0, inter_pf_persists_tot=0; 
-
+   uint64_t invals_tot = 0, invals_M_tot = 0, invals_E_tot = 0, shares_tot = 0, shares_M_tot = 0, shares_E_tot = 0;
     network.report(result); 
     dram.report(result); 
     *result << endl <<  "Simulation result for cache system: \n\n";
@@ -3456,6 +3514,7 @@ void System::report(ofstream* result, ofstream* stat)
         noncritical_clwb = 0;
         external_clwb = 0;
         natural_clwb = 0;
+        all_natural_clwb = 0;
         sync_clwb = 0;
         critical_persist_wb = 0;
         delay_clwb_tot = 0;
@@ -3463,6 +3522,7 @@ void System::report(ofstream* result, ofstream* stat)
         delay_noncritical_clwb = 0;
         delay_external_clwb = 0;
         delay_natural_clwb = 0;
+        delay_all_natural_clwb = 0;
         delay_sync_clwb = 0;
 
         epoch_sum_tot = 0;
@@ -3505,6 +3565,13 @@ void System::report(ofstream* result, ofstream* stat)
         evi_pf_persists_tot = 0;
         inter_pf_persists_tot = 0;
 
+        invals_tot = 0;
+        invals_M_tot = 0;
+        invals_E_tot = 0;
+        shares_tot = 0;
+        shares_M_tot = 0;
+        shares_E_tot = 0;
+
 
         for (j=0; j<cache_level[i].num_caches; j++) {
             if (cache[i][j] != NULL) {
@@ -3530,6 +3597,7 @@ void System::report(ofstream* result, ofstream* stat)
                 noncritical_clwb    +=    cache[i][j]->noncritical_write_back_count; 
                 external_clwb       +=   cache[i][j]->external_critical_wb_count; 
                 natural_clwb        +=    cache[i][j]->natural_eviction_count; 
+                all_natural_clwb    +=    cache[i][j]->all_natural_eviction_count;
                 sync_clwb           +=   cache[i][j]->sync_conflict_persists; 
                 critical_persist_wb +=     cache[i][j]->critical_conflict_persists;
 
@@ -3540,6 +3608,7 @@ void System::report(ofstream* result, ofstream* stat)
                 delay_noncritical_clwb      +=      cache[i][j]->noncritical_write_back_delay;
                 delay_external_clwb         +=      cache[i][j]->external_critical_wb_delay;
                 delay_natural_clwb          +=      cache[i][j]->natural_eviction_delay;
+                delay_all_natural_clwb      +=      cache[i][j]->all_natural_eviction_delay;
                 delay_sync_clwb             +=      cache[i][j]->sync_conflict_persist_cycles;
                 delay_critical_persist_wb   +=      cache[i][j]->critical_conflict_persist_cycles;
 
@@ -3582,6 +3651,12 @@ void System::report(ofstream* result, ofstream* stat)
                 evi_pf_persists_tot += cache[i][j]->evi_pf_persists;
                 inter_pf_persists_tot += cache[i][j]->inter_pf_persists;
 
+                invals_tot += cache[i][j]->invals;
+                invals_M_tot += cache[i][j]->invals_M;
+                invals_E_tot += cache[i][j]->invals_E;
+                shares_tot += cache[i][j]->shares;
+                shares_M_tot += cache[i][j]->shares_M;
+                shares_E_tot += cache[i][j]->shares_E;
 
             }
         }
@@ -3616,6 +3691,7 @@ void System::report(ofstream* result, ofstream* stat)
         *result << "NonCritical Write-Backs count and delay " <<  noncritical_clwb << " \t" << delay_noncritical_clwb << endl;
         *result << "External Write-Backs count and delay " <<  external_clwb << " \t" << delay_external_clwb << endl;
         *result << "Natural Write-Backs count and delay " <<  natural_clwb << " \t" << delay_natural_clwb << endl;
+        *result << "ALL Natural Write-Backs count and delay " <<  all_natural_clwb << " \t" << delay_all_natural_clwb << endl;
         *result << "Sync Write-Backs count and delay " <<  sync_clwb << " \t" << delay_sync_clwb << endl;
         *result << "Critical Persist count and delay " <<  critical_persist_wb << " \t" << critical_persist_wb << endl;
         *result << "All perisist (Persistence)" <<  persist_count << " \t" << persist_delay << endl;
@@ -3651,6 +3727,13 @@ void System::report(ofstream* result, ofstream* stat)
         *result << "Inter-allconflicts-M " <<  inter_M_allconflicts_tot << endl;
         *result << "Inter-persists " <<  inter_persist_tot << endl;
         *result << "Inter-persists-M " <<  inter_M_persists_tot << endl;
+        *result << "-----------------------------------------------------------------------\n";
+        *result << "Invals - "  <<  invals_tot << endl;
+        *result << "InvalsM - " <<  invals_M_tot << endl;
+        *result << "InvalsE - " <<  invals_E_tot << endl;
+        *result << "Shares - "  <<  shares_tot << endl;
+        *result << "SharesM - " <<  shares_M_tot << endl;
+        *result << "SharesE - " <<  shares_E_tot << endl;      
         *result << "-----------------------------------------------------------------------\n\n\n";
 
         *result << "Total Lowest Epoch Size " <<  lowest_epoch_size_tot << endl;
@@ -3667,13 +3750,14 @@ void System::report(ofstream* result, ofstream* stat)
         *result << "Largest Epoch flushed (across all threads) " <<  max_largest_epoch_size << endl;
         *result << "Average largest epoch flushed (/num-threads) " <<  largest_epoch_size_tot << endl;
         
-        *result << "-----------------------------------------------------------------------\n\n\n";
+        *result << "-----------------------------------------------------------------------\n\n\n";      
+
 
         *result << "Total Persists " <<  all_persists_tot << endl;
         *result << "all_pf_persists " <<  all_pf_persists_tot << endl;
         *result << "vis_pf_persists " <<  vis_pf_persists_tot << endl;
         *result << "evi_pf_persists " <<  evi_pf_persists_tot << endl;
-        *result << "inter_pf_persists " <<  inter_pf_persists_tot << endl;    
+        *result << "inter_pf_persists " << inter_pf_persists_tot << endl; 
 
         *result << "=================================================================\n\n";
         //Statistic FIle
@@ -3685,7 +3769,45 @@ void System::report(ofstream* result, ofstream* stat)
         //double clwb = clwb_tot;
 
         //ASPLOS Updates WB
-        *stat << inter_persist_tot << "," << intra_persist_tot << "," << persist_count << "," << clwb_tot << "," << critical_clwb << "," << noncritical_clwb << "," << natural_clwb << "," << external_clwb << "," << inter_tot << "," << intra_tot <<"," << same_block_count_tot << "," << delay_same_block_tot << ","  << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
+        //*stat << inter_persist_tot << "," << intra_persist_tot << "," << persist_count << "," << clwb_tot << "," << critical_clwb << "," << noncritical_clwb << "," << natural_clwb << "," << external_clwb << "," << inter_tot << "," << intra_tot <<"," << same_block_count_tot << "," << delay_same_block_tot << ","  << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
+        
+        *stat   << clwb_tot << ","
+                << critical_clwb << ","
+                << critical_clwb << ","
+                << noncritical_clwb << ","
+                << natural_clwb << ","
+                << all_natural_clwb << ","
+
+                << intra_tot << ","
+                << intra_vis_conflicts_tot << ","
+                << intra_evi_conflicts_tot << ","
+                << intra_evi_M_conflicts_tot << ","
+
+                << intra_allconflicts_tot << ","
+                << intra_vis_allconflicts_tot << ","
+                << intra_evi_allconflicts_tot << ","
+                << intra_evi_M_allconflicts_tot << ","
+                << intra_M_allconflicts_tot << ","
+
+                << intra_persist_tot << ","
+                << intra_vis_persists_tot << ","
+                << intra_evi_persists_tot << ","
+                << intra_evi_M_persists_tot << ","
+
+                << inter_tot << ","
+                << inter_M_conflicts_tot << ","
+                << inter_allconflicts_tot << ","
+                << inter_M_allconflicts_tot << ","
+                << inter_persist_tot << ","
+                << inter_M_persists_tot << ","
+
+                << all_persists_tot << ","
+                << all_pf_persists_tot << ","
+                << vis_pf_persists_tot << ","
+                << evi_pf_persists_tot << ","
+                << inter_pf_persists_tot << endl;
+        //Adding new division of visibility/evictions/ and PF to stat file
+
         *result << conf_rate << "," << wb_rate << "," << wbdelay_rate << "," << p_rate << "," << pdelay_rate << "," << clwb_tot << "," << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
     }
     
