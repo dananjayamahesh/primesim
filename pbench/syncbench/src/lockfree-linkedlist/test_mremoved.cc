@@ -271,7 +271,7 @@ int main(int argc, char **argv) {
 	int unit_tx = DEFAULT_ELASTICITY;
 	int alternate = DEFAULT_ALTERNATE;
 	int effective = DEFAULT_EFFECTIVE;
-	int operations = 200;
+	int operations = DEFAULT_OPERATIONS;
 	sigset_t block_set;
 	
 	while(1) {

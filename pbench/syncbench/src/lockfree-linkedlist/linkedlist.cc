@@ -93,6 +93,25 @@ node_t *new_node(val_t val, node_t *next, int transactional)
     node->load23=(long)val+23;
     node->load24=(long)val+24;    
     #endif
+
+    #ifdef B256
+    node->load1=(long)val+1;
+    node->load2=(long)val+2;
+    node->load3=(long)val+3;
+    node->load4=(long)val+4;
+    #endif
+
+
+    #ifdef B512
+    node->load1=(long)val+1;
+    node->load2=(long)val+2;
+    node->load3=(long)val+3;
+    node->load4=(long)val+4;
+    node->load5=(long)val+5;
+    node->load6=(long)val+6;
+    node->load7=(long)val+7;
+    node->load8=(long)val+8;
+    #endif
     
     #ifdef WRITE_N
     node->write_0 = (long)val+1;

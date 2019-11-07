@@ -22,7 +22,8 @@
 unsigned long sl_zero;
 
 //#define B4 - asplos paper
-#define B96
+//#define B96 - 38-41
+#define B4
 
 typedef long load_t;
 
@@ -104,6 +105,25 @@ struct sl_node {
     load_t load22;
     load_t load23;
     load_t load24;
+    #endif
+
+    #ifdef B256
+        load_t load1; __attribute__((aligned(64)));
+        load_t load2; __attribute__((aligned(64)));
+        load_t load3; __attribute__((aligned(64)));
+        load_t load4; __attribute__((aligned(64)));
+
+    #endif
+
+    #ifdef B512
+        load_t load1; __attribute__((aligned(64)));
+        load_t load2; __attribute__((aligned(64)));
+        load_t load3; __attribute__((aligned(64)));
+        load_t load4; __attribute__((aligned(64)));
+        load_t load5; __attribute__((aligned(64)));
+        load_t load6; __attribute__((aligned(64)));
+        load_t load7; __attribute__((aligned(64)));
+        load_t load8; __attribute__((aligned(64)));
     #endif
 
 

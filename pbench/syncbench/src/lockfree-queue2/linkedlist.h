@@ -60,7 +60,8 @@ typedef intptr_t val_t;
 #define VAL_MAX                         INT_MAX
 
 //#define B4
-#define B96
+//#define B96
+#define B4
 
 typedef long load_t;
 
@@ -132,6 +133,25 @@ typedef struct node {
 	load_t load22;
 	load_t load23;
 	load_t load24;
+	#endif
+
+	#ifdef B256
+		load_t load1; __attribute__((aligned(64)));
+		load_t load2; __attribute__((aligned(64)));
+		load_t load3; __attribute__((aligned(64)));
+		load_t load4; __attribute__((aligned(64)));
+
+	#endif
+
+	#ifdef B512
+		load_t load1; __attribute__((aligned(64)));
+		load_t load2; __attribute__((aligned(64)));
+		load_t load3; __attribute__((aligned(64)));
+		load_t load4; __attribute__((aligned(64)));
+		load_t load5; __attribute__((aligned(64)));
+		load_t load6; __attribute__((aligned(64)));
+		load_t load7; __attribute__((aligned(64)));
+		load_t load8; __attribute__((aligned(64)));
 	#endif
 
 

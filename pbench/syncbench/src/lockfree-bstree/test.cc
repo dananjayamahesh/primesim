@@ -218,7 +218,7 @@ void *test(void *data) {
 	     			
 	       if (d->alternate) { // alternate mode (default)
 	       				
-	         delete_node(d, last);
+	         delete_node(d, last);           
            //printf("delete Alt %d\n", last);
 	         //printf("delete1 %d\n", val);
 	         last = -1;

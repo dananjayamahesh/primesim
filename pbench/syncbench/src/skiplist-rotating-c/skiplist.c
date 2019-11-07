@@ -145,6 +145,24 @@ node_t* node_new(unsigned long key, void *val, node_t *prev,
         node->load24=(long)val+24;    
     #endif
 
+    #ifdef B256
+      node->load1=val+1;
+      node->load2=val+2;
+      node->load3=val+3;
+      node->load4=val+4;
+    #endif
+
+    #ifdef B512
+      node->load1=val+1;
+      node->load2=val+2;
+      node->load3=val+3;
+      node->load4=val+4;
+      node->load5=val+5;
+      node->load6=val+6;
+      node->load7=val+7;
+      node->load8=val+8;
+    #endif
+
 
 
         return node;

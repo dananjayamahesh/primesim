@@ -462,6 +462,7 @@ int main(int argc, char **argv)
 								 );
 					exit(0);
 				case 'A':
+					printf("Alternate------------------------------");
 					alternate = 1;
 					break;
 				case 'f':

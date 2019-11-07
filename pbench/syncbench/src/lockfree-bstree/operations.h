@@ -88,6 +88,24 @@ int perform_one_insert_window_operation(thread_data_t* data, seekRecord_t * R, s
 	newLeaf->load24=(long)newKey+24;
 	#endif
 
+	#ifdef B256
+  	newLeaf->load1=(long)newKey+1;
+	newLeaf->load2=(long)newKey+2;
+	newLeaf->load3=(long)newKey+3;
+	newLeaf->load4=(long)newKey+4;
+	#endif
+
+	#ifdef B512
+  	newLeaf->load1=(long)newKey+1;
+	newLeaf->load2=(long)newKey+2;
+	newLeaf->load3=(long)newKey+3;
+	newLeaf->load4=(long)newKey+4;
+	newLeaf->load5=(long)newKey+5;
+	newLeaf->load6=(long)newKey+6;
+	newLeaf->load7=(long)newKey+7;
+	newLeaf->load8=(long)newKey+8;
+	#endif
+
 		
   node_t * existLeaf = (node_t *)get_addr(R->pL);
   size_t existKey = R->leafKey;

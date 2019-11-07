@@ -27,6 +27,7 @@
 /* Note: stdio is thread-safe */
 #endif
 
+#define DEFAULT_OPERATIONS              1000
 #define DEFAULT_DURATION                10000
 #define DEFAULT_INITIAL                 256
 #define DEFAULT_NB_THREADS              1
@@ -62,7 +63,15 @@ typedef intptr_t val_t;
 //#define 8B
 //#define 64B
 //#define B4
-#define B96
+//#define B96
+//#define PAD
+//41- #define B32
+//#define B4
+
+//RET Evaluation
+//#define B32 //Change and see
+
+#define B4
 
 typedef long load_t;
 
@@ -136,6 +145,25 @@ typedef struct node {
 	load_t load24;
 	#endif
 
+	#ifdef B256
+		load_t load1; __attribute__((aligned(64)));
+		load_t load2; __attribute__((aligned(64)));
+		load_t load3; __attribute__((aligned(64)));
+		load_t load4; __attribute__((aligned(64)));
+
+	#endif
+
+	#ifdef B512
+		load_t load1; __attribute__((aligned(64)));
+		load_t load2; __attribute__((aligned(64)));
+		load_t load3; __attribute__((aligned(64)));
+		load_t load4; __attribute__((aligned(64)));
+		load_t load5; __attribute__((aligned(64)));
+		load_t load6; __attribute__((aligned(64)));
+		load_t load7; __attribute__((aligned(64)));
+		load_t load8; __attribute__((aligned(64)));
+	#endif
+
 	#ifdef WRITES_N
 	long write_0;
 	long write_1;
@@ -143,7 +171,7 @@ typedef struct node {
 	long write_3;
 	long write_4;
 	long write_5;
-	long write_6;
+	long write_6;e
 	long write_7;	
 	#endif
 
@@ -151,6 +179,11 @@ typedef struct node {
 		int parity[MAX_PARITY_LOAD];
 	#endif
 	struct node *next;
+
+	//#ifdef PAD
+	//bool pad __attribute__((aligned(64)));
+	//#endif
+
 } node_t;
 
 typedef struct intset {
