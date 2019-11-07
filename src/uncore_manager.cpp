@@ -49,6 +49,11 @@ void UncoreManager::init(XmlSim* xml_sim)
     thread_sched.init(sys.getCoreCount());
 }
 
+void UncoreManager::setDRAMOut(ofstream * dram_out)
+{
+   sys.setDRAMOut(dram_out);
+
+}
 
 void UncoreManager::getSimStartTime()
 {

@@ -357,8 +357,17 @@ int main(int argc, char *argv[])
     }
     xml_sim = xml_parser.getXmlSim();
     max_msg_size = xml_sim->max_msg_size;
-    num_threads = xml_sim->num_recv_threads;
-    uncore_manager.init(xml_sim);
+    num_threads = xml_sim->num_recv_threads;    
+
+    uncore_manager.init(xml_sim); //init uncore.
+
+    #ifdef DRAM_OUT_ENABLE 
+        dram_out.open((string(argv[2])+ "_"  + "dram_out").c_str()); //Open DRAM Output strean
+        uncore_manager.setDRAMOut(&dram_out);
+        cout<<  "DRAM Trace File Has Been Created: " + string(argv[2]) + "_"  + "dram_out" << endl;
+        //printf("File : %S", string(printl));
+    #endif //DRAM Enable
+
     pthread_mutex_init(&mutex, NULL);
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
@@ -410,6 +419,7 @@ int main(int argc, char *argv[])
     printf("Uncore Print");
     result.close();
     stat.close();
+    dram_out.close();
     printf("Uncore Print");
     MPI_Finalize();
     pthread_mutex_destroy(&mutex);

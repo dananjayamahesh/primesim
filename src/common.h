@@ -106,4 +106,6 @@ typedef enum PersistModel
 //Changes After the ASPLOS Submission
 #define ASPLOS_AFTER
 
+#define DRAM_OUT_ENABLE
+
 #endif  // COMMON_H

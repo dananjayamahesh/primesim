@@ -44,10 +44,14 @@ class Dram
 {
     public:
         void init(int access_delay_in);
-        int  access(InsMem* ins_mem);
+        void init(int access_delay_in, ofstream * dram_out);
+        void setOut(ofstream * dram_out);
+        int access(InsMem* ins_mem);
+        int access(int64_t timestamp, InsMem * ins_mem);
         void report(ofstream* result);
         ~Dram();        
     private:
+        ofstream * dram_o; // DRAM output stream
         int access_delay;
         uint64_t num_accesses;
 };

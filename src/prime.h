@@ -65,6 +65,8 @@ ofstream result;
 pthread_mutex_t mutex;
 ofstream stat;
 
+ofstream dram_out;
+
 int epoch_persist_counter[THREAD_MAX];
 int max_epoch_size[THREAD_MAX];
 int min_epoch_size[THREAD_MAX];

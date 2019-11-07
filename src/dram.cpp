@@ -40,10 +40,51 @@ void Dram::init(int access_delay_in)
     num_accesses = 0;
 }
 
+void Dram::init(int access_delay_in, ofstream * dram_out)
+{
+    
+    //dram output stream
+    dram_o = dram_out;
+    access_delay = access_delay_in;
+    num_accesses = 0;
+}
+
+void Dram::setOut(ofstream * dram_out)
+{
+   dram_o = dram_out; //Set
+   printf("DRAM Trace File Has Been Created");
+}
+
 int Dram::access(InsMem * ins_mem)
 {
     num_accesses++;
-    return access_delay;
+    if(ins_mem->mem_type == RD) return int(access_delay*0.75);
+    else return access_delay;
+}
+
+//New one
+int Dram::access(int64_t timestamp, InsMem * ins_mem)
+{
+    
+    #ifdef DRAM_OUT_ENABLE 
+        num_accesses++;
+        //Outpout Dump
+        if(dram_o != NULL){ //check fot the output file
+          *dram_o << timestamp << "," << ( (ins_mem->mem_type==RD)?0:1 ) << "," << ins_mem->addr_dmem << endl;
+        }
+        else{
+          cerr << "Error: Not enough cores!\n";
+          return -1;
+        }
+        if(ins_mem->mem_type == RD) return int(access_delay*0.75);
+        else return access_delay;
+    
+    #else
+        num_accesses++;
+        if(ins_mem->mem_type == RD) return int(access_delay*0.75);
+        else return access_delay;
+
+    #endif
 }
 
 

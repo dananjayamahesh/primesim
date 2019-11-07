@@ -52,6 +52,7 @@ class UncoreManager
 {
     public:
         void init(XmlSim* xml_sim);
+        void setDRAMOut(ofstream * dram_out);
         void getSimStartTime();
         void getSimFinishTime();
         int allocCore(int prog_id, int thread_id);

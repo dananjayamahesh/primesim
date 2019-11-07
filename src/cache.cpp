@@ -161,6 +161,20 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
         shares_M = 0;
         shares_E = 0;
 
+        cnt_sm_add = 0;
+        cnt_sm_delete = 0;
+        cnt_sm_delete_lower = 0;
+        cnt_sm_delete_call = 0;
+        cnt_sm_delete_lower_call = 0;
+        cnt_sm_lookups = 0;
+        cnt_sm_rel_lookups = 0;
+        cnt_sm_rel_intra_lookups = 0;
+        cnt_sm_rel_inter_lookups = 0;
+        cnt_sm_rel_succ_lookups = 0;
+        cnt_sm_chks_per_lookup = 0;
+        clk_timestamp = 0;
+        atom_clk_timestamp = 0;
+
     if (cache_type == TLB_CACHE) {
         offset_bits = (int) (log2(page_size));
         offset_mask = (uint64_t)(page_size - 1);
@@ -656,6 +670,8 @@ int Cache::replaceSyncLine(SyncLine * syncline, InsMem * ins_mem){
 SyncLine * Cache::addSyncLine(InsMem * ins_mem){    
     
     assert(ins_mem->atom_type != NON);
+
+    cnt_sm_add++;
     //assert(syncmap.size < SYNCMAP_SIZE);
     SyncLine * new_line = NULL;
     //Before- syncmap.size < SYNCMAP_SIZE
@@ -704,6 +720,8 @@ SyncLine * Cache::addSyncLine(InsMem * ins_mem){
 
 void Cache::deleteFromSyncMap(uint64_t addr){
     
+    cnt_sm_delete_call++;
+
     SyncLine * tmp_line = syncmap.head;
     SyncLine *prev_line = syncmap.head;
 
@@ -725,6 +743,7 @@ void Cache::deleteFromSyncMap(uint64_t addr){
                     if(tmp_line != syncmap.head) prev_line->next = tmp_line->next;
                     else syncmap.head = tmp_line->next;
                     syncmap.size--;
+                    cnt_sm_delete++;
                     //break;          
             }    
 
@@ -736,6 +755,8 @@ void Cache::deleteFromSyncMap(uint64_t addr){
 
 void Cache::deleteLowerFromSyncMap(int epoch_id){
     
+    cnt_sm_delete_lower_call++;
+
     SyncLine * tmp_line = syncmap.head;
     SyncLine *prev_line = syncmap.head;
 
@@ -747,6 +768,7 @@ void Cache::deleteLowerFromSyncMap(int epoch_id){
                     if(tmp_line != syncmap.head) prev_line->next = tmp_line->next;
                     else syncmap.head = tmp_line->next;
                     syncmap.size--;
+                    cnt_sm_delete_lower++;
                     //break;          
             }    
 
@@ -758,6 +780,8 @@ void Cache::deleteLowerFromSyncMap(int epoch_id){
 
 SyncLine * Cache::searchSyncMap(uint64_t addr){ //Accurate address is Cachline Tag
     
+    cnt_sm_lookups++; //lookups.
+
     SyncLine *tmp_line = syncmap.head;
     Addr addr_block;
     addrParse(addr, &addr_block);
@@ -909,8 +933,28 @@ void Cache::report(ofstream* result)
     *result << "Epochs/Conflict" << (double) num_nzero_epochs_flushed/(nzero_conflicts+1) <<endl;
     *result << "Largest EPoch flushed" << largest_epoch_size <<endl;
     
-    *result << "=================================================================\n\n";
+    *result << "RET =============================================================\n\n";
+    *result << "Last Clock Cycle " << clk_timestamp <<endl;
+    *result << "Last Release Clock Cycle " << atom_clk_timestamp <<endl;
+    
+    *result << "Writes per Cycle " << (double)cnt_sm_add/clk_timestamp <<endl;
+    *result << "Lookups per Cycle " << (double)cnt_sm_lookups/clk_timestamp <<endl;
+    
+     *result << "Writes per Rel Cycle " << (double)cnt_sm_add/atom_clk_timestamp <<endl;
+     *result << "Lookups per Rel Cycle " << (double)cnt_sm_lookups/atom_clk_timestamp <<endl;
+    
+    *result << "Adds " << cnt_sm_add <<endl;
+    *result << "Delete " << cnt_sm_delete <<endl;
+    *result << "Delete_Lower " << cnt_sm_delete_lower <<endl;
+    *result << "Lookup " << cnt_sm_lookups <<endl;
+    *result << "Lookup Release " << cnt_sm_rel_lookups <<endl;
+    *result << "Lookup Release Intra " << cnt_sm_rel_intra_lookups <<endl;
+    *result << "Lookup Release Inter " << cnt_sm_rel_inter_lookups <<endl;
+    *result << "Lookup Release Success " << cnt_sm_rel_succ_lookups <<endl;
+    *result << "Delete Calls" << cnt_sm_delete_call <<endl;
+    *result << "Delete_Lower Calls " << cnt_sm_delete_lower_call <<endl;
 
+    *result << "=================================================================\n\n";
 
     if(level==0 and cache_type==DATA_CACHE) printf("Cache ID: %d of Level %d , The # of persist counts: %lu The # of persist delays: %lu, Inter: %lu Intra: %lu Ratio %f, P-Inter-P: %lu P-Intra-P: %lu P-Ratio-P %f, PC-Inter: %lu PC-Intra: %lu PC-Ratio %f  \n" 
             , cache_id, level, persist_count, persist_delay 

@@ -200,6 +200,21 @@ class Cache
         int replaceSyncLine(SyncLine * syncline, InsMem * ins_mem);
 
         ~Cache();
+
+        uint64_t cnt_sm_add;
+        uint64_t cnt_sm_delete;
+        uint64_t cnt_sm_delete_lower;
+        uint64_t cnt_sm_delete_call;
+        uint64_t cnt_sm_delete_lower_call;
+        uint64_t cnt_sm_lookups;
+        uint64_t cnt_sm_rel_lookups;
+        uint64_t cnt_sm_rel_intra_lookups;
+        uint64_t cnt_sm_rel_inter_lookups;
+        uint64_t cnt_sm_rel_succ_lookups;
+        uint64_t cnt_sm_chks_per_lookup; //Checks per lookup
+        uint64_t clk_timestamp;
+        uint64_t atom_clk_timestamp;
+
         //Intra thread conflicts
         uint64_t          intra_conflicts;
         uint64_t          intra_persists;

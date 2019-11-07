@@ -81,28 +81,29 @@ class System
 {
     public:
         void init(XmlSys* xml_sys);
+        void setDRAMOut(ofstream * dram_out); //NEW
         Cache* init_caches(int level, int cache_id);
         void init_directories(int home_id);
         int access(int core_id, InsMem* ins_mem, int64_t timer);
         char mesi_bus(Cache* cache_cur, int level, int cache_id, int core_id, InsMem* ins_mem, int64_t timer);
         char mesi_directory(Cache* cache_cur, int level, int cache_id, int core_id, InsMem* ins_mem, int64_t timer);
         int syncConflict(Cache * cache_cur, SyncLine * syncline, Line* line_call);
-        int fullBarrierFlush(Cache *cache_cur, int epoch_id, int req_core_id, int psrc);
+        int fullBarrierFlush(int64_t clk_timer, Cache *cache_cur, int epoch_id, int req_core_id, int psrc);
         int epoch_meters(int core_id, InsMem * ins_mem);
-        int bepochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
-        int epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
-        int epochPersistWithPF(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
-        int epochPersistWithoutPF(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
-        int fullFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc);
-        int releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc);
-        int releaseFlushWithPF(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc);
-        int persist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id);
-        int persist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
-        int releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
-        int share(Cache* cache_cur, InsMem* ins_mem, int core_id);
-        int share_children(Cache* cache_cur, InsMem* ins_mem, int core_id);
-        int inval(Cache* cache_cur, InsMem* ins_mem, int core_id);
-        int inval_children(Cache* cache_cur, InsMem* ins_mem, int core_id);
+        int bepochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
+        int epochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
+        int epochPersistWithPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
+        int epochPersistWithoutPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
+        int fullFlush(int64_t clk_timer, Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc);
+        int releaseFlush(int64_t clk_timer, Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc);
+        int releaseFlushWithPF(int64_t clk_timer, Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc);
+        int persist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id);
+        int persist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
+        int releasePersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
+        int share(Cache* cache_cur, InsMem* ins_mem, int core_id, int64_t clk_timer);
+        int share_children(Cache* cache_cur, InsMem* ins_mem, int core_id, int64_t clk_timer);
+        int inval(Cache* cache_cur, InsMem* ins_mem, int core_id,int64_t clk_timer);
+        int inval_children(Cache* cache_cur, InsMem* ins_mem, int core_id, int64_t clk_timer);
         int accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int64_t timer, char* state, int core_id);
         int accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_t timer, char* state, int core_id);
         int allocHomeId(int num_homes, uint64_t addr);
@@ -142,6 +143,11 @@ class System
         PersistModel pmodel;
         bool proactive_flushing;
         int*       delay_persist;
+
+        int*       delay_tmp; // For the flush operations.
+        int*       delay_llc;
+        int*       delay_mc;
+        int*       return_delay;
 
 };
 

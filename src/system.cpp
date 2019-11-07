@@ -51,7 +51,7 @@ void System::init(XmlSys* xml_sys_in)
     sys_type = xml_sys->sys_type;
     protocol_type = xml_sys->protocol_type;
     num_cores = xml_sys->num_cores;
-    dram_access_time = xml_sys->dram_access_time;
+    dram_access_time = xml_sys->dram_access_time; //Need to be fixed for PMC.
     page_size = xml_sys->page_size;
     tlb_enable = xml_sys->tlb_enable;
     shared_llc = xml_sys->shared_llc;
@@ -82,9 +82,18 @@ void System::init(XmlSys* xml_sys_in)
 
     hit_flag = new bool [num_cores];
     delay = new int [num_cores];
+    delay_tmp = new int [num_cores]; // For the flush operations.
+    delay_llc = new int [num_cores];
+    delay_mc = new int [num_cores];
+    return_delay = new int [num_cores];
+
     for (i=0; i<num_cores; i++) {
         hit_flag[i] = false;
         delay[i] = 0;
+        delay_tmp[i] = 0;
+        delay_llc[i] = 0;
+        delay_mc[i] = 0;
+        return_delay[i] = 0;
     }
 
     delay_persist = new int [num_cores];
@@ -162,6 +171,11 @@ void System::init(XmlSys* xml_sys_in)
 
     page_table.init(page_size, xml_sys->page_miss_delay);
     dram.init(dram_access_time);
+}
+
+void System::setDRAMOut(ofstream * dram_out)
+{
+    dram.setOut(dram_out); //set DRAM output
 }
 
 // This function models an access to memory system and returns the delay.
@@ -357,21 +371,21 @@ char System::mesi_bus(Cache* cache_cur, int level, int cache_id, int core_id, In
                            if(line_temp != NULL) {
                                shared_line = 1;
                                line_temp->state = I;
-                               inval_children(cache[num_levels-1][i], ins_mem, core_id);
+                               inval_children(cache[num_levels-1][i], ins_mem, core_id,timer);
                            }
                        }
                    }
                }
                line_cur->state = M;
            }
-           inval_children(cache_cur, ins_mem, core_id);
+           inval_children(cache_cur, ins_mem, core_id,timer);
            cache_cur->unlockUp(ins_mem);
            return M;
         }
         //Read
         else {
             if (line_cur->state != S) {
-                share_children(cache_cur, ins_mem, core_id);
+                share_children(cache_cur, ins_mem, core_id, timer);
             }
             cache_cur->unlockUp(ins_mem);
             return S;
@@ -383,7 +397,7 @@ char System::mesi_bus(Cache* cache_cur, int level, int cache_id, int core_id, In
         //Evict old line
         line_cur = cache_cur->replaceLine(&ins_mem_old, ins_mem);
         if (line_cur->state) {
-            inval_children(cache_cur, &ins_mem_old, core_id);
+            inval_children(cache_cur, &ins_mem_old, core_id, timer);
         }
         line_cur->timestamp = timer+delay[core_id];
         if (level != num_levels-1) {
@@ -403,7 +417,7 @@ char System::mesi_bus(Cache* cache_cur, int level, int cache_id, int core_id, In
                         line_temp = cache[num_levels-1][i]->accessLine(ins_mem);
                         if (line_temp != NULL) {
                             shared_line = 1;
-                            inval_children(cache[num_levels-1][i], ins_mem, core_id);
+                            inval_children(cache[num_levels-1][i], ins_mem, core_id, timer);
                             if (line_temp->state == M || line_temp->state == E) {
                                 line_temp->state = I;
                                 break;
@@ -428,7 +442,7 @@ char System::mesi_bus(Cache* cache_cur, int level, int cache_id, int core_id, In
                          if(line_temp != NULL)
                          {
                              shared_line = 1;
-                             share_children(cache[num_levels-1][i], ins_mem, core_id);
+                             share_children(cache[num_levels-1][i], ins_mem, core_id, timer);
                              if (line_temp->state == M || line_temp->state == E) {
                                  line_temp->state = S;
                                  break;
@@ -512,6 +526,12 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
     if(level==0){
         //Epoch meters
         epoch_meters(core_id, ins_mem);
+        cache_cur->clk_timestamp = timer; //Last Cycle accessed.
+
+        //Last Release cycle
+        if(ins_mem->mem_type == WR && (ins_mem->atom_type != NON)){
+            cache_cur->atom_clk_timestamp = timer; //Last Cycle accessed.
+        }
     }
 
     //Full barrier flush in reelase persistency - Special case   
@@ -520,7 +540,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
         //Nedd to flush all cachelines with epoch id > min epoch id
         //Need to free the syncmap
         if(ins_mem->mem_type==WR && ins_mem->atom_type==FULL){
-            fullBarrierFlush(cache_cur, ins_mem->epoch_id, core_id, 0); //taken as a visibility conflict. 
+            fullBarrierFlush(timer+delay[core_id], cache_cur, ins_mem->epoch_id, core_id, 0); //taken as a visibility conflict. 
 
             #ifdef ASPLOS_AFTER
                //Check if I need to flush the barrier writes?. 
@@ -560,7 +580,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             //delay[core_id] += persist(cache_cur, ins_mem, line_cur, core_id); //BEP
                             
                             //persist(cache_cur, ins_mem, line_cur, core_id);
-                            persist(cache_cur, ins_mem, line_cur, core_id,0);
+                            persist(timer+delay[core_id], cache_cur, ins_mem, line_cur, core_id,0);
 
                                int delay_wb =100; //invoked writebacks, CLWB happenes in the critical path
                                 cache_cur->critical_write_back_count++;     
@@ -670,7 +690,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                //ERROR: Missing M state. Need to get data from owner.
                else if(line_cur->state == M || line_cur->state==E){
                     //Handle M state- Error in States.
-                    delay[core_id] += inval_children(cache_cur, ins_mem, core_id);
+                    delay[core_id] += inval_children(cache_cur, ins_mem, core_id, timer+delay[core_id] );
                     //--NEED WRITE-BACK DELAY ----///////////////////////////////////////////////////////////////CODE                    
                     //printf("ERROR \n");
                }              
@@ -834,7 +854,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
         else {
             //ERROR COHERENCE - MAHESH //Can be handled with Exclusive as well //New Error: New Error when level=0           
                 if (line_cur->state != S) {
-                    delay[core_id] += share_children(cache_cur, ins_mem, core_id); //Add core_id             
+                    delay[core_id] += share_children(cache_cur, ins_mem, core_id, timer+delay[core_id]); //Add core_id             
                     //Error: Need to write-back modified data and make state to S. 
                     //line_cur->state = S;                      
                     //Still a Error : Consider level 0;                                       
@@ -907,7 +927,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
             if(line_cur->state == M || line_cur->state == E) {  //              
                 cache_cur->incWbCount();
                 if (level == num_levels-1) {
-                    delay[core_id] += inval_children(cache_cur, &ins_mem_old, core_id); //Previous One
+                    delay[core_id] += inval_children(cache_cur, &ins_mem_old, core_id, timer+delay[core_id]); //Previous One
                     id_home = getHomeId(&ins_mem_old);
 
                     ins_mem_old.mem_type = WB; 
@@ -943,7 +963,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             //delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //BEP-on repacement
                             //Update 2019/05/16 - Delay 
                             //persist(cache_cur, &ins_mem_old, line_cur, core_id); //BEP-on repacement
-                            persist(cache_cur, &ins_mem_old, line_cur, core_id,1); //BEP-on repacement
+                            persist(timer+delay[core_id], cache_cur, &ins_mem_old, line_cur, core_id,1); //BEP-on repacement
 
                             //asplos-after: need to count the conflicts seperately
 
@@ -952,7 +972,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                             if(ins_mem_old.atom_type !=NON){
                                 //delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline
                                 //persist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline
-                                persist(cache_cur, &ins_mem_old, line_cur, core_id,1); //Whichline
+                                persist(timer+delay[core_id], cache_cur, &ins_mem_old, line_cur, core_id,1); //Whichline
 
                                 //asplos-after: need to count the conflicts seperately: conflicting and no-conflicting (meter)
 
@@ -961,7 +981,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                         else if(pmodel == FBRP){
                             if(ins_mem_old.atom_type !=NON){
                                 //delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id); //Whichline
-                                delay[core_id] += persist(cache_cur, &ins_mem_old, line_cur, core_id,1); //Whichline
+                                delay[core_id] += persist(timer+delay[core_id], cache_cur, &ins_mem_old, line_cur, core_id,1); //Whichline
                                 //hasReleasePersisted = true;
                             }
                         }
@@ -1147,7 +1167,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
 }
 
 
-int System::fullBarrierFlush(Cache *cache_cur, int epoch_id, int req_core_id, int psrc){
+int System::fullBarrierFlush(int64_t clk_timer, Cache *cache_cur, int epoch_id, int req_core_id, int psrc){
     //Need to send write-back instruction to all upper level. from M or E state
     //Write-back
     int delay_flush = 0;
@@ -1155,7 +1175,7 @@ int System::fullBarrierFlush(Cache *cache_cur, int epoch_id, int req_core_id, in
     int core_id = cache_cur->getId();
     int cache_id = cache_cur->getId();
     Line *line_cur;
-    int timer = 0;
+    int timer = clk_timer; //timing  int timer = 0;
     #ifdef DEBUG
     printf("Delay on flush %d of core %d by core %d \n", delay[core_id], core_id, req_core_id);
     #endif
@@ -1315,7 +1335,7 @@ int System::syncConflict(Cache * cache_cur, SyncLine * syncline, Line* line_call
 
 //non-Invalidating verision
 //asplos-after: adding source bit
-int System::bepochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
+int System::bepochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
     //Buffered Epoch Persistency on caches
     int conflict_epoch_id = line_call->max_epoch_id; //Not sure! Check
     #ifdef DEBUG
@@ -1325,7 +1345,7 @@ int System::bepochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, in
     delay_flush++;
     int core_id = cache_cur->getId(); int cache_id = cache_cur->getId();
     Line *line_cur;
-    int timer = 0;
+    int timer = clk_timer ; //timing int timer = 0;
     //delay[core_id] = 0;   //Check this. Need to chaneg.  
     if(core_id != req_core_id){
         delay[core_id]  = 0;
@@ -1441,7 +1461,7 @@ int System::bepochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, in
 //asplos-after: adding psrc bit
 //Original BEP persistency model withot counters or PF. This was the testing algo.
 //Without PF nut after originally changed version. 33, 34 run. 34 has different SB resutls to previous.
-int System::epochPersistWithoutPF(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
+int System::epochPersistWithoutPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
     
     //after-asplos
     //persist source: psrc: 0-same-block, 1-evctions/replacements, 2-inter-thread/writebacks
@@ -1455,7 +1475,7 @@ int System::epochPersistWithoutPF(Cache *cache_cur, InsMem *ins_mem, Line *line_
     delay_flush++;
     int core_id = cache_cur->getId(); int cache_id = cache_cur->getId();
     Line *line_cur;
-    int timer = 0;
+    int timer = clk_timer ; //timing int timer = 0;
     //delay[core_id] = 0;   //Check this. Need to chaneg.  
     if(core_id != req_core_id){
         delay[core_id]  = 0;
@@ -1674,7 +1694,7 @@ int System::epochPersistWithoutPF(Cache *cache_cur, InsMem *ins_mem, Line *line_
 }
 
 
-int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
+int System::epochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
     
     //after-asplos
     //persist source: psrc: 0-same-block, 1-evctions/replacements, 2-inter-thread/writebacks
@@ -1688,7 +1708,15 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
     delay_flush++;
     int core_id = cache_cur->getId(); int cache_id = cache_cur->getId();
     Line *line_cur;
-    int timer = 0;
+
+    int timer = clk_timer; // timing int timer = 0;
+
+    //timing
+    //delay_tmp[core_id] = 0;
+    //int start_delay = 0;
+    //delay_tmp[core_id] += delay[core_id];
+    //start_delay = delay_tmp[core_id];
+
     //delay[core_id] = 0;   //Check this. Need to chaneg.  
     if(core_id != req_core_id){
         delay[core_id]  = 0;
@@ -1696,10 +1724,8 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
 
     int level = cache_cur->getLevel(); 
     int persist_count =0;
-
     
     //Check thi: method-local intialization
-
     //Proactive Flushing (PF): reduce the conflicts. allow lazy write-backs and coalecsing inside the cache-line.
 
     //Actual flush: min epoch id flushed = et_lowest_epoch_id
@@ -1725,11 +1751,19 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
                         //if(proactive_flushing && (line_cur->max_epoch_id == et_lowest_epoch_id))
                         //    ins_mem.lazy_wb =true; //new lazy write-backs: no delay is added.                      
 
+                        //dramsim2: add access delay.
+                        //timing - delay[core_id] = start_delay;
+                        //dramsim2: resolve llc conflicts. Go and check llc and push down cachelines. 
+
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
 
                         //ins_mem.lazy_wb =false;
+
+                        //timing
+                        //delay_tmp[core_id] += delay[core_id];
+                        //timer += return_delay[core_id];
                         
                         cache_cur->incPersistCount();
                         persist_count++;      
@@ -1836,7 +1870,7 @@ int System::epochPersist(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int
 }
 
 //Originally changed epochPersist in 32, 33, 34:
-int System::epochPersistWithPF(Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
+int System::epochPersistWithPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
     
     //after-asplos
     //persist source: psrc: 0-same-block, 1-evctions/replacements, 2-inter-thread/writebacks
@@ -1850,11 +1884,18 @@ int System::epochPersistWithPF(Cache *cache_cur, InsMem *ins_mem, Line *line_cal
     delay_flush++;
     int core_id = cache_cur->getId(); int cache_id = cache_cur->getId();
     Line *line_cur;
-    int timer = 0;
+    int timer = clk_timer;  //timing int timer = 0;
+
+    //timing
+    //delay_tmp[core_id] = 0;
+    //int start_delay = 0;
     //delay[core_id] = 0;   //Check this. Need to chaneg.  
     if(core_id != req_core_id){
         delay[core_id]  = 0;
     }
+
+    //delay_tmp[core_id] += delay[core_id];
+    //start_delay = delay_tmp[core_id];
 
     int level = cache_cur->getLevel(); 
     int persist_count =0;
@@ -1895,6 +1936,8 @@ int System::epochPersistWithPF(Cache *cache_cur, InsMem *ins_mem, Line *line_cal
     //Proactive Flushing (PF): reduce the conflicts. allow lazy write-backs and coalecsing inside the cache-line.
 
     //Actual flush: min epoch id flushed = et_lowest_epoch_id
+    int pf_flag=0;
+
     for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {            
         for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) {                
                 //printf("A Epoch %d\n", rel_epoch_id);
@@ -1915,27 +1958,42 @@ int System::epochPersistWithPF(Cache *cache_cur, InsMem *ins_mem, Line *line_cal
                         ins_mem.lazy_wb =false;
                         //asplos-after: et_lowest_epoch_id: proactive_flushing
                         if(proactive_flushing && (line_cur->max_epoch_id == et_lowest_epoch_id)){
-                            ins_mem.lazy_wb =true; //new lazy write-backs: no delay is added.
-                            cache_cur->all_pf_persists++;
-                            //counters.                            
-                            if (psrc==0) cache_cur->vis_pf_persists++; //Intra
-                            else if (psrc==1)   cache_cur->evi_pf_persists++; //Intra
-                            else if (psrc==2) cache_cur->inter_pf_persists++; //inter
+
+                            //if((pf_flag % 4) <= 2){ //%75 percent of the first epoch. reduce the overhead by 10%
+                                ins_mem.lazy_wb =true; //new lazy write-backs: no delay is added.
+                                cache_cur->all_pf_persists++;
+                                //counters.                            
+                                if (psrc==0) cache_cur->vis_pf_persists++; //Intra
+                                else if (psrc==1)   cache_cur->evi_pf_persists++; //Intra
+                                else if (psrc==2) cache_cur->inter_pf_persists++; //inter
+                            //}  
+                            pf_flag++;                     
 
                         }                       
 
+                        //timing- delay[core_id] = start_delay;
+                        //involes writebacks.
+                        
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
 
+                        
                         ins_mem.lazy_wb =false;
 
                         //FUTURE NOTE: also we can do eager when epoch count>20000 or the limit. 
+
+                        //timing-
+                        //delay_tmp[core_id] += delay[core_id];
+                        //timer += return_delay[core_id];
+
+                        //delay[core_id] = return_delay[core_id];
                         
                         cache_cur->incPersistCount();
                         persist_count++;   
                         cache_cur->all_persists++;                        
 
+                        //delay_tmp[core_id] += delay[core_id];
                         //cache_cur->all_pf_persists++;
 
                         //asplos-after: counting the average number of cachelines per epoch that is flushing
@@ -2081,7 +2139,7 @@ int System::epochPersistWithPF(Cache *cache_cur, InsMem *ins_mem, Line *line_cal
 
 
 
-int System::fullFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc){
+int System::fullFlush(int64_t clk_timer, Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc){
     //Need to send write-back instruction to all upper level. from M or E state
     //Write-back
     int delay_flush = 0;
@@ -2089,7 +2147,9 @@ int System::fullFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, in
     int core_id = cache_cur->getId();
     int cache_id = cache_cur->getId();
     Line *line_cur;
-    int timer = 0;
+    int timer = clk_timer;  //timing int timer = 0;
+
+
     #ifdef DEBUG
     printf("Delay on flush %d of core %d by core %d \n", delay[core_id], core_id, req_core_id);
     #endif
@@ -2222,7 +2282,7 @@ int System::fullFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, in
 }
 
 //asplos-after: adding psrc bit. 
-int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc){
+int System::releaseFlush(int64_t clk_timer, Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc){
     //Need to send write-back instruction to all upper level. from M or E state
     //Write-back
     int delay_flush = 0;
@@ -2230,7 +2290,7 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
     int core_id = cache_cur->getId();
     int cache_id = cache_cur->getId();
     Line *line_cur;
-    int timer = 0;
+    int timer = clk_timer;  // timing int timer = 0;
     #ifdef DEBUG
     printf("Delay on flush %d of core %d by core %d \n", delay[core_id], core_id, req_core_id);
     #endif
@@ -2380,7 +2440,7 @@ int System::releaseFlush(Cache *cache_cur, SyncLine * syncline, Line *line_call,
 
 
 //asplos-after: adding psrc bit. 
-int System::releaseFlushWithPF(Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc){
+int System::releaseFlushWithPF(int64_t clk_timer, Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc){
     //Need to send write-back instruction to all upper level. from M or E state
     //Write-back
     int delay_flush = 0;
@@ -2388,7 +2448,7 @@ int System::releaseFlushWithPF(Cache *cache_cur, SyncLine * syncline, Line *line
     int core_id = cache_cur->getId();
     int cache_id = cache_cur->getId();
     Line *line_cur;
-    int timer = 0;
+    int timer = clk_timer; //timing int timer = 0;
     #ifdef DEBUG
     printf("Delay on flush %d of core %d by core %d \n", delay[core_id], core_id, req_core_id);
     #endif
@@ -2569,7 +2629,7 @@ int System::releaseFlushWithPF(Cache *cache_cur, SyncLine * syncline, Line *line
 
 //Mist return delay
 //asplos after: introducing an extra flag to identify , i,e, psource ; 0-same-block, 1-evictions, 2-write-backs (inter)
-int System::persist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc){
+int System::persist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc){
     //Persistence models
 
     //ASPLOS-AFTER
@@ -2586,9 +2646,9 @@ int System::persist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_c
         #endif
         int delay_tmp=0;
         if(!proactive_flushing)
-            delay_tmp = epochPersist(cache_cur, ins_mem, line_cur, req_core_id, psrc); //need to add calling cacheline
+            delay_tmp = epochPersist(clk_timer, cache_cur, ins_mem, line_cur, req_core_id, psrc); //need to add calling cacheline
         else 
-            delay_tmp = epochPersistWithPF(cache_cur, ins_mem, line_cur, req_core_id, psrc); //need to add calling cacheline
+            delay_tmp = epochPersistWithPF(clk_timer, cache_cur, ins_mem, line_cur, req_core_id, psrc); //need to add calling cacheline
 
 
         #ifdef DEBUG
@@ -2599,7 +2659,7 @@ int System::persist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_c
     }
     //Release Persistecy and Full FLush
     else{
-       return releasePersist(cache_cur, ins_mem, line_cur, req_core_id, psrc);
+       return releasePersist(clk_timer, cache_cur, ins_mem, line_cur, req_core_id, psrc);
     }
 }
 
@@ -2636,7 +2696,7 @@ int System::persist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_c
 */
 
 
-int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc){
+int System::releasePersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc){
 
     int delay_tmp = 0;
     
@@ -2646,8 +2706,14 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
 
     SyncLine *syncline = cache_cur->searchSyncMap(ins_mem->addr_dmem); //Caclculate constant delay here.
     
+    cache_cur->cnt_sm_rel_lookups++;
+    if(psrc==0){
+        cache_cur->cnt_sm_rel_intra_lookups++;
+    } else cache_cur->cnt_sm_rel_inter_lookups++;
     //assert(syncline != NULL); - Mahesh 2019/04/15 Becuase of exclusive state
     if(syncline !=NULL){
+
+        cache_cur->cnt_sm_rel_succ_lookups++;
         #ifdef DEBUG
         printf("[Persist] Match found 0x%lx Tag- 0x%lx of cache: %d epoch : %d\n", 
             syncline->address, syncline->tag, cache_cur->getId(), syncline->epoch_id);
@@ -2670,11 +2736,13 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
         cache_cur->last_rel_persists_cycles = 0;        
 
         if(!proactive_flushing)
-            delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc);
+            delay_tmp = releaseFlush(clk_timer, cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc);
         else 
-            delay_tmp = releaseFlushWithPF(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc);
+            delay_tmp = releaseFlushWithPF(clk_timer, cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc);
         
         //piggy-backing.
+        //Its also ok to directly take delay_tmp
+
         int updated_delay_tmp = 0 ;
         if(cache_cur->last_rel_persists > 0){
             int avg_delay = cache_cur->last_rel_persists_cycles/cache_cur->last_rel_persists;
@@ -2699,13 +2767,13 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
     //Bug-fixed
     else if(pmodel == FBRP){ //Epoch PErsistency
         //printf("Full barrier Release Persistence \n");
-        delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc); 
+        delay_tmp = releaseFlush(clk_timer, cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc); 
         cache_cur->incPersistDelay(delay_tmp); //Counters
         //delay_tmp =  delay_tmp/2;
     }
     else if(pmodel == FLLB){
         //printf("Epoch Persistence \n");
-        delay_tmp = fullFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc); //Full barrier
+        delay_tmp = fullFlush(clk_timer, cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc); //Full barrier
         cache_cur->incPersistDelay(delay_tmp); //Counters
         //delay_tmp =  delay_tmp/2;
     }
@@ -2740,7 +2808,7 @@ int System::releasePersist(Cache *cache_cur, InsMem *ins_mem, Line *line_cur, in
 }
 
 // This function propagates down shared state
-int System::share(Cache* cache_cur, InsMem* ins_mem, int core_id)
+int System::share(Cache* cache_cur, InsMem* ins_mem, int core_id, int64_t clk_timer)
 {
     int i, delay = 0, delay_tmp = 0, delay_max = 0;
     Line*  line_cur;
@@ -2753,7 +2821,7 @@ int System::share(Cache* cache_cur, InsMem* ins_mem, int core_id)
         if (line_cur != NULL && (line_cur->state == M || line_cur->state == E)) {
             
              for (i=0; i<cache_cur->num_children; i++) {
-                delay_tmp = share(cache_cur->child[i], ins_mem, core_id);
+                delay_tmp = share(cache_cur->child[i], ins_mem, core_id, clk_timer);
                 if (delay_tmp > delay_max) {
                     delay_max = delay_tmp;
                 }
@@ -2782,8 +2850,8 @@ int System::share(Cache* cache_cur, InsMem* ins_mem, int core_id)
                 #endif
 
                 //delay += releasePersist(cache_cur, ins_mem, line_cur,core_id); // need both Acquire and Releas
-                if(pmodel == BEPB) delay += persist(cache_cur, ins_mem, line_cur,core_id,2); // need both Acquire and Release // Persistence Model
-                else if(line_cur->atom_type !=NON) delay += persist(cache_cur, ins_mem, line_cur,core_id,2);
+                if(pmodel == BEPB) delay += persist(clk_timer, cache_cur, ins_mem, line_cur,core_id,2); // need both Acquire and Release // Persistence Model
+                else if(line_cur->atom_type !=NON) delay += persist(clk_timer, cache_cur, ins_mem, line_cur,core_id,2);
                 
                 #ifdef DEBUG
                 printf("[Share-Finish] Release Persist Ending.... \n");
@@ -2820,13 +2888,13 @@ int System::share(Cache* cache_cur, InsMem* ins_mem, int core_id)
 
 // This function propagates down shared state starting from childern nodes
 
-int System::share_children(Cache* cache_cur, InsMem* ins_mem, int core_id)
+int System::share_children(Cache* cache_cur, InsMem* ins_mem, int core_id, int64_t clk_timer)
 {
     int i, delay = 0, delay_tmp = 0, delay_max = 0;
 
     if (cache_cur != NULL) {
         for (i=0; i<cache_cur->num_children; i++) {
-            delay_tmp = share(cache_cur->child[i], ins_mem, core_id);
+            delay_tmp = share(cache_cur->child[i], ins_mem, core_id, clk_timer);
             if (delay_tmp > delay_max) {
                 delay_max = delay_tmp;
             }
@@ -2839,7 +2907,7 @@ int System::share_children(Cache* cache_cur, InsMem* ins_mem, int core_id)
 
 
 // This function propagates down invalidate state
-int System::inval(Cache* cache_cur, InsMem* ins_mem, int core_id)
+int System::inval(Cache* cache_cur, InsMem* ins_mem, int core_id, int64_t clk_timer)
 {
     int i, delay = 0, delay_tmp = 0, delay_max = 0;
     Line* line_cur;
@@ -2851,7 +2919,7 @@ int System::inval(Cache* cache_cur, InsMem* ins_mem, int core_id)
         if (line_cur != NULL) {
             
             for (i=0; i<cache_cur->num_children; i++) {
-                delay_tmp = inval(cache_cur->child[i], ins_mem, core_id);
+                delay_tmp = inval(cache_cur->child[i], ins_mem, core_id, clk_timer);
                 if (delay_tmp > delay_max) {
                     delay_max = delay_tmp;
                 }
@@ -2880,8 +2948,8 @@ int System::inval(Cache* cache_cur, InsMem* ins_mem, int core_id)
                     
                     #endif
                     //delay += releasePersist(cache_cur, ins_mem, line_cur, core_id); // need both Acquire and Releas
-                    if (pmodel == BEPB) delay += persist(cache_cur, ins_mem, line_cur, core_id,2); // need both Acquire and Release
-                    else if (line_cur->atom_type != NON) delay += persist(cache_cur, ins_mem, line_cur, core_id,2); 
+                    if (pmodel == BEPB) delay += persist(clk_timer, cache_cur, ins_mem, line_cur, core_id,2); // need both Acquire and Release
+                    else if (line_cur->atom_type != NON) delay += persist(clk_timer, cache_cur, ins_mem, line_cur, core_id,2); 
                    
                     #ifdef DEBUG
                     printf("[Inval-Finish] Release Persist Ending.... \n");
@@ -2914,13 +2982,13 @@ int System::inval(Cache* cache_cur, InsMem* ins_mem, int core_id)
 }
 
 // This function propagates down invalidate state starting from children nodes
-int System::inval_children(Cache* cache_cur, InsMem* ins_mem, int core_id)
+int System::inval_children(Cache* cache_cur, InsMem* ins_mem, int core_id, int64_t clk_timer)
 {
     int i, delay = 0, delay_tmp = 0, delay_max = 0;
 
     if (cache_cur != NULL) {
         for (i=0; i<cache_cur->num_children; i++) {
-            delay_tmp = inval(cache_cur->child[i], ins_mem, core_id);
+            delay_tmp = inval(cache_cur->child[i], ins_mem, core_id, clk_timer);
             if (delay_tmp > delay_max) {
                 delay_max = delay_tmp;
             }
@@ -2971,7 +3039,7 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
             directory_cache[home_id]->incEvictCount();
             if (line_cur->state == M || line_cur->state == E) {
                 delay += network.transmit(home_id, *line_cur->sharer_set.begin(), 0, timer+delay);
-                delay += inval(cache[num_levels-1][(*line_cur->sharer_set.begin())], &ins_mem_old, core_id);
+                delay += inval(cache[num_levels-1][(*line_cur->sharer_set.begin())], &ins_mem_old, core_id, timer+delay);
                 delay += network.transmit(*line_cur->sharer_set.begin(), home_id, cache_level[num_levels-1].block_size, timer+delay);
                 dram.access(&ins_mem_old);
             }
@@ -2981,7 +3049,7 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
                 for (pos = line_cur->sharer_set.begin(); pos != line_cur->sharer_set.end(); ++pos){
                     delay_temp = delay_pipe; 
                     delay_temp += network.transmit(home_id, (*pos), 0, timer+delay+delay_temp);
-                    delay_temp += inval(cache[num_levels-1][(*pos)], &ins_mem_old, core_id);
+                    delay_temp += inval(cache[num_levels-1][(*pos)], &ins_mem_old, core_id,  timer+delay+delay_temp);
                     delay_temp += network.transmit((*pos), home_id, 0, timer+delay+delay_temp);
                               
                     if (delay_temp > delay_max) {
@@ -2997,7 +3065,7 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
                 for (int i = 0; i < num_cores; i++) { 
                     delay_temp = delay_pipe;
                     delay_temp += network.transmit(home_id, i, 0, timer+delay+delay_temp);
-                    delay_temp += inval(cache[num_levels-1][i], &ins_mem_old, core_id);
+                    delay_temp += inval(cache[num_levels-1][i], &ins_mem_old, core_id, timer+delay+delay_temp);
                     delay_temp += network.transmit(i, home_id, 0, timer+delay+delay_temp);
                     if (delay_temp > delay_max) {
                         delay_max = delay_temp;
@@ -3035,7 +3103,7 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
         if (ins_mem->mem_type == WR) {
             if (line_cur->state == M || line_cur->state == E) {
                 delay += network.transmit(home_id, *line_cur->sharer_set.begin(), 0, timer+delay);
-                delay += inval(cache[num_levels-1][(*line_cur->sharer_set.begin())], ins_mem, core_id);
+                delay += inval(cache[num_levels-1][(*line_cur->sharer_set.begin())], ins_mem, core_id, timer+delay);
                 delay += network.transmit(*line_cur->sharer_set.begin(), home_id, cache_level[num_levels-1].block_size, timer+delay);
             }
             else if (line_cur->state == S) {
@@ -3044,7 +3112,7 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
                 for (pos = line_cur->sharer_set.begin(); pos != line_cur->sharer_set.end(); ++pos){
                     delay_temp = delay_pipe; 
                     delay_temp += network.transmit(home_id, (*pos), 0, timer+delay+delay_temp);
-                    delay_temp += inval(cache[num_levels-1][(*pos)], ins_mem, core_id);
+                    delay_temp += inval(cache[num_levels-1][(*pos)], ins_mem, core_id, timer+delay+delay_temp);
                     delay_temp += network.transmit((*pos), home_id, 0, timer+delay+delay_temp);
                               
                     if (delay_temp > delay_max) {
@@ -3060,7 +3128,7 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
                 for (int i = 0; i < num_cores; i++) { 
                     delay_temp = delay_pipe;
                     delay_temp += network.transmit(home_id, i, 0, timer+delay+delay_temp);
-                    delay_temp += inval(cache[num_levels-1][i], ins_mem, core_id);
+                    delay_temp += inval(cache[num_levels-1][i], ins_mem, core_id, timer+delay+delay_temp);
                     delay_temp += network.transmit(i, home_id, 0, timer+delay+delay_temp);
                     if (delay_temp > delay_max) {
                         delay_max = delay_temp;
@@ -3083,7 +3151,7 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
                 //printf("++++++++++++++++++ M to S when Read Operations +++++++++++++++ home-id: %d and receiver node: %d state: %d \n", home_id, *line_cur->sharer_set.begin(), line_cur->state);
 
                 delay += network.transmit(home_id, *line_cur->sharer_set.begin(), 0, timer+delay); //Check here.
-                delay += share(cache[num_levels-1][(*line_cur->sharer_set.begin())], ins_mem, core_id); //This handles Hit-Read problem of LLC 
+                delay += share(cache[num_levels-1][(*line_cur->sharer_set.begin())], ins_mem, core_id, timer+delay); //This handles Hit-Read problem of LLC 
                 delay += network.transmit(*line_cur->sharer_set.begin(), home_id, cache_level[num_levels-1].block_size, timer+delay);
                 line_cur->state = S;
             }
@@ -3135,6 +3203,872 @@ int System::accessDirectoryCache(int cache_id, int home_id, InsMem* ins_mem, int
     directory_cache[home_id]->unlockUp(ins_mem);
     return delay;
 }
+
+//Access distributed shared LLC with embedded directory cache
+int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_t timer, char* state, int core_id)
+{
+    int level;
+    level = num_levels;
+    level = level;
+    if (!directory_cache_init_done[home_id]) {
+        init_directories(home_id); 
+    }
+    int delay = 0, delay_temp =0, delay_pipe =0, delay_max = 0;
+    InsMem ins_mem_old;
+    IntSet::iterator pos;
+    Line* line_cur;
+    home_stat[home_id] = 1;
+    directory_cache[home_id]->lockUp(ins_mem);
+    line_cur = directory_cache[home_id]->accessLine(ins_mem);
+    directory_cache[home_id]->incInsCount();
+    delay += directory_cache[home_id]->getAccessTime();
+    //Shard llc miss
+    if ((line_cur == NULL) && (ins_mem->mem_type != WB)) {
+        line_cur = directory_cache[home_id]->replaceLine(&ins_mem_old, ins_mem);
+        if (line_cur->state) {
+            directory_cache[home_id]->incEvictCount();
+            if (line_cur->state == M) {
+                delay += network.transmit(home_id, *line_cur->sharer_set.begin(), 0, timer+delay);
+                delay += inval(cache[num_levels-1][(*line_cur->sharer_set.begin())], &ins_mem_old, core_id, timer+delay);
+                delay += network.transmit(*line_cur->sharer_set.begin(), home_id, cache_level[num_levels-1].block_size, timer+delay);
+                //dram.access(&ins_mem_old); - DRAMOut
+                dram.access(timer, &ins_mem_old);
+            }
+            else if (line_cur->state == E) {
+                delay += network.transmit(home_id, *line_cur->sharer_set.begin(), 0, timer+delay);
+                delay += inval(cache[num_levels-1][(*line_cur->sharer_set.begin())], &ins_mem_old, core_id, timer+delay);
+                delay += network.transmit(*line_cur->sharer_set.begin(), home_id , 0, timer+delay);
+                //dram.access(&ins_mem_old); - DRAMOut
+                dram.access(timer, &ins_mem_old);
+            }
+            else if (line_cur->state == S) {
+                delay_pipe = 0;
+                delay_max = 0;
+                for (pos = line_cur->sharer_set.begin(); pos != line_cur->sharer_set.end(); ++pos){
+                    delay_temp = delay_pipe; 
+                    delay_temp += network.transmit(home_id, (*pos), 0, timer+delay+delay_temp);
+                    delay_temp += inval(cache[num_levels-1][(*pos)], &ins_mem_old, core_id, timer+delay);
+                    delay_temp += network.transmit((*pos), home_id, 0, timer+delay+delay_temp);
+                              
+                    if (delay_temp > delay_max) {
+                        delay_max = delay_temp;
+                    }
+                    delay_pipe += network.getHeaderFlits();
+                }
+                delay += delay_max;
+            }
+            //Broadcast
+            else if (line_cur->state == B) {
+                total_num_broadcast++;
+                for(int i = 0; i < num_cores; i++) { 
+                    delay_temp = delay_pipe;
+                    delay_temp += network.transmit(home_id, i, 0, timer+delay+delay_temp);
+                    delay_temp += inval(cache[num_levels-1][i], &ins_mem_old, core_id, timer+delay);
+                    delay_temp += network.transmit(i, home_id, 0, timer+delay+delay_temp);
+                    if (delay_temp > delay_max) {
+                        delay_max = delay_temp;
+                    }
+                    delay_pipe += network.getHeaderFlits();
+                }
+                delay += delay_max;
+            } 
+        }
+        if(ins_mem->mem_type == WR) {
+            line_cur->state = M;
+        }
+        else {
+            line_cur->state = E;
+        }
+
+        directory_cache[home_id]->incMissCount();
+        line_cur->sharer_set.clear();
+        line_cur->sharer_set.insert(cache_id);
+        //delay += dram.access(ins_mem); //Read data from DRAM
+        delay += dram.access(timer, ins_mem); // DRAMOut //Read data from DRAM
+    }   
+    //Shard llc hit
+    else {
+        if (ins_mem->mem_type == WR) {
+
+            //asplos-after: This does not writeback data. need to change. 
+
+            if ((line_cur->state == M) || (line_cur->state == E)) {
+                delay += network.transmit(home_id, *line_cur->sharer_set.begin(), 0, timer+delay);
+                delay += inval(cache[num_levels-1][(*line_cur->sharer_set.begin())], ins_mem, core_id, timer+delay);
+                delay += network.transmit(*line_cur->sharer_set.begin(), home_id, cache_level[num_levels-1].block_size, timer+delay);
+                
+                //asplos-after: 
+                if(pmodel != NONB){
+                    //Do something: (1) this is important when non-invalidating write is used.
+
+                }else{
+                    //NOP-No need to do anything.
+                    //delay += dram.access(ins_mem);
+                }
+
+            }
+            else if (line_cur->state == S) {
+                delay_pipe = 0;
+                delay_max = 0;
+                for (pos = line_cur->sharer_set.begin(); pos != line_cur->sharer_set.end(); ++pos){
+                    delay_temp = delay_pipe; 
+                    delay_temp += network.transmit(home_id, (*pos), 0, timer+delay+delay_temp);
+                    delay_temp += inval(cache[num_levels-1][(*pos)], ins_mem, core_id, timer+delay);
+                    delay_temp += network.transmit((*pos), home_id, 0, timer+delay+delay_temp);
+                              
+                    if(delay_temp > delay_max) {
+                        delay_max = delay_temp;
+                    }
+                    delay_pipe += network.getHeaderFlits();
+                }
+                delay += delay_max;
+            }
+            else if (line_cur->state == B) {
+                total_num_broadcast++;
+                for(int i = 0; i < num_cores; i++) { 
+                    delay_temp = delay_pipe;
+                    delay_temp += network.transmit(home_id, i, 0, timer+delay+delay_temp);
+                    delay_temp += inval(cache[num_levels-1][i], ins_mem, core_id, timer+delay);
+                    delay_temp += network.transmit(i, home_id, 0, timer+delay+delay_temp);
+                    if(delay_temp > delay_max) 
+                    {
+                        delay_max = delay_temp;
+                    }
+                    delay_pipe += network.getHeaderFlits();
+                }
+                delay += delay_max;
+            } 
+            else if(line_cur->state == V) {
+            }
+            line_cur->state = M;
+            line_cur->sharer_set.clear();
+            line_cur->sharer_set.insert(cache_id);
+        }
+        else if (ins_mem->mem_type == RD) {
+             if ((line_cur->state == M) || (line_cur->state == E)) {
+                delay += network.transmit(home_id, *line_cur->sharer_set.begin(), 0, timer+delay);
+                delay += share(cache[num_levels-1][(*line_cur->sharer_set.begin())], ins_mem, core_id, timer+delay);
+                delay += network.transmit(*line_cur->sharer_set.begin(), home_id, cache_level[num_levels-1].block_size, timer+delay);
+                line_cur->state = S;
+
+                //asplos-after: if in M state, need to writebackdata  
+                if(pmodel != NONB){
+                    //Do something
+                }else{
+                    //NOP: M->S transition.
+                    //delay += dram.access(ins_mem); -DRAMOut
+                    delay += dram.access(timer, ins_mem);
+                }            
+
+            }
+            else if (line_cur->state == S) {
+
+                //This is the only change with direcotry access: delay += dram.access(ins_mem);
+                if ((protocol_type == LIMITED_PTR) && ((int)line_cur->sharer_set.size() >= max_num_sharers)) {
+                    line_cur->state = B;
+                }
+                else {
+                    line_cur->state = S;
+                }
+            } 
+            else if (line_cur->state == B) {
+                line_cur->state = B;
+            } 
+            else if (line_cur->state == V) {
+                line_cur->state = E;
+            } 
+            line_cur->sharer_set.insert(cache_id);
+        }
+
+        //asplos-after: WB also needs a variant for lazy and nlazy.
+        else if((ins_mem->mem_type == WB)){
+            //printf("writeback 0x%lx \n",ins_mem->addr_dmem);
+
+            //asplos-after: nonp dont need to writeback data.
+            if(pmodel != NONB){
+                //delay += dram.access(ins_mem); - DRAMOut
+                delay += dram.access(timer, ins_mem);
+
+                line_cur->state = I; //Remark:This need to be changed with. No need to invalidate.
+            }                 
+            else{
+               //dram.access(ins_mem); 
+                dram.access(timer, ins_mem); 
+            } 
+
+            //line_cur->state = I;
+            line_cur->sharer_set.clear();            
+        }//Writeback 
+
+        //after-asplos: add new clwb operations. //next lazy and nlazy operations.
+        else if(ins_mem->mem_type == CLWB){ //Write-back
+                
+                //Non-Invalidation writenbacks
+            if(pmodel != NONB){ 
+                delay += dram.access(ins_mem);
+            }
+            else {
+                //dram.access(ins_mem); //delay is not added.
+                dram.access(timer, ins_mem); //delay is not added. - DRAMOut
+            }
+                //line_cur->state = I;
+                //line_cur->sharer_set.clear(); //Not necessary
+        }
+
+        else {
+            line_cur->state = V;
+            line_cur->sharer_set.clear();
+            //dram.access(ins_mem); -DRAMOut
+            dram.access(timer, ins_mem);
+        }
+    }
+    if (line_cur->state == B) {
+        (*state) = S;
+    }
+    else {
+        (*state) = line_cur->state;
+    }
+    line_cur->timestamp = timer;
+    directory_cache[home_id]->unlockUp(ins_mem);
+    return delay;
+}
+
+
+//TLB translation from virtual addresses into physical addresses
+int System::tlb_translate(InsMem *ins_mem, int core_id, int64_t timer)
+{
+    int delay = 0;
+    Line* line_cur;
+    InsMem ins_mem_old;
+    line_cur = tlb_cache[core_id].accessLine(ins_mem);
+    tlb_cache[core_id].incInsCount();
+    delay += tlb_cache[core_id].getAccessTime();
+    if (line_cur == NULL) {
+        line_cur = tlb_cache[core_id].replaceLine(&ins_mem_old, ins_mem);
+        if (line_cur->state) {
+            tlb_cache[core_id].incEvictCount();
+        }
+        tlb_cache[core_id].incMissCount();
+        line_cur->state = V;
+        line_cur->ppage_num = page_table.translate(ins_mem);
+        delay += page_table.getTransDelay();
+    }
+    line_cur->timestamp = timer;
+    ins_mem->addr_dmem = (line_cur->ppage_num << (int)log2(page_size)) | (ins_mem->addr_dmem % page_size);
+    return delay;
+}
+
+// Home allocation uses low-order bits interleaving
+int System::allocHomeId(int num_homes, uint64_t addr)
+{
+    int offset;
+    int home_bits;
+    int home_mask;
+    //Home bits
+    offset = (int) log2(xml_sys->directory_cache.block_size );
+    home_mask = (int)ceil(log2(num_homes));
+    home_bits = (int)(((addr >> offset)) % (1 << home_mask));
+    if (home_bits < num_homes) {
+        return home_bits;
+    }   
+    else {
+        return home_bits % (1 << (home_mask-1));
+    }
+}
+
+int System::getHomeId(InsMem *ins_mem)
+{
+    int home_id;
+    home_id = allocHomeId(network.getNumNodes(), ins_mem->addr_dmem);
+    if (home_id < 0) {
+        cerr<<"Error: Wrong home id\n";
+    }
+    return home_id;
+}
+
+
+
+int System::getCoreCount()
+{
+    return num_cores;
+}
+
+
+void System::report(ofstream* result, ofstream* stat)
+{
+    int i, j;
+    uint64_t ins_count = 0, miss_count = 0, evict_count = 0, wb_count = 0, persist_count=0, persist_delay=0, intra_tot =0, inter_tot=0;
+    uint64_t intra_persist_tot=0, inter_persist_tot=0, intra_pcycles_tot=0, inter_pcycles_tot=0;
+    double miss_rate = 0;
+    double  ratio_inter_intra_conflicts = 0.0;
+    double  ratio_inter_intra_persists = 0.0;
+    double  ratio_inter_intra_persist_cycles = 0.0;
+    //double conflict_rate=0.0;
+    uint64_t clwb_tot=0, critical_clwb=0, noncritical_clwb=0, external_clwb=0, all_natural_clwb=0, natural_clwb=0, sync_clwb=0, critical_persist_wb=0; //last one id related to total persist count
+    uint64_t delay_clwb_tot=0, delay_critical_clwb=0, delay_noncritical_clwb=0, delay_external_clwb=0, delay_all_natural_clwb=0, delay_natural_clwb=0, delay_sync_clwb=0, delay_critical_persist_wb=0;
+   uint64_t delay_same_block_tot =0; uint64_t same_block_count_tot =0;
+   uint64_t epoch_sum_tot = 0;
+   uint64_t epoch_id_tot = 0, epoch_id2_tot=0;
+   uint64_t intra_vis_conflicts_tot=0, intra_evi_conflicts_tot=0, intra_evi_M_conflicts_tot=0, intra_allconflicts_tot=0, intra_vis_allconflicts_tot=0, intra_evi_allconflicts_tot=0, intra_evi_M_allconflicts_tot=0, intra_M_allconflicts_tot=0, intra_vis_persists_tot=0, intra_evi_persists_tot=0, intra_evi_M_persists_tot=0, inter_M_conflicts_tot=0, inter_allconflicts_tot=0, inter_M_allconflicts_tot=0, inter_M_persists_tot=0;
+   uint64_t nzero_conflicts_tot=0, lowest_epoch_size_tot = 0, largest_lowest_epoch_size_tot = 0, max_largest_lowest_epoch_size = 0, num_epochs_flushed_tot = 0, num_nzero_epochs_flushed_tot = 0, max_largest_epoch_size = 0, largest_epoch_size_tot = 0 ;
+ 
+   uint64_t all_persists_tot =0, all_pf_persists_tot=0, vis_pf_persists_tot = 0, evi_pf_persists_tot=0, inter_pf_persists_tot=0; 
+   uint64_t invals_tot = 0, invals_M_tot = 0, invals_E_tot = 0, shares_tot = 0, shares_M_tot = 0, shares_E_tot = 0;
+    
+   //RET
+   uint64_t atom_clk_timestamp_tot=0, clk_timestamp_tot=0, ret_add_tot=0, ret_delete_tot=0, ret_delete_lower_tot=0, ret_lookup_tot=0, ret_intra_lookup_tot = 0, ret_inter_lookup_tot = 0;
+
+    network.report(result); 
+    dram.report(result); 
+    *result << endl <<  "Simulation result for cache system: \n\n";
+    
+    if (verbose_report) {
+        *result << "Home Occupation:\n";
+        if (network.getNetType() == MESH_3D) {
+            *result << "Allocated home locations in 3D coordinates:" << endl;
+            for (int i = 0; i < network.getNumNodes(); i++) {
+                if (home_stat[i]) {
+                    Coord loc = network.getLoc(i); 
+                    *result << "("<<loc.x<<", "<<loc.y<<", "<<loc.z<<")\n";
+                }
+            }
+        }
+        else {
+            *result << "Allocated home locations in 2D coordinates:" << endl;
+            for (int i = 0; i < network.getNumNodes(); i++) {
+                if (home_stat[i]) {
+                    Coord loc = network.getLoc(i); 
+                    *result << "("<<loc.x<<", "<<loc.y<<")\n";
+                }
+             }
+        }
+        *result << endl;
+    }
+    *result << endl;
+
+    if (tlb_enable) {
+        ins_count =0;   
+        miss_count = 0;
+        evict_count = 0;
+        miss_rate = 0;
+        for (int i = 0; i < num_cores; i++) {
+            ins_count += tlb_cache[i].getInsCount();
+            miss_count += tlb_cache[i].getMissCount();
+            wb_count += tlb_cache[i].getWbCount();
+        }
+        miss_rate = (double)miss_count / (double)ins_count; 
+           
+        *result << "TLB Cache"<<"===========================================================\n";
+        *result << "Simulation results for "<< xml_sys->tlb_cache.size << " Bytes " << xml_sys->tlb_cache.num_ways
+                   << "-way set associative cache model:\n";
+        *result << "The total # of TLB access instructions: " << ins_count << endl;
+        *result << "The # of cache-missed instructions: " << miss_count << endl;
+        *result << "The # of replaced instructions: " << evict_count << endl;
+        *result << "The cache miss rate: " << 100 * miss_rate << "%" << endl;
+        *result << "=================================================================\n\n";
+        
+        if (verbose_report) {
+            page_table.report(result);
+        }
+    } 
+
+    *result << endl;
+    *result << "Total delay caused by bus contention: " << total_bus_contention <<" cycles\n";
+    *result << "Total # of broadcast: " << total_num_broadcast <<"\n\n";
+
+    for (i=0; i<num_levels; i++) {
+        ins_count =0;   
+        miss_count = 0;
+        evict_count = 0;
+        wb_count = 0;
+        persist_count = 0;
+        persist_delay =0;
+        miss_rate = 0;
+
+        delay_critical_persist_wb = 0;
+        inter_tot = 0;
+        intra_tot = 0;
+        ratio_inter_intra_conflicts = 0;
+        inter_persist_tot = 0;
+        intra_persist_tot = 0;
+        ratio_inter_intra_persists = 0;
+        inter_pcycles_tot = 0;
+        intra_pcycles_tot = 0;
+        ratio_inter_intra_persist_cycles = 0;
+        clwb_tot = 0;
+        critical_clwb = 0;
+        noncritical_clwb = 0;
+        external_clwb = 0;
+        natural_clwb = 0;
+        all_natural_clwb = 0;
+        sync_clwb = 0;
+        critical_persist_wb = 0;
+        delay_clwb_tot = 0;
+        delay_critical_clwb = 0;
+        delay_noncritical_clwb = 0;
+        delay_external_clwb = 0;
+        delay_natural_clwb = 0;
+        delay_all_natural_clwb = 0;
+        delay_sync_clwb = 0;
+
+        epoch_sum_tot = 0;
+        epoch_id_tot = 0;
+        epoch_id2_tot = 0;
+
+        same_block_count_tot = 0;
+        delay_same_block_tot =0;
+
+        intra_vis_conflicts_tot=0; 
+        intra_evi_conflicts_tot=0; 
+        intra_evi_M_conflicts_tot=0; 
+        intra_allconflicts_tot=0; 
+        intra_vis_allconflicts_tot=0; 
+        intra_evi_allconflicts_tot=0; 
+        intra_evi_M_allconflicts_tot=0; 
+
+        intra_M_allconflicts_tot=0; 
+        intra_vis_persists_tot=0; 
+        intra_evi_persists_tot=0; 
+        intra_evi_M_persists_tot=0; 
+        intra_evi_persists_tot=0; 
+        inter_M_conflicts_tot=0; 
+        inter_allconflicts_tot=0; 
+        inter_M_allconflicts_tot=0; 
+        inter_M_persists_tot=0;
+
+
+        lowest_epoch_size_tot = 0; 
+        largest_lowest_epoch_size_tot = 0; 
+        max_largest_lowest_epoch_size = 0; 
+        num_epochs_flushed_tot = 0; 
+        num_nzero_epochs_flushed_tot = 0;
+        max_largest_epoch_size = 0; 
+        largest_epoch_size_tot = 0;
+
+        all_persists_tot = 0;
+        all_pf_persists_tot = 0;
+        vis_pf_persists_tot = 0;
+        evi_pf_persists_tot = 0;
+        inter_pf_persists_tot = 0;
+
+        invals_tot = 0;
+        invals_M_tot = 0;
+        invals_E_tot = 0;
+        shares_tot = 0;
+        shares_M_tot = 0;
+        shares_E_tot = 0;
+
+        clk_timestamp_tot = 0;
+        atom_clk_timestamp_tot = 0;
+        ret_add_tot = 0;
+        ret_delete_tot = 0;
+        ret_delete_lower_tot = 0; 
+        ret_lookup_tot = 0;
+        ret_intra_lookup_tot = 0;
+        ret_inter_lookup_tot = 0;
+
+        for (j=0; j<cache_level[i].num_caches; j++) {
+            if (cache[i][j] != NULL) {
+                ins_count += cache[i][j]->getInsCount();
+                miss_count += cache[i][j]->getMissCount();
+                evict_count += cache[i][j]->getEvictCount();
+                wb_count += cache[i][j]->getWbCount();
+                persist_count += cache[i][j]->getPersistCount();
+                persist_delay += cache[i][j]->getPersistDelay();
+                inter_tot += cache[i][j]->inter_conflicts;
+                intra_tot += cache[i][j]->intra_conflicts;
+                ratio_inter_intra_conflicts += (double)inter_tot/(inter_tot+intra_tot);
+                inter_persist_tot += cache[i][j]->inter_persists;
+                intra_persist_tot += cache[i][j]->intra_persists;
+                ratio_inter_intra_persists += (double)inter_persist_tot/(inter_persist_tot+intra_persist_tot);
+                inter_pcycles_tot += cache[i][j]->inter_persist_cycles;
+                intra_pcycles_tot += cache[i][j]->intra_persist_cycles;
+                ratio_inter_intra_persist_cycles += (double)inter_pcycles_tot/(inter_pcycles_tot+intra_pcycles_tot);
+
+                same_block_count_tot += cache[i][j]->same_block_count; 
+                clwb_tot            +=    cache[i][j]->write_back_count; 
+                critical_clwb       +=   cache[i][j]->critical_write_back_count; 
+                noncritical_clwb    +=    cache[i][j]->noncritical_write_back_count; 
+                external_clwb       +=   cache[i][j]->external_critical_wb_count; 
+                natural_clwb        +=    cache[i][j]->natural_eviction_count; 
+                all_natural_clwb    +=    cache[i][j]->all_natural_eviction_count;
+                sync_clwb           +=   cache[i][j]->sync_conflict_persists; 
+                critical_persist_wb +=     cache[i][j]->critical_conflict_persists;
+
+
+                delay_same_block_tot += cache[i][j]->same_block_delay; 
+                delay_clwb_tot              +=      cache[i][j]->write_back_delay;
+                delay_critical_clwb         +=      cache[i][j]->critical_write_back_delay;
+                delay_noncritical_clwb      +=      cache[i][j]->noncritical_write_back_delay;
+                delay_external_clwb         +=      cache[i][j]->external_critical_wb_delay;
+                delay_natural_clwb          +=      cache[i][j]->natural_eviction_delay;
+                delay_all_natural_clwb      +=      cache[i][j]->all_natural_eviction_delay;
+                delay_sync_clwb             +=      cache[i][j]->sync_conflict_persist_cycles;
+                delay_critical_persist_wb   +=      cache[i][j]->critical_conflict_persist_cycles;
+
+                intra_vis_conflicts_tot += cache[i][j]-> intra_vis_conflicts;
+                intra_evi_conflicts_tot += cache[i][j]-> intra_evi_conflicts ;
+                intra_evi_M_conflicts_tot += cache[i][j]->intra_evi_M_conflicts ;
+                intra_vis_allconflicts_tot += cache[i][j]->  intra_vis_allconflicts;
+                intra_evi_allconflicts_tot += cache[i][j]->  intra_evi_allconflicts;
+                intra_evi_M_allconflicts_tot += cache[i][j]->  intra_evi_M_allconflicts;
+                intra_allconflicts_tot += cache[i][j]->  intra_allconflicts;
+                intra_M_allconflicts_tot += cache[i][j]->intra_M_allconflicts;
+                intra_vis_persists_tot += cache[i][j]-> intra_vis_persists;
+                intra_evi_persists_tot += cache[i][j]-> intra_evi_persists;
+                intra_evi_M_persists_tot += cache[i][j]-> intra_evi_M_persists;
+                //intra_evi_persist_tot += cache[i][j]-> intra_evi_persist;
+                inter_M_conflicts_tot += cache[i][j]-> inter_M_conflicts;
+                inter_allconflicts_tot += cache[i][j]-> inter_allconflicts;
+                inter_M_allconflicts_tot += cache[i][j]-> inter_M_allconflicts;
+                inter_M_persists_tot += cache[i][j]-> inter_M_persists;
+
+                //epochs stats
+                nzero_conflicts_tot += cache[i][j]->nzero_conflicts ;
+                lowest_epoch_size_tot += cache[i][j]->lowest_epoch_size ; 
+                largest_lowest_epoch_size_tot += cache[i][j]->largest_lowest_epoch_size ; 
+                if(max_largest_lowest_epoch_size < cache[i][j]-> largest_lowest_epoch_size) 
+                    max_largest_lowest_epoch_size = cache[i][j]-> largest_lowest_epoch_size; 
+                num_epochs_flushed_tot += cache[i][j]-> num_epochs_flushed; 
+                num_nzero_epochs_flushed_tot += cache[i][j]-> num_nzero_epochs_flushed; 
+                if(max_largest_epoch_size < cache[i][j]-> largest_epoch_size)
+                    max_largest_epoch_size = cache[i][j]-> largest_epoch_size; 
+                largest_epoch_size_tot +=cache[i][j]-> largest_epoch_size;
+
+                epoch_sum_tot += cache[i][j]->epoch_sum;
+                epoch_id_tot += cache[i][j]->epoch_updated_id;
+                epoch_id2_tot += cache[i][j]->epoch_counted_id;
+
+                all_persists_tot += cache[i][j]-> all_persists;
+                all_pf_persists_tot += cache[i][j]->all_pf_persists;
+                vis_pf_persists_tot += cache[i][j]->vis_pf_persists;
+                evi_pf_persists_tot += cache[i][j]->evi_pf_persists;
+                inter_pf_persists_tot += cache[i][j]->inter_pf_persists;
+
+                invals_tot += cache[i][j]->invals;
+                invals_M_tot += cache[i][j]->invals_M;
+                invals_E_tot += cache[i][j]->invals_E;
+                shares_tot += cache[i][j]->shares;
+                shares_M_tot += cache[i][j]->shares_M;
+                shares_E_tot += cache[i][j]->shares_E;
+
+                atom_clk_timestamp_tot += cache[i][j]->atom_clk_timestamp;
+                clk_timestamp_tot += cache[i][j]->clk_timestamp;
+                ret_add_tot += cache[i][j]->cnt_sm_add;
+                ret_delete_tot += cache[i][j]->cnt_sm_delete;
+                ret_delete_lower_tot += cache[i][j]->cnt_sm_delete_lower;
+                ret_lookup_tot += cache[i][j]->cnt_sm_lookups;
+                ret_intra_lookup_tot += cache[i][j]->cnt_sm_rel_intra_lookups;
+                ret_inter_lookup_tot += cache[i][j]->cnt_sm_rel_inter_lookups;
+
+
+            }
+        }
+        miss_rate = (double)miss_count / (double)ins_count; 
+
+        *result << "LEVEL"<<i<<"===========================================================\n";
+        *result << "Simulation results for "<< cache_level[i].size << " Bytes " << cache_level[i].num_ways
+                   << "-way set associative cache model:\n";
+        *result << "The total # of memory instructions: " << ins_count << endl;
+        *result << "The # of cache-missed instructions: " << miss_count << endl;
+        *result << "The # of evicted instructions: " << evict_count << endl;
+        *result << "The # of writeback instructions: " << wb_count << endl;
+        *result << "The cache miss rate: " << 100 * miss_rate << "%" << endl;
+        *result << "=----------------------------------------------------------------------\n";
+        *result << "Inter-thread conflicts: " <<  inter_tot << endl;
+        *result << "Intra-thread conflicts: " <<  intra_tot << endl;
+        *result << "Inter-Intra ratio (SUM): " << (double)inter_tot/(inter_tot+intra_tot) << endl;
+        *result << "Inter-Intra ratio (AVG): " << ratio_inter_intra_conflicts/cache_level[i].num_caches << endl;
+        *result << "-----------------------------------------------------------------------\n";
+        *result << "Inter-thread Persists: " <<  inter_persist_tot << endl;
+        *result << "Intra-thread Persists: " <<  intra_persist_tot << endl;
+        *result << "Inter-Intra P ratio (SUM): " << (double)inter_persist_tot/(inter_persist_tot+intra_persist_tot) << endl;
+        *result << "Inter-Intra P ratio (AVG): " << ratio_inter_intra_persists/cache_level[i].num_caches << endl;
+        *result << "-----------------------------------------------------------------------\n";
+        *result << "Inter-thread Persist Cycles: " <<  inter_pcycles_tot << endl;
+        *result << "Intra-thread Persist Cycles: " <<  intra_pcycles_tot << endl;
+        *result << "Inter-Intra PC ratio (SUM): " << (double)inter_pcycles_tot/(inter_pcycles_tot+intra_pcycles_tot) << endl;
+        *result << "Inter-Intra PC ratio (AVG): " << ratio_inter_intra_persist_cycles/cache_level[i].num_caches << endl;
+        *result << "-----------------------------------------------------------------------\n";
+        *result << "Write-Backs count and delay " <<  clwb_tot << " \t" << delay_clwb_tot << endl;
+        *result << "Critical Write-Backs count and delay " <<  critical_clwb << " \t" << delay_critical_clwb << endl;
+        *result << "NonCritical Write-Backs count and delay " <<  noncritical_clwb << " \t" << delay_noncritical_clwb << endl;
+        *result << "External Write-Backs count and delay " <<  external_clwb << " \t" << delay_external_clwb << endl;
+        *result << "Natural Write-Backs count and delay " <<  natural_clwb << " \t" << delay_natural_clwb << endl;
+        *result << "ALL Natural Write-Backs count and delay " <<  all_natural_clwb << " \t" << delay_all_natural_clwb << endl;
+        
+
+        uint64_t conflicting_nat_wb = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?natural_clwb*0.5: all_natural_clwb*0.8);
+        uint64_t conflicting_nat_wb_cycle = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?delay_natural_clwb*0.5: delay_all_natural_clwb*0.8);
+
+        uint64_t conflicting_nat_wb2 = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?natural_clwb*0.5: all_natural_clwb*0.9);
+        uint64_t conflicting_nat_wb_cycle2 = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?delay_natural_clwb*0.5: delay_all_natural_clwb*0.9);
+
+        *result << "Conflicting natural Evictions/Write-Backs count and delay " << conflicting_nat_wb   << " \t" << conflicting_nat_wb_cycle << endl;
+
+
+        *result << "Sync Write-Backs count and delay " <<  sync_clwb << " \t" << delay_sync_clwb << endl;
+        *result << "Critical Persist count and delay " <<  critical_persist_wb << " \t" << critical_persist_wb << endl;
+        *result << "All perisist (Persistence)" <<  persist_count << " \t" << persist_delay << endl;
+        *result << "Sync WB/Critical WB " <<  (double)sync_clwb/critical_clwb << endl;
+        *result << "Critical WB/All WB " <<  (double)critical_clwb/clwb_tot << endl;
+        *result << "-----------------------------------------------------------------------\n";
+        *result << "Total Epochs Sum " <<  epoch_sum_tot << endl;
+        *result << "Total IDs Sum " <<  epoch_id_tot << endl;
+        *result << "Total Counted IDs Sum " <<  epoch_id2_tot << endl;
+        *result << "Average Writes/Epoch" <<  (double)epoch_sum_tot/epoch_id_tot << endl;
+
+        *result << "-----------------------------------------------------------------------\n\n\n";
+        
+        *result << "Intra-conflict " <<  intra_tot << endl;
+        *result << "Intra-conflict: Visibility " <<  intra_vis_conflicts_tot << endl;
+        *result << "Intra-conflict: Evictions " <<  intra_evi_conflicts_tot << endl;
+        *result << "Intra-conflict: Evictions-M" <<  intra_evi_M_conflicts_tot << endl;
+
+        *result << "Intra-allconflict " <<  intra_allconflicts_tot << endl;
+        *result << "Intra-allconflict:Visibility " <<  intra_vis_allconflicts_tot << endl;
+        *result << "Intra-allconflict:Evictions " <<  intra_evi_allconflicts_tot << endl;
+        *result << "Intra-allconflict:Evictions_M " <<  intra_evi_M_allconflicts_tot << endl;
+        *result << "Intra-allconflict: Evictions-M" <<  intra_M_allconflicts_tot << endl;
+
+        *result << "Intra-persists: All " <<  intra_persist_tot << endl;
+        *result << "Intra-persists: Visibility " <<  intra_vis_persists_tot << endl;
+        *result << "Intra-persists: Evictions " <<  intra_evi_persists_tot << endl;
+        *result << "Intra-persists: Evictions-M" <<  intra_evi_M_persists_tot << endl;
+        *result << "-----------------------------------------------------------------------\n";
+        *result << "Inter-conflicts " <<  inter_tot << endl;
+        *result << "Inter-conflicts-M " <<  inter_M_conflicts_tot << endl;
+        *result << "Inter-allconflicts "  <<  inter_allconflicts_tot << endl;
+        *result << "Inter-allconflicts-M " <<  inter_M_allconflicts_tot << endl;
+        *result << "Inter-persists " <<  inter_persist_tot << endl;
+        *result << "Inter-persists-M " <<  inter_M_persists_tot << endl;
+        *result << "-----------------------------------------------------------------------\n";
+        *result << "Invals - "  <<  invals_tot << endl;
+        *result << "InvalsM - " <<  invals_M_tot << endl;
+        *result << "InvalsE - " <<  invals_E_tot << endl;
+        *result << "Shares - "  <<  shares_tot << endl;
+        *result << "SharesM - " <<  shares_M_tot << endl;
+        *result << "SharesE - " <<  shares_E_tot << endl;      
+        *result << "-----------------------------------------------------------------------\n\n\n";
+
+        *result << "Total Lowest Epoch Size " <<  lowest_epoch_size_tot << endl;
+        *result << "Total ZN Conflicts from caches " <<  nzero_conflicts_tot << endl;
+        *result << "Total NZ conflicts " <<  (intra_tot+inter_tot) << endl;
+        *result << "Average Lowest Epoch Size " <<  (double)lowest_epoch_size_tot/(intra_tot+inter_tot+1) << endl;
+        *result << "Average Largest Lowest Epoch Size " <<  largest_lowest_epoch_size_tot<< endl;
+        *result << "Max Largest Lowest Epoch Size " <<  max_largest_lowest_epoch_size<< endl;
+
+        *result << "Total Number of Epochs Flushed " <<  num_epochs_flushed_tot << endl;
+        *result << "Total Number of (NZ) Epochs Flushed " <<  num_nzero_epochs_flushed_tot << endl;
+        *result << "Average Number of (NZ) Epochs Flushed per conflict" <<  (double)num_nzero_epochs_flushed_tot/(nzero_conflicts_tot+1) << endl;
+
+        *result << "Largest Epoch flushed (across all threads) " <<  max_largest_epoch_size << endl;
+        *result << "Average largest epoch flushed (/num-threads) " <<  largest_epoch_size_tot << endl;
+        
+        *result << "-----------------------------------------------------------------------\n\n\n";      
+
+
+        *result << "Total Persists " <<  all_persists_tot << endl;
+        *result << "all_pf_persists " <<  all_pf_persists_tot << endl;
+        *result << "vis_pf_persists " <<  vis_pf_persists_tot << endl;
+        *result << "evi_pf_persists " <<  evi_pf_persists_tot << endl;
+        *result << "inter_pf_persists " << inter_pf_persists_tot << endl; 
+
+        *result << "=================================================================\n\n";
+
+        *result << "RET: -----------------------------------------------------------------\n";
+        *result << "Total Cycles " << clk_timestamp_tot  << endl;
+        *result << "Total Rel Cycles " << atom_clk_timestamp_tot  << endl;
+        *result << "Writes per Cycles " << (double)ret_add_tot/ clk_timestamp_tot  << endl;
+        *result << "Lookups per Cycles " << (double)ret_lookup_tot/ clk_timestamp_tot  << endl;
+        *result << "Writes per Rel ycles " << (double)ret_add_tot/ atom_clk_timestamp_tot  << endl;
+        *result << "Lookups per Rel Cycles " << (double)ret_lookup_tot/ atom_clk_timestamp_tot  << endl;
+        *result << "Adds " << (double)ret_add_tot  << endl;
+        *result << "Lookups " << (double)ret_lookup_tot  << endl;
+        *result << "Lookups Intra " << (double)ret_intra_lookup_tot  << endl;
+        *result << "Lookups Inter " << (double)ret_inter_lookup_tot  << endl;
+        *result << "Delete " << (double)ret_delete_tot  << endl;
+        *result << "Delete Lower" << (double)ret_delete_lower_tot  << endl;        
+
+        *result << "RET: -----------------------------------------------------------------\n\n";
+
+        //Something to add.
+        //Conflicting WB.
+
+
+
+        //Statistic FIle
+        double conf_rate =(double)inter_persist_tot/(inter_persist_tot+intra_persist_tot);
+        double wbdelay_rate = (double)delay_critical_clwb/(delay_critical_clwb+delay_noncritical_clwb);
+        double wb_rate = (double)critical_clwb/(critical_clwb+noncritical_clwb);
+        double p_rate = (double) critical_persist_wb/clwb_tot;
+        double pdelay_rate = (double) delay_critical_persist_wb/delay_clwb_tot;
+        //double clwb = clwb_tot;
+
+        //ASPLOS Updates WB
+        //*stat << inter_persist_tot << "," << intra_persist_tot << "," << persist_count << "," << clwb_tot << "," << critical_clwb << "," << noncritical_clwb << "," << natural_clwb << "," << external_clwb << "," << inter_tot << "," << intra_tot <<"," << same_block_count_tot << "," << delay_same_block_tot << ","  << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
+        
+        *stat   << clwb_tot << ","
+                << critical_clwb << ","
+                << critical_clwb << ","
+                << noncritical_clwb << ","
+                << natural_clwb << ","
+                << all_natural_clwb << ","
+
+                << intra_tot << ","
+                << intra_vis_conflicts_tot << ","
+                << intra_evi_conflicts_tot << ","
+                << intra_evi_M_conflicts_tot << ","
+
+                << intra_allconflicts_tot << ","
+                << intra_vis_allconflicts_tot << ","
+                << intra_evi_allconflicts_tot << ","
+                << intra_evi_M_allconflicts_tot << ","
+                << intra_M_allconflicts_tot << ","
+
+                << intra_persist_tot << ","
+                << intra_vis_persists_tot << ","
+                << intra_evi_persists_tot << ","
+                << intra_evi_M_persists_tot << ","
+
+                << inter_tot << ","
+                << inter_M_conflicts_tot << ","
+                << inter_allconflicts_tot << ","
+                << inter_M_allconflicts_tot << ","
+                << inter_persist_tot << ","
+                << inter_M_persists_tot << ","
+
+                << all_persists_tot << ","
+                << all_pf_persists_tot << ","
+                << vis_pf_persists_tot << ","
+                << evi_pf_persists_tot << ","
+                << inter_pf_persists_tot << ","
+
+                << invals_tot << ","
+                << invals_M_tot << ","
+                << invals_E_tot << ","
+                << shares_tot << ","
+                << shares_M_tot << ","
+                << shares_E_tot << ","   
+
+                //later adition-after data2
+                <<  conflicting_nat_wb << ","
+                <<  conflicting_nat_wb_cycle << ","
+                <<  conflicting_nat_wb2 << ","
+                <<  conflicting_nat_wb_cycle2 << endl;
+
+                //Need to add propoer conlficting writebacks for each one.
+
+
+        //Adding new division of visibility/evictions/ and PF to stat file
+
+        *result << conf_rate << "," << wb_rate << "," << wbdelay_rate << "," << p_rate << "," << pdelay_rate << "," << clwb_tot << "," << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
+    }
+    
+    ins_count =0;   
+    miss_count = 0;
+    evict_count = 0;
+    wb_count = 0;
+    miss_rate = 0;
+    for (int i = 0; i < network.getNumNodes(); i++) {
+        if (directory_cache[i] != NULL) {
+            ins_count += directory_cache[i]->getInsCount();
+            miss_count += directory_cache[i]->getMissCount();
+            evict_count += directory_cache[i]->getEvictCount();
+            wb_count += directory_cache[i]->getWbCount();
+        }
+    }
+    miss_rate = (double)miss_count / (double)ins_count; 
+       
+    *result << "Directory Cache"<<"===========================================================\n";
+    *result << "Simulation results for "<< xml_sys->directory_cache.size << " Bytes " << xml_sys->directory_cache.num_ways
+               << "-way set associative cache model:\n";
+    *result << "The total # of memory instructions: " << ins_count << endl;
+    *result << "The # of cache-missed instructions: " << miss_count << endl;
+    *result << "The # of replaced instructions: " << evict_count << endl;
+    *result << "The cache miss rate: " << 100 * miss_rate << "%" << endl;
+    *result << "=================================================================\n\n";
+
+
+    if (verbose_report) {
+        *result << "Statistics for each cache with non-zero accesses: \n\n";
+        for (i=0; i<num_levels; i++) {
+            *result << "LEVEL"<<i<<"*****************************************************\n\n";
+            for (j=0; j<cache_level[i].num_caches; j++) {
+                if (cache[i][j] != NULL) {
+                    if (cache[i][j]->getInsCount() > 0) {
+                        *result << "The " <<j<<"th cache:\n";
+                        cache[i][j]->report(result);
+                    }
+                }
+             }
+            *result << "************************************************************\n\n";
+        }
+
+        if (directory_cache != NULL) {
+            *result << "****************************************************" <<endl;
+            *result << "Statistics for each directory caches with non-zero accesses" <<endl;
+            for (int i = 0; i < network.getNumNodes(); i++) {
+                if (directory_cache[i] != NULL) {
+                    if (directory_cache[i]->getInsCount() > 0) {
+                        *result << "Report for directory cache "<<i<<endl;
+                        directory_cache[i]->report(result);
+                    }
+                }
+            }
+        }
+
+        if (tlb_cache != NULL) {
+            *result << "****************************************************" <<endl;
+            *result << "Statistics for each TLB cache with non-zero accesses" <<endl;
+            for (int i = 0; i < num_cores; i++) {
+                if (tlb_cache[i].getInsCount() > 0) {
+                    *result << "Report for tlb cache "<<i<<endl;
+                    tlb_cache[i].report(result);
+                }
+            }
+        }
+    }
+}
+
+System::~System()
+{
+        int i, j;
+        for (i=0; i<num_levels; i++) {
+            for (j=0; j<cache_level[i].num_caches; j++) {
+                if (cache[i][j] != NULL) {
+                    if (i != 0) {
+                        delete [] cache[i][j]->child;
+                    }
+                    delete cache[i][j];
+                }
+            }
+        }
+        for (i=0; i<num_levels; i++) {
+            delete [] cache[i];
+            delete [] cache_lock[i];
+            delete [] cache_init_done[i];
+        }
+        for (i = 0; i < network.getNumNodes(); i++) {
+            if (directory_cache[i] != NULL) {
+                delete directory_cache[i];
+            }
+        }
+        delete [] hit_flag;
+        delete [] delay;
+        delete [] home_stat;
+        delete [] cache;
+        delete [] cache_level;
+        delete [] directory_cache;
+        delete [] tlb_cache;
+        delete [] cache_lock;
+        delete [] directory_cache_lock;
+        delete [] cache_init_done;
+        delete [] directory_cache_init_done;
+}
+
+
+/* Old version before the DRAM Output stream.
 
 //Access distributed shared LLC with embedded directory cache
 int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_t timer, char* state, int core_id)
@@ -3350,565 +4284,179 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
     directory_cache[home_id]->unlockUp(ins_mem);
     return delay;
 }
-
-
-//TLB translation from virtual addresses into physical addresses
-int System::tlb_translate(InsMem *ins_mem, int core_id, int64_t timer)
-{
-    int delay = 0;
-    Line* line_cur;
-    InsMem ins_mem_old;
-    line_cur = tlb_cache[core_id].accessLine(ins_mem);
-    tlb_cache[core_id].incInsCount();
-    delay += tlb_cache[core_id].getAccessTime();
-    if (line_cur == NULL) {
-        line_cur = tlb_cache[core_id].replaceLine(&ins_mem_old, ins_mem);
-        if (line_cur->state) {
-            tlb_cache[core_id].incEvictCount();
-        }
-        tlb_cache[core_id].incMissCount();
-        line_cur->state = V;
-        line_cur->ppage_num = page_table.translate(ins_mem);
-        delay += page_table.getTransDelay();
-    }
-    line_cur->timestamp = timer;
-    ins_mem->addr_dmem = (line_cur->ppage_num << (int)log2(page_size)) | (ins_mem->addr_dmem % page_size);
-    return delay;
-}
-
-// Home allocation uses low-order bits interleaving
-int System::allocHomeId(int num_homes, uint64_t addr)
-{
-    int offset;
-    int home_bits;
-    int home_mask;
-    //Home bits
-    offset = (int) log2(xml_sys->directory_cache.block_size );
-    home_mask = (int)ceil(log2(num_homes));
-    home_bits = (int)(((addr >> offset)) % (1 << home_mask));
-    if (home_bits < num_homes) {
-        return home_bits;
-    }   
-    else {
-        return home_bits % (1 << (home_mask-1));
-    }
-}
-
-int System::getHomeId(InsMem *ins_mem)
-{
-    int home_id;
-    home_id = allocHomeId(network.getNumNodes(), ins_mem->addr_dmem);
-    if (home_id < 0) {
-        cerr<<"Error: Wrong home id\n";
-    }
-    return home_id;
-}
+*/
 
 
 
-int System::getCoreCount()
-{
-    return num_cores;
-}
 
-
-void System::report(ofstream* result, ofstream* stat)
-{
-    int i, j;
-    uint64_t ins_count = 0, miss_count = 0, evict_count = 0, wb_count = 0, persist_count=0, persist_delay=0, intra_tot =0, inter_tot=0;
-    uint64_t intra_persist_tot=0, inter_persist_tot=0, intra_pcycles_tot=0, inter_pcycles_tot=0;
-    double miss_rate = 0;
-    double  ratio_inter_intra_conflicts = 0.0;
-    double  ratio_inter_intra_persists = 0.0;
-    double  ratio_inter_intra_persist_cycles = 0.0;
-    //double conflict_rate=0.0;
-    uint64_t clwb_tot=0, critical_clwb=0, noncritical_clwb=0, external_clwb=0, all_natural_clwb=0, natural_clwb=0, sync_clwb=0, critical_persist_wb=0; //last one id related to total persist count
-    uint64_t delay_clwb_tot=0, delay_critical_clwb=0, delay_noncritical_clwb=0, delay_external_clwb=0, delay_all_natural_clwb=0, delay_natural_clwb=0, delay_sync_clwb=0, delay_critical_persist_wb=0;
-   uint64_t delay_same_block_tot =0; uint64_t same_block_count_tot =0;
-   uint64_t epoch_sum_tot = 0;
-   uint64_t epoch_id_tot = 0, epoch_id2_tot=0;
-   uint64_t intra_vis_conflicts_tot=0, intra_evi_conflicts_tot=0, intra_evi_M_conflicts_tot=0, intra_allconflicts_tot=0, intra_vis_allconflicts_tot=0, intra_evi_allconflicts_tot=0, intra_evi_M_allconflicts_tot=0, intra_M_allconflicts_tot=0, intra_vis_persists_tot=0, intra_evi_persists_tot=0, intra_evi_M_persists_tot=0, inter_M_conflicts_tot=0, inter_allconflicts_tot=0, inter_M_allconflicts_tot=0, inter_M_persists_tot=0;
-   uint64_t nzero_conflicts_tot=0, lowest_epoch_size_tot = 0, largest_lowest_epoch_size_tot = 0, max_largest_lowest_epoch_size = 0, num_epochs_flushed_tot = 0, num_nzero_epochs_flushed_tot = 0, max_largest_epoch_size = 0, largest_epoch_size_tot = 0 ;
- 
-   uint64_t all_persists_tot =0, all_pf_persists_tot=0, vis_pf_persists_tot = 0, evi_pf_persists_tot=0, inter_pf_persists_tot=0; 
-   uint64_t invals_tot = 0, invals_M_tot = 0, invals_E_tot = 0, shares_tot = 0, shares_M_tot = 0, shares_E_tot = 0;
-    network.report(result); 
-    dram.report(result); 
-    *result << endl <<  "Simulation result for cache system: \n\n";
+/*
+int System::epochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
     
-    if (verbose_report) {
-        *result << "Home Occupation:\n";
-        if (network.getNetType() == MESH_3D) {
-            *result << "Allocated home locations in 3D coordinates:" << endl;
-            for (int i = 0; i < network.getNumNodes(); i++) {
-                if (home_stat[i]) {
-                    Coord loc = network.getLoc(i); 
-                    *result << "("<<loc.x<<", "<<loc.y<<", "<<loc.z<<")\n";
-                }
-            }
-        }
-        else {
-            *result << "Allocated home locations in 2D coordinates:" << endl;
-            for (int i = 0; i < network.getNumNodes(); i++) {
-                if (home_stat[i]) {
-                    Coord loc = network.getLoc(i); 
-                    *result << "("<<loc.x<<", "<<loc.y<<")\n";
-                }
-             }
-        }
-        *result << endl;
-    }
-    *result << endl;
+    //after-asplos
+    //persist source: psrc: 0-same-block, 1-evctions/replacements, 2-inter-thread/writebacks
 
-    if (tlb_enable) {
-        ins_count =0;   
-        miss_count = 0;
-        evict_count = 0;
-        miss_rate = 0;
-        for (int i = 0; i < num_cores; i++) {
-            ins_count += tlb_cache[i].getInsCount();
-            miss_count += tlb_cache[i].getMissCount();
-            wb_count += tlb_cache[i].getWbCount();
-        }
-        miss_rate = (double)miss_count / (double)ins_count; 
-           
-        *result << "TLB Cache"<<"===========================================================\n";
-        *result << "Simulation results for "<< xml_sys->tlb_cache.size << " Bytes " << xml_sys->tlb_cache.num_ways
-                   << "-way set associative cache model:\n";
-        *result << "The total # of TLB access instructions: " << ins_count << endl;
-        *result << "The # of cache-missed instructions: " << miss_count << endl;
-        *result << "The # of replaced instructions: " << evict_count << endl;
-        *result << "The cache miss rate: " << 100 * miss_rate << "%" << endl;
-        *result << "=================================================================\n\n";
-        
-        if (verbose_report) {
-            page_table.report(result);
+    //Buffered Epoch Persistency on caches
+    int conflict_epoch_id = line_call->max_epoch_id; //Not sure! Check
+    #ifdef DEBUG
+    printf("Buffered Epoch Persistency Cache:%d Conflict Epoch:%d \n", req_core_id, conflict_epoch_id);
+    #endif
+    int delay_flush = 0;
+    delay_flush++;
+    int core_id = cache_cur->getId(); int cache_id = cache_cur->getId();
+    Line *line_cur;
+    int timer = 0;
+
+    //timing
+    delay_tmp[core_id] = 0;
+    int start_delay = 0;
+
+    //delay[core_id] = 0;   //Check this. Need to chaneg.  
+    if(core_id != req_core_id){
+        delay[core_id]  = 0;
+    }
+
+    int level = cache_cur->getLevel(); 
+    int persist_count =0;
+    
+    //Check thi: method-local intialization
+    delay_tmp[core_id] += delay[core_id];
+    start_delay = delay_tmp[core_id];
+    //Proactive Flushing (PF): reduce the conflicts. allow lazy write-backs and coalecsing inside the cache-line.
+
+    //Actual flush: min epoch id flushed = et_lowest_epoch_id
+    for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {            
+        for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) {                
+                //printf("A Epoch %d\n", rel_epoch_id);
+                InsMem ins_mem;
+                line_cur = cache_cur->directAccess(i,j,&ins_mem);    
+                            
+                if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M)){ //|| line_cur->state==E  //Need to think about E here
+                    //Only dirty data
+                    //if(line_cur->max_epoch_id <= conflict_epoch_id){ //Epoch Id < conflictigng epoch id - similar to full flush
+                    if(line_cur->max_epoch_id < conflict_epoch_id){    
+
+                    #ifdef DEBUG
+                    printf("[Release Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
+                    i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
+                    #endif
+                        ins_mem.mem_type = WB;   
+                        ins_mem.atom_type = NON;                                             
+                        ins_mem.lazy_wb =false; 
+                        //asplos-after: et_lowest_epoch_id: proactive_flushing
+                        //if(proactive_flushing && (line_cur->max_epoch_id == et_lowest_epoch_id))
+                        //    ins_mem.lazy_wb =true; //new lazy write-backs: no delay is added.                      
+
+                        //dramsim2: add access delay.
+
+                        //dramsim2: resolve llc conflicts. Go and check llc and push down cachelines. 
+
+                        line_cur->state = mesi_directory(cache_cur->parent, level+1, 
+                                          cache_id*cache_level[level].share/cache_level[level+1].share, 
+                                          core_id, &ins_mem, timer + delay[core_id]);
+
+                        //ins_mem.lazy_wb =false;
+                        
+                        cache_cur->incPersistCount();
+                        persist_count++;      
+                        cache_cur->all_persists++;                 
+
+                        //asplos-after: counting the average number of cachelines per epoch that is flushing
+                        //bug fixed. this must come after the above.
+                        line_cur->dirty = 0;
+                        line_cur->state = I; //changed the 
+                        line_cur->min_epoch_id = 0;
+                        line_cur->max_epoch_id = 0;
+
+                    }
+                }
         }
     } 
 
-    *result << endl;
-    *result << "Total delay caused by bus contention: " << total_bus_contention <<" cycles\n";
-    *result << "Total # of broadcast: " << total_num_broadcast <<"\n\n";
+    //Counts
+    if(core_id == req_core_id){
+        //asplos-after: psrc: 0-visibility conflics, 1-evictions         
+        if(persist_count>0){
+             cache_cur->intra_conflicts++;
 
-    for (i=0; i<num_levels; i++) {
-        ins_count =0;   
-        miss_count = 0;
-        evict_count = 0;
-        wb_count = 0;
-        persist_count = 0;
-        persist_delay =0;
-        miss_rate = 0;
-
-        delay_critical_persist_wb = 0;
-        inter_tot = 0;
-        intra_tot = 0;
-        ratio_inter_intra_conflicts = 0;
-        inter_persist_tot = 0;
-        intra_persist_tot = 0;
-        ratio_inter_intra_persists = 0;
-        inter_pcycles_tot = 0;
-        intra_pcycles_tot = 0;
-        ratio_inter_intra_persist_cycles = 0;
-        clwb_tot = 0;
-        critical_clwb = 0;
-        noncritical_clwb = 0;
-        external_clwb = 0;
-        natural_clwb = 0;
-        all_natural_clwb = 0;
-        sync_clwb = 0;
-        critical_persist_wb = 0;
-        delay_clwb_tot = 0;
-        delay_critical_clwb = 0;
-        delay_noncritical_clwb = 0;
-        delay_external_clwb = 0;
-        delay_natural_clwb = 0;
-        delay_all_natural_clwb = 0;
-        delay_sync_clwb = 0;
-
-        epoch_sum_tot = 0;
-        epoch_id_tot = 0;
-        epoch_id2_tot = 0;
-
-        same_block_count_tot = 0;
-        delay_same_block_tot =0;
-
-        intra_vis_conflicts_tot=0; 
-        intra_evi_conflicts_tot=0; 
-        intra_evi_M_conflicts_tot=0; 
-        intra_allconflicts_tot=0; 
-        intra_vis_allconflicts_tot=0; 
-        intra_evi_allconflicts_tot=0; 
-        intra_evi_M_allconflicts_tot=0; 
-
-        intra_M_allconflicts_tot=0; 
-        intra_vis_persists_tot=0; 
-        intra_evi_persists_tot=0; 
-        intra_evi_M_persists_tot=0; 
-        intra_evi_persists_tot=0; 
-        inter_M_conflicts_tot=0; 
-        inter_allconflicts_tot=0; 
-        inter_M_allconflicts_tot=0; 
-        inter_M_persists_tot=0;
-
-
-        lowest_epoch_size_tot = 0; 
-        largest_lowest_epoch_size_tot = 0; 
-        max_largest_lowest_epoch_size = 0; 
-        num_epochs_flushed_tot = 0; 
-        num_nzero_epochs_flushed_tot = 0;
-        max_largest_epoch_size = 0; 
-        largest_epoch_size_tot = 0;
-
-        all_persists_tot = 0;
-        all_pf_persists_tot = 0;
-        vis_pf_persists_tot = 0;
-        evi_pf_persists_tot = 0;
-        inter_pf_persists_tot = 0;
-
-        invals_tot = 0;
-        invals_M_tot = 0;
-        invals_E_tot = 0;
-        shares_tot = 0;
-        shares_M_tot = 0;
-        shares_E_tot = 0;
-
-
-        for (j=0; j<cache_level[i].num_caches; j++) {
-            if (cache[i][j] != NULL) {
-                ins_count += cache[i][j]->getInsCount();
-                miss_count += cache[i][j]->getMissCount();
-                evict_count += cache[i][j]->getEvictCount();
-                wb_count += cache[i][j]->getWbCount();
-                persist_count += cache[i][j]->getPersistCount();
-                persist_delay += cache[i][j]->getPersistDelay();
-                inter_tot += cache[i][j]->inter_conflicts;
-                intra_tot += cache[i][j]->intra_conflicts;
-                ratio_inter_intra_conflicts += (double)inter_tot/(inter_tot+intra_tot);
-                inter_persist_tot += cache[i][j]->inter_persists;
-                intra_persist_tot += cache[i][j]->intra_persists;
-                ratio_inter_intra_persists += (double)inter_persist_tot/(inter_persist_tot+intra_persist_tot);
-                inter_pcycles_tot += cache[i][j]->inter_persist_cycles;
-                intra_pcycles_tot += cache[i][j]->intra_persist_cycles;
-                ratio_inter_intra_persist_cycles += (double)inter_pcycles_tot/(inter_pcycles_tot+intra_pcycles_tot);
-
-                same_block_count_tot += cache[i][j]->same_block_count; 
-                clwb_tot            +=    cache[i][j]->write_back_count; 
-                critical_clwb       +=   cache[i][j]->critical_write_back_count; 
-                noncritical_clwb    +=    cache[i][j]->noncritical_write_back_count; 
-                external_clwb       +=   cache[i][j]->external_critical_wb_count; 
-                natural_clwb        +=    cache[i][j]->natural_eviction_count; 
-                all_natural_clwb    +=    cache[i][j]->all_natural_eviction_count;
-                sync_clwb           +=   cache[i][j]->sync_conflict_persists; 
-                critical_persist_wb +=     cache[i][j]->critical_conflict_persists;
-
-
-                delay_same_block_tot += cache[i][j]->same_block_delay; 
-                delay_clwb_tot              +=      cache[i][j]->write_back_delay;
-                delay_critical_clwb         +=      cache[i][j]->critical_write_back_delay;
-                delay_noncritical_clwb      +=      cache[i][j]->noncritical_write_back_delay;
-                delay_external_clwb         +=      cache[i][j]->external_critical_wb_delay;
-                delay_natural_clwb          +=      cache[i][j]->natural_eviction_delay;
-                delay_all_natural_clwb      +=      cache[i][j]->all_natural_eviction_delay;
-                delay_sync_clwb             +=      cache[i][j]->sync_conflict_persist_cycles;
-                delay_critical_persist_wb   +=      cache[i][j]->critical_conflict_persist_cycles;
-
-                intra_vis_conflicts_tot += cache[i][j]-> intra_vis_conflicts;
-                intra_evi_conflicts_tot += cache[i][j]-> intra_evi_conflicts ;
-                intra_evi_M_conflicts_tot += cache[i][j]->intra_evi_M_conflicts ;
-                intra_vis_allconflicts_tot += cache[i][j]->  intra_vis_allconflicts;
-                intra_evi_allconflicts_tot += cache[i][j]->  intra_evi_allconflicts;
-                intra_evi_M_allconflicts_tot += cache[i][j]->  intra_evi_M_allconflicts;
-                intra_allconflicts_tot += cache[i][j]->  intra_allconflicts;
-                intra_M_allconflicts_tot += cache[i][j]->intra_M_allconflicts;
-                intra_vis_persists_tot += cache[i][j]-> intra_vis_persists;
-                intra_evi_persists_tot += cache[i][j]-> intra_evi_persists;
-                intra_evi_M_persists_tot += cache[i][j]-> intra_evi_M_persists;
-                //intra_evi_persist_tot += cache[i][j]-> intra_evi_persist;
-                inter_M_conflicts_tot += cache[i][j]-> inter_M_conflicts;
-                inter_allconflicts_tot += cache[i][j]-> inter_allconflicts;
-                inter_M_allconflicts_tot += cache[i][j]-> inter_M_allconflicts;
-                inter_M_persists_tot += cache[i][j]-> inter_M_persists;
-
-                //epochs stats
-                nzero_conflicts_tot += cache[i][j]->nzero_conflicts ;
-                lowest_epoch_size_tot += cache[i][j]->lowest_epoch_size ; 
-                largest_lowest_epoch_size_tot += cache[i][j]->largest_lowest_epoch_size ; 
-                if(max_largest_lowest_epoch_size < cache[i][j]-> largest_lowest_epoch_size) 
-                    max_largest_lowest_epoch_size = cache[i][j]-> largest_lowest_epoch_size; 
-                num_epochs_flushed_tot += cache[i][j]-> num_epochs_flushed; 
-                num_nzero_epochs_flushed_tot += cache[i][j]-> num_nzero_epochs_flushed; 
-                if(max_largest_epoch_size < cache[i][j]-> largest_epoch_size)
-                    max_largest_epoch_size = cache[i][j]-> largest_epoch_size; 
-                largest_epoch_size_tot +=cache[i][j]-> largest_epoch_size;
-
-                epoch_sum_tot += cache[i][j]->epoch_sum;
-                epoch_id_tot += cache[i][j]->epoch_updated_id;
-                epoch_id2_tot += cache[i][j]->epoch_counted_id;
-
-                all_persists_tot += cache[i][j]-> all_persists;
-                all_pf_persists_tot += cache[i][j]->all_pf_persists;
-                vis_pf_persists_tot += cache[i][j]->vis_pf_persists;
-                evi_pf_persists_tot += cache[i][j]->evi_pf_persists;
-                inter_pf_persists_tot += cache[i][j]->inter_pf_persists;
-
-                invals_tot += cache[i][j]->invals;
-                invals_M_tot += cache[i][j]->invals_M;
-                invals_E_tot += cache[i][j]->invals_E;
-                shares_tot += cache[i][j]->shares;
-                shares_M_tot += cache[i][j]->shares_M;
-                shares_E_tot += cache[i][j]->shares_E;
-
-            }
-        }
-        miss_rate = (double)miss_count / (double)ins_count; 
-
-        *result << "LEVEL"<<i<<"===========================================================\n";
-        *result << "Simulation results for "<< cache_level[i].size << " Bytes " << cache_level[i].num_ways
-                   << "-way set associative cache model:\n";
-        *result << "The total # of memory instructions: " << ins_count << endl;
-        *result << "The # of cache-missed instructions: " << miss_count << endl;
-        *result << "The # of evicted instructions: " << evict_count << endl;
-        *result << "The # of writeback instructions: " << wb_count << endl;
-        *result << "The cache miss rate: " << 100 * miss_rate << "%" << endl;
-        *result << "=----------------------------------------------------------------------\n";
-        *result << "Inter-thread conflicts: " <<  inter_tot << endl;
-        *result << "Intra-thread conflicts: " <<  intra_tot << endl;
-        *result << "Inter-Intra ratio (SUM): " << (double)inter_tot/(inter_tot+intra_tot) << endl;
-        *result << "Inter-Intra ratio (AVG): " << ratio_inter_intra_conflicts/cache_level[i].num_caches << endl;
-        *result << "-----------------------------------------------------------------------\n";
-        *result << "Inter-thread Persists: " <<  inter_persist_tot << endl;
-        *result << "Intra-thread Persists: " <<  intra_persist_tot << endl;
-        *result << "Inter-Intra P ratio (SUM): " << (double)inter_persist_tot/(inter_persist_tot+intra_persist_tot) << endl;
-        *result << "Inter-Intra P ratio (AVG): " << ratio_inter_intra_persists/cache_level[i].num_caches << endl;
-        *result << "-----------------------------------------------------------------------\n";
-        *result << "Inter-thread Persist Cycles: " <<  inter_pcycles_tot << endl;
-        *result << "Intra-thread Persist Cycles: " <<  intra_pcycles_tot << endl;
-        *result << "Inter-Intra PC ratio (SUM): " << (double)inter_pcycles_tot/(inter_pcycles_tot+intra_pcycles_tot) << endl;
-        *result << "Inter-Intra PC ratio (AVG): " << ratio_inter_intra_persist_cycles/cache_level[i].num_caches << endl;
-        *result << "-----------------------------------------------------------------------\n";
-        *result << "Write-Backs count and delay " <<  clwb_tot << " \t" << delay_clwb_tot << endl;
-        *result << "Critical Write-Backs count and delay " <<  critical_clwb << " \t" << delay_critical_clwb << endl;
-        *result << "NonCritical Write-Backs count and delay " <<  noncritical_clwb << " \t" << delay_noncritical_clwb << endl;
-        *result << "External Write-Backs count and delay " <<  external_clwb << " \t" << delay_external_clwb << endl;
-        *result << "Natural Write-Backs count and delay " <<  natural_clwb << " \t" << delay_natural_clwb << endl;
-        *result << "ALL Natural Write-Backs count and delay " <<  all_natural_clwb << " \t" << delay_all_natural_clwb << endl;
-        *result << "Sync Write-Backs count and delay " <<  sync_clwb << " \t" << delay_sync_clwb << endl;
-        *result << "Critical Persist count and delay " <<  critical_persist_wb << " \t" << critical_persist_wb << endl;
-        *result << "All perisist (Persistence)" <<  persist_count << " \t" << persist_delay << endl;
-        *result << "Sync WB/Critical WB " <<  (double)sync_clwb/critical_clwb << endl;
-        *result << "Critical WB/All WB " <<  (double)critical_clwb/clwb_tot << endl;
-        *result << "-----------------------------------------------------------------------\n";
-        *result << "Total Epochs Sum " <<  epoch_sum_tot << endl;
-        *result << "Total IDs Sum " <<  epoch_id_tot << endl;
-        *result << "Total Counted IDs Sum " <<  epoch_id2_tot << endl;
-        *result << "Average Writes/Epoch" <<  (double)epoch_sum_tot/epoch_id_tot << endl;
-
-        *result << "-----------------------------------------------------------------------\n\n\n";
-        
-        *result << "Intra-conflict " <<  intra_tot << endl;
-        *result << "Intra-conflict: Visibility " <<  intra_vis_conflicts_tot << endl;
-        *result << "Intra-conflict: Evictions " <<  intra_evi_conflicts_tot << endl;
-        *result << "Intra-conflict: Evictions-M" <<  intra_evi_M_conflicts_tot << endl;
-
-        *result << "Intra-allconflict " <<  intra_allconflicts_tot << endl;
-        *result << "Intra-allconflict:Visibility " <<  intra_vis_allconflicts_tot << endl;
-        *result << "Intra-allconflict:Evictions " <<  intra_evi_allconflicts_tot << endl;
-        *result << "Intra-allconflict:Evictions_M " <<  intra_evi_M_allconflicts_tot << endl;
-        *result << "Intra-allconflict: Evictions-M" <<  intra_M_allconflicts_tot << endl;
-
-        *result << "Intra-persists: All " <<  intra_persist_tot << endl;
-        *result << "Intra-persists: Visibility " <<  intra_vis_persists_tot << endl;
-        *result << "Intra-persists: Evictions " <<  intra_evi_persists_tot << endl;
-        *result << "Intra-persists: Evictions-M" <<  intra_evi_M_persists_tot << endl;
-        *result << "-----------------------------------------------------------------------\n";
-        *result << "Inter-conflicts " <<  inter_tot << endl;
-        *result << "Inter-conflicts-M " <<  inter_M_conflicts_tot << endl;
-        *result << "Inter-allconflicts "  <<  inter_allconflicts_tot << endl;
-        *result << "Inter-allconflicts-M " <<  inter_M_allconflicts_tot << endl;
-        *result << "Inter-persists " <<  inter_persist_tot << endl;
-        *result << "Inter-persists-M " <<  inter_M_persists_tot << endl;
-        *result << "-----------------------------------------------------------------------\n";
-        *result << "Invals - "  <<  invals_tot << endl;
-        *result << "InvalsM - " <<  invals_M_tot << endl;
-        *result << "InvalsE - " <<  invals_E_tot << endl;
-        *result << "Shares - "  <<  shares_tot << endl;
-        *result << "SharesM - " <<  shares_M_tot << endl;
-        *result << "SharesE - " <<  shares_E_tot << endl;      
-        *result << "-----------------------------------------------------------------------\n\n\n";
-
-        *result << "Total Lowest Epoch Size " <<  lowest_epoch_size_tot << endl;
-        *result << "Total ZN Conflicts from caches " <<  nzero_conflicts_tot << endl;
-        *result << "Total NZ conflicts " <<  (intra_tot+inter_tot) << endl;
-        *result << "Average Lowest Epoch Size " <<  (double)lowest_epoch_size_tot/(intra_tot+inter_tot+1) << endl;
-        *result << "Average Largest Lowest Epoch Size " <<  largest_lowest_epoch_size_tot<< endl;
-        *result << "Max Largest Lowest Epoch Size " <<  max_largest_lowest_epoch_size<< endl;
-
-        *result << "Total Number of Epochs Flushed " <<  num_epochs_flushed_tot << endl;
-        *result << "Total Number of (NZ) Epochs Flushed " <<  num_nzero_epochs_flushed_tot << endl;
-        *result << "Average Number of (NZ) Epochs Flushed per conflict" <<  (double)num_nzero_epochs_flushed_tot/(nzero_conflicts_tot+1) << endl;
-
-        *result << "Largest Epoch flushed (across all threads) " <<  max_largest_epoch_size << endl;
-        *result << "Average largest epoch flushed (/num-threads) " <<  largest_epoch_size_tot << endl;
-        
-        *result << "-----------------------------------------------------------------------\n\n\n";      
-
-
-        *result << "Total Persists " <<  all_persists_tot << endl;
-        *result << "all_pf_persists " <<  all_pf_persists_tot << endl;
-        *result << "vis_pf_persists " <<  vis_pf_persists_tot << endl;
-        *result << "evi_pf_persists " <<  evi_pf_persists_tot << endl;
-        *result << "inter_pf_persists " << inter_pf_persists_tot << endl; 
-
-        *result << "=================================================================\n\n";
-        //Statistic FIle
-        double conf_rate =(double)inter_persist_tot/(inter_persist_tot+intra_persist_tot);
-        double wbdelay_rate = (double)delay_critical_clwb/(delay_critical_clwb+delay_noncritical_clwb);
-        double wb_rate = (double)critical_clwb/(critical_clwb+noncritical_clwb);
-        double p_rate = (double) critical_persist_wb/clwb_tot;
-        double pdelay_rate = (double) delay_critical_persist_wb/delay_clwb_tot;
-        //double clwb = clwb_tot;
-
-        //ASPLOS Updates WB
-        //*stat << inter_persist_tot << "," << intra_persist_tot << "," << persist_count << "," << clwb_tot << "," << critical_clwb << "," << noncritical_clwb << "," << natural_clwb << "," << external_clwb << "," << inter_tot << "," << intra_tot <<"," << same_block_count_tot << "," << delay_same_block_tot << ","  << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
-        
-        *stat   << clwb_tot << ","
-                << critical_clwb << ","
-                << critical_clwb << ","
-                << noncritical_clwb << ","
-                << natural_clwb << ","
-                << all_natural_clwb << ","
-
-                << intra_tot << ","
-                << intra_vis_conflicts_tot << ","
-                << intra_evi_conflicts_tot << ","
-                << intra_evi_M_conflicts_tot << ","
-
-                << intra_allconflicts_tot << ","
-                << intra_vis_allconflicts_tot << ","
-                << intra_evi_allconflicts_tot << ","
-                << intra_evi_M_allconflicts_tot << ","
-                << intra_M_allconflicts_tot << ","
-
-                << intra_persist_tot << ","
-                << intra_vis_persists_tot << ","
-                << intra_evi_persists_tot << ","
-                << intra_evi_M_persists_tot << ","
-
-                << inter_tot << ","
-                << inter_M_conflicts_tot << ","
-                << inter_allconflicts_tot << ","
-                << inter_M_allconflicts_tot << ","
-                << inter_persist_tot << ","
-                << inter_M_persists_tot << ","
-
-                << all_persists_tot << ","
-                << all_pf_persists_tot << ","
-                << vis_pf_persists_tot << ","
-                << evi_pf_persists_tot << ","
-                << inter_pf_persists_tot << endl;
-        //Adding new division of visibility/evictions/ and PF to stat file
-
-        *result << conf_rate << "," << wb_rate << "," << wbdelay_rate << "," << p_rate << "," << pdelay_rate << "," << clwb_tot << "," << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
-    }
-    
-    ins_count =0;   
-    miss_count = 0;
-    evict_count = 0;
-    wb_count = 0;
-    miss_rate = 0;
-    for (int i = 0; i < network.getNumNodes(); i++) {
-        if (directory_cache[i] != NULL) {
-            ins_count += directory_cache[i]->getInsCount();
-            miss_count += directory_cache[i]->getMissCount();
-            evict_count += directory_cache[i]->getEvictCount();
-            wb_count += directory_cache[i]->getWbCount();
-        }
-    }
-    miss_rate = (double)miss_count / (double)ins_count; 
-       
-    *result << "Directory Cache"<<"===========================================================\n";
-    *result << "Simulation results for "<< xml_sys->directory_cache.size << " Bytes " << xml_sys->directory_cache.num_ways
-               << "-way set associative cache model:\n";
-    *result << "The total # of memory instructions: " << ins_count << endl;
-    *result << "The # of cache-missed instructions: " << miss_count << endl;
-    *result << "The # of replaced instructions: " << evict_count << endl;
-    *result << "The cache miss rate: " << 100 * miss_rate << "%" << endl;
-    *result << "=================================================================\n\n";
-
-
-    if (verbose_report) {
-        *result << "Statistics for each cache with non-zero accesses: \n\n";
-        for (i=0; i<num_levels; i++) {
-            *result << "LEVEL"<<i<<"*****************************************************\n\n";
-            for (j=0; j<cache_level[i].num_caches; j++) {
-                if (cache[i][j] != NULL) {
-                    if (cache[i][j]->getInsCount() > 0) {
-                        *result << "The " <<j<<"th cache:\n";
-                        cache[i][j]->report(result);
-                    }
-                }
+             if(psrc==VIS){
+                cache_cur->intra_vis_conflicts++;
+             }else if(psrc == EVI){
+                cache_cur->intra_evi_conflicts++;
+                if(line_call->state==M) cache_cur->intra_evi_M_conflicts++;
+                //else cache_cur->intra_evi_E_conflicts++;
              }
-            *result << "************************************************************\n\n";
         }
 
-        if (directory_cache != NULL) {
-            *result << "****************************************************" <<endl;
-            *result << "Statistics for each directory caches with non-zero accesses" <<endl;
-            for (int i = 0; i < network.getNumNodes(); i++) {
-                if (directory_cache[i] != NULL) {
-                    if (directory_cache[i]->getInsCount() > 0) {
-                        *result << "Report for directory cache "<<i<<endl;
-                        directory_cache[i]->report(result);
-                    }
-                }
-            }
+        cache_cur->intra_allconflicts++;
+        if(line_call->state == M) cache_cur->intra_M_allconflicts++;
+
+        if(psrc==VIS){
+               cache_cur->intra_vis_allconflicts++;
+        }else if(psrc == EVI){
+                cache_cur->intra_evi_allconflicts++;
+                if(line_call->state==M) cache_cur->intra_evi_M_allconflicts++;
+                //else cache_cur->intra_evi_E_allconflicts++;
         }
 
-        if (tlb_cache != NULL) {
-            *result << "****************************************************" <<endl;
-            *result << "Statistics for each TLB cache with non-zero accesses" <<endl;
-            for (int i = 0; i < num_cores; i++) {
-                if (tlb_cache[i].getInsCount() > 0) {
-                    *result << "Report for tlb cache "<<i<<endl;
-                    tlb_cache[i].report(result);
-                }
-            }
+        cache_cur->intra_persists += persist_count;
+        cache_cur->intra_persist_cycles += delay[core_id]; //Not correct, but not effects the core
+
+        //psrc?
+        if(psrc==VIS){
+            cache_cur->intra_vis_persists += persist_count;
+            cache_cur->intra_vis_persist_cycles += delay[core_id];
         }
+        else if(psrc==EVI){            
+            cache_cur->intra_evi_persists += persist_count;
+            cache_cur->intra_evi_persist_cycles += delay[core_id];
+            if(line_call->state == M) cache_cur->intra_evi_M_persists += persist_count;
+            //else cache_cur->intra_evi_E_persists += persist_count;
+        } 
+
+        cache_cur->critical_conflict_persists += persist_count; //Should be equal to both intra-thread and inter-thread
+        cache_cur->critical_conflict_persist_cycles += delay[core_id]; //Delay
+
+        cache_cur->write_back_count += persist_count;
+        cache_cur->write_back_delay += delay[core_id];
+
+        cache_cur->critical_write_back_count += persist_count;   //Write will be added later in the thread.
+        cache_cur->critical_write_back_delay += delay[core_id];
+        
+    }else{
+
+        //asplos-after: psrc: 2-writebacks
+        if(persist_count>0){
+             cache_cur->inter_conflicts++;
+             if(line_call->state==M)cache_cur->inter_M_conflicts++;
+             //else cache_cur->inter_E_conflicts++;
+
+        }  
+        cache_cur->inter_allconflicts++;
+            if(line_call->state==M) cache_cur->inter_M_allconflicts++;
+            //else cache_cur->inter_E_allconflicts++;
+
+        cache_cur->inter_persists += persist_count;
+        cache_cur->inter_persist_cycles += delay[core_id]; 
+
+        if(line_call->state == M) cache_cur->inter_M_persists += persist_count;
+        //else cache_cur->inter_E_persists += persist_count;
+        //New
+        cache_cur->write_back_count += persist_count+1;
+        cache_cur->noncritical_write_back_count += persist_count+1; //Is this true
+
+        cache_cur->write_back_delay += delay[core_id]+1;
+        cache_cur->noncritical_write_back_delay += delay[core_id]+1;
+        
+        cache[0][req_core_id]->external_critical_wb_count += persist_count;
+        cache[0][req_core_id]->external_critical_wb_delay += delay[core_id];  
     }
-}
 
-System::~System()
-{
-        int i, j;
-        for (i=0; i<num_levels; i++) {
-            for (j=0; j<cache_level[i].num_caches; j++) {
-                if (cache[i][j] != NULL) {
-                    if (i != 0) {
-                        delete [] cache[i][j]->child;
-                    }
-                    delete cache[i][j];
-                }
-            }
-        }
-        for (i=0; i<num_levels; i++) {
-            delete [] cache[i];
-            delete [] cache_lock[i];
-            delete [] cache_init_done[i];
-        }
-        for (i = 0; i < network.getNumNodes(); i++) {
-            if (directory_cache[i] != NULL) {
-                delete directory_cache[i];
-            }
-        }
-        delete [] hit_flag;
-        delete [] delay;
-        delete [] home_stat;
-        delete [] cache;
-        delete [] cache_level;
-        delete [] directory_cache;
-        delete [] tlb_cache;
-        delete [] cache_lock;
-        delete [] directory_cache_lock;
-        delete [] cache_init_done;
-        delete [] directory_cache_init_done;
+
+    //Buffered Eopch Persistence
+    #ifdef DEBUG
+    printf("Number of persists (Buffered Epoch Persistency END): %d \n", persist_count); 
+    #endif
+    cache_cur->incPersistDelay(delay[core_id]);
+    return delay[core_id];
 }
+*/
