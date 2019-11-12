@@ -97,6 +97,11 @@ node_t *new_node(val_t val, node_t *next, int transactional)
     #ifdef B256
     node->load1=(long)val+1;
     node->load2=(long)val+2;
+    #endif
+
+    #ifdef B256
+    node->load1=(long)val+1;
+    node->load2=(long)val+2;
     node->load3=(long)val+3;
     node->load4=(long)val+4;
     #endif

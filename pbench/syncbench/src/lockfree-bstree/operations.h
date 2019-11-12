@@ -88,6 +88,11 @@ int perform_one_insert_window_operation(thread_data_t* data, seekRecord_t * R, s
 	newLeaf->load24=(long)newKey+24;
 	#endif
 
+	#ifdef B128
+  	newLeaf->load1=(long)newKey+1;
+	newLeaf->load2=(long)newKey+2;
+	#endif
+
 	#ifdef B256
   	newLeaf->load1=(long)newKey+1;
 	newLeaf->load2=(long)newKey+2;

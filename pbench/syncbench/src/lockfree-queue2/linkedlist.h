@@ -61,7 +61,8 @@ typedef intptr_t val_t;
 
 //#define B4
 //#define B96
-#define B4
+//#define B4
+#define B128
 
 typedef long load_t;
 
@@ -135,11 +136,18 @@ typedef struct node {
 	load_t load24;
 	#endif
 
+	#ifdef B128
+		load_t load1 __attribute__((aligned(64)));
+		load_t load2; 
+	#endif
+
+
 	#ifdef B256
-		load_t load1; __attribute__((aligned(64)));
-		load_t load2; __attribute__((aligned(64)));
-		load_t load3; __attribute__((aligned(64)));
-		load_t load4; __attribute__((aligned(64)));
+		load_t load1 __attribute__((aligned(64)));
+		load_t load2 __attribute__((aligned(64)));
+		load_t load3 __attribute__((aligned(64)));
+		//load_t load4; __attribute__((aligned(64)));
+		load_t load4;
 
 	#endif
 

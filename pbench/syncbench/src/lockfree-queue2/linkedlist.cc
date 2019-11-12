@@ -94,6 +94,11 @@ node_t *new_node(val_t val, node_t *next, int transactional)
       node->load24=(long)val+24;    
     #endif 
 
+  #ifdef B128
+    node->load1=val+1;
+    node->load2=val+2;
+  #endif
+
   #ifdef B256
     node->load1=val+1;
     node->load2=val+2;
