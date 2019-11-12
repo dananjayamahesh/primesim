@@ -42,6 +42,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "dram.h"
 #include "common.h"
 
+#include "pbuff.h"
+
 typedef enum SysType
 {
     DIRECTORY = 0,
@@ -144,10 +146,17 @@ class System
         bool proactive_flushing;
         int*       delay_persist;
 
+        bool pbuff_enabled;
+
         int*       delay_tmp; // For the flush operations.
         int*       delay_llc;
         int*       delay_mc;
         int*       return_delay;
+        int*       return_timer;
+
+        //Persist Buffer
+        PBuff * persist_buffer; 
+        MCQBuff * mem_ctrl_queue;
 
 };
 

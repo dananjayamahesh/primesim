@@ -1,5 +1,6 @@
 //===========================================================================
-// common.h 
+// page_table.cpp contains a simple page translation model to allocate 
+// physical pages sequentially starting from 0
 //===========================================================================
 /*
 Copyright (c) 2015 Princeton University
@@ -28,86 +29,79 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef COMMON_H
-#define COMMON_H
 
+#include "pbuff.h"
 
-#define PADSIZE 56  // 64 byte line size: 64-8
-#define THREAD_MAX  1024 // Maximum number of threads in one process
+using namespace std;
 
-#define RELEASE_PERSISTENCY 1
-
-enum MessageTypes
+void PBuff::init(int pbuff_size_in, int delay_in)
 {
-    MEM_REQUESTS = 0,
-    PROCESS_STARTING = -3,
-    PROCESS_FINISHING = -1,
-    INTER_PROCESS_BARRIERS = -2,
-    NEW_THREAD = -4,
-    THREAD_FINISHING = -8,
-    PROGRAM_EXITING = -5
-};
-
-typedef struct MsgMem
-{
-    bool        mem_type; //1 means write, 0 means read
-    int         mem_size; 
-    uint64_t    addr_dmem; 
-
-    //Adding Release Consistency (RC) support to messages
-    bool     is_acquire;
-    bool     is_release;
-    bool    is_rmw;
+    pbuff_size = pbuff_size_in;
+    access_delay = delay_in;      
+    lock = new pthread_mutex_t;
+    pthread_mutex_init(lock, NULL);
+    pbuff = NULL;
+    head = NULL;
+    tail = NULL;
+}
+         
+PBuffLine * PBuff::access(uint64_t addr, bool barrier, bool release){
     
-    union
-    {
-        int64_t     timer;
-        int64_t     message_type;
-    };
+    //If the access successful then 
+    cout << "PBuff Access" << endl;
+    return NULL;
+}  
 
-} MsgMem;
-
-enum MemType
-{
-    RD    = 0,  //read
-    WR    = 1,  //write
-    WB    = 2,   //writeback
-    CLWB  = 3
-};
-
-enum PersistSource
-{
-    VIS    = 0,  //visibility
-    EVI    = 1,  //Evcitions/Replacements
-    WRB    = 2,  //writeback
-    OTH    = 3
-};
-
-typedef enum PersistModel
-{
-    NONB = 0,
-    FLLB = 1, //FULL BARRIER
-    RLXB = 2, //RELAXED BARRIER
-    RLSB = 3, //RELEASE BARRIER
-    BEPB = 4, //BEP BARRIER - ARPIT, not arpit LB++ needs proactive flushing
-    FBRP = 6, //Full barrier on Release Persistency
-
-    PBPB = 10, //persist buffer+no persistency (Persist Buffer+Persist Barrier)
+int PBuff::insert(uint64_t addr){
     
-    BBPF = 7, //BEP with proactive flushing. LB++. PF
-    RPPF = 8  //Release Persistency with PF.
-} PersistModel;
+    PBuffLine pline;
+    pline.timestamp = 0;
+    printf("%lx \n", pline.timestamp);
+    return 1;
+}
 
-#define SYNCBENCH
+//Remove the head-only head can be removed.
+PBuffLine * PBuff::remove(uint64_t addr){
+    cout << "PBuff Remove" << endl;
+    return NULL;
+}
 
-//#define DEBUG
-//#define PDEBUG
-#define LOWER_EPOCH_FLUSH
-//#define ACQREL
+void PBuff::report(ofstream* result)
+{
+    *result << "Persist Buffers - Kolli:\n";  
+}
 
-//Changes After the ASPLOS Submission
-#define ASPLOS_AFTER
+PBuff::~PBuff()
+{
+    pthread_mutex_destroy(lock);
+    delete lock;
+}
 
-//#define DRAM_OUT_ENABLE
 
-#endif  // COMMON_H
+//-------------------------------------------------------------------------------------------
+void MCQBuff::init(int mcq_buff_size_in, int delay_in){
+   
+   cur_size = 0;
+   max_size = mcq_buff_size_in;   
+   access_delay = delay_in;
+   head = NULL;
+   tail = NULL;
+
+}
+
+int MCQBuff::insert(PBuffLine * pbuff_line, uint64_t addr, int core_id){
+    cout << "MCQBuff Insert" << endl;
+    return 1;
+} 
+
+PBuffLine * MCQBuff::remove(uint64_t addr){
+    cout << "MCQBuff Remove" << endl;
+    return  NULL;
+} 
+
+MCQBuff::~MCQBuff(){
+    pthread_mutex_destroy(lock);
+    delete lock;
+}
+
+

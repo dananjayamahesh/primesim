@@ -77,8 +77,13 @@ void System::init(XmlSys* xml_sys_in)
         pmodel = RLSB;
         proactive_flushing = true; //BEPB with PF: LB++
     }
-    printf("Persistent Model %d and Proactive-Flushing Enabled:%s \n", pmodel, (proactive_flushing)?"Yes":"No");
+    else if(pmodel == PBPB){
+        //NONB + persist buffer based design.
+        pmodel = NONB;
+        pbuff_enabled = true;  //Persist Buffer based design.
+    }
 
+    printf("Persistent Model %d and Proactive-Flushing Enabled:%s,  Persist-Buffer Enabled:%s \n", pmodel, (proactive_flushing)?"Yes":"No", (pbuff_enabled)?"Yes":"No" );
 
     hit_flag = new bool [num_cores];
     delay = new int [num_cores];
@@ -86,6 +91,7 @@ void System::init(XmlSys* xml_sys_in)
     delay_llc = new int [num_cores];
     delay_mc = new int [num_cores];
     return_delay = new int [num_cores];
+    return_timer = new int [num_cores];
 
     for (i=0; i<num_cores; i++) {
         hit_flag[i] = false;
@@ -94,6 +100,8 @@ void System::init(XmlSys* xml_sys_in)
         delay_llc[i] = 0;
         delay_mc[i] = 0;
         return_delay[i] = 0;
+        return_timer[i] = 0;
+
     }
 
     delay_persist = new int [num_cores];
@@ -169,6 +177,12 @@ void System::init(XmlSys* xml_sys_in)
         directory_cache_init_done[i] = false;
     }
 
+    //Persist Buffer Based Design.
+    persist_buffer = new PBuff[num_cores];
+    //initialize
+    mem_ctrl_queue =  new MCQBuff[1];
+    //initialize
+
     page_table.init(page_size, xml_sys->page_miss_delay);
     dram.init(dram_access_time);
 }
@@ -207,6 +221,12 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
  
     if (sys_type == DIRECTORY) {
         mesi_directory(cache[0][core_id], 0, cache_id, core_id, ins_mem, timer + delay[core_id]);
+        //Delay has been added to the Core-Id.
+        // persist buffer-based design. delay += (persist buffer design). cache_cur = cache[0][core_id];
+        //pbuff_insert(); --> mcq_insert(); --> dram_access();
+        if(pmodel == NONB && pbuff_enabled){
+            //Access Persist Buffer.
+        }
     }
     else {
         mesi_bus(cache[0][core_id], 0, cache_id, core_id, ins_mem, timer + delay[core_id]);
@@ -224,9 +244,9 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
     
             }
      #endif
-
     return delay[core_id];
 }
+
 
 
 //Only call in level0
@@ -1042,7 +1062,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                         cache_cur->all_natural_eviction_count++;
                         cache_cur->all_natural_eviction_delay += delay_wb;
 
-
+                        //natural writebacks of the no-persistency does not count.
                         if(level ==0){
                             if(pmodel == RLSB){ //Becuase write-backs happenes in the criticial path
                                 delay[core_id] = before_delay; //No write-back cost. happenes outside the critical path of execution
@@ -1183,6 +1203,10 @@ int System::fullBarrierFlush(int64_t clk_timer, Cache *cache_cur, int epoch_id, 
     if(core_id != req_core_id){
         delay[core_id]  = 0;
     }
+
+    delay_tmp[core_id] = delay[core_id];
+    int start_delay = delay_tmp[core_id];
+    delay_llc[core_id] = 0; return_delay[core_id] = 0; return_timer[core_id]= 0;
     
     int level = cache_cur->getLevel(); 
     int persist_count =0;   
@@ -1205,13 +1229,18 @@ int System::fullBarrierFlush(int64_t clk_timer, Cache *cache_cur, int epoch_id, 
                         //uint64_t address_tag = line_cur->tag;
                         ins_mem.mem_type = WB;   
                         ins_mem.atom_type = NON; 
-                        ins_mem.lazy_wb = false;     //Precaution. 34 probelm.                                       
+                        ins_mem.lazy_wb = false;     //Precaution. 34 probelm.    
+                        delay[core_id] = start_delay;
+
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
                         
                         cache_cur->incPersistCount();
                         persist_count++;
+
+                        delay_tmp[core_id] += delay[core_id]; //delay[core_id] = start_delay;
+                        timer += return_delay[core_id]; //delay[core_id] = delay_tmp[core_id];
                         
                         line_cur->dirty = 0;
                         line_cur->state = I;
@@ -1221,6 +1250,8 @@ int System::fullBarrierFlush(int64_t clk_timer, Cache *cache_cur, int epoch_id, 
     } 
 
     //same cores.
+    delay[core_id] = delay_tmp[core_id];
+
    //aspolos-after
         if(persist_count>0){
              cache_cur->intra_conflicts++;
@@ -1351,6 +1382,10 @@ int System::bepochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, 
         delay[core_id]  = 0;
     }
 
+    delay_tmp[core_id] = delay[core_id];
+    int start_delay = delay_tmp[core_id];
+    delay_llc[core_id] = 0; return_delay[core_id] = 0; return_timer[core_id]= 0;
+
     int level = cache_cur->getLevel(); 
     int persist_count =0;
 
@@ -1370,14 +1405,19 @@ int System::bepochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, 
                     i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
                     #endif
                         ins_mem.mem_type = WB;   
-                        ins_mem.atom_type = NON;                                             
+                        ins_mem.atom_type = NON;          
+                        delay[core_id] = start_delay;
+
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
                         
                         cache_cur->incPersistCount();
                         persist_count++;
-                        
+
+                        delay_tmp[core_id] += delay[core_id]; //delay[core_id] = start_delay;
+                        timer += return_delay[core_id]; //delay[core_id] = delay_tmp[core_id];
+                                                
                         line_cur->dirty = 0;
                         //line_cur->state = I; //Stay Still
                     }
@@ -1386,7 +1426,7 @@ int System::bepochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, 
     } 
     //Check. Need to flush the calling line as well
     //printf("Here \n");
-
+    delay[core_id] = delay_tmp[core_id];
             //Counts
     if(core_id == req_core_id){
         
@@ -1694,6 +1734,7 @@ int System::epochPersistWithoutPF(int64_t clk_timer, Cache *cache_cur, InsMem *i
 }
 
 
+//Arpit Model
 int System::epochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
     
     //after-asplos
@@ -1714,16 +1755,19 @@ int System::epochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, L
     //timing
     //delay_tmp[core_id] = 0;
     //int start_delay = 0;
-    //delay_tmp[core_id] += delay[core_id];
-    //start_delay = delay_tmp[core_id];
 
-    //delay[core_id] = 0;   //Check this. Need to chaneg.  
+    //delay[core_id] = 0;   //Check this. Need to change.  
     if(core_id != req_core_id){
         delay[core_id]  = 0;
     }
 
+    delay_tmp[core_id] = delay[core_id];
+    int start_delay = delay_tmp[core_id];
+    delay_llc[core_id] = 0; return_delay[core_id] = 0; return_timer[core_id]= 0;
+
+
     int level = cache_cur->getLevel(); 
-    int persist_count =0;
+    int persist_count = 0;
     
     //Check thi: method-local intialization
     //Proactive Flushing (PF): reduce the conflicts. allow lazy write-backs and coalecsing inside the cache-line.
@@ -1751,6 +1795,7 @@ int System::epochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, L
                         //if(proactive_flushing && (line_cur->max_epoch_id == et_lowest_epoch_id))
                         //    ins_mem.lazy_wb =true; //new lazy write-backs: no delay is added.                      
 
+                        delay[core_id] = start_delay;
                         //dramsim2: add access delay.
                         //timing - delay[core_id] = start_delay;
                         //dramsim2: resolve llc conflicts. Go and check llc and push down cachelines. 
@@ -1762,8 +1807,8 @@ int System::epochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, L
                         //ins_mem.lazy_wb =false;
 
                         //timing
-                        //delay_tmp[core_id] += delay[core_id];
-                        //timer += return_delay[core_id];
+                        delay_tmp[core_id] += delay[core_id]; //delay[core_id] = start_delay;
+                        timer += return_delay[core_id]; //delay[core_id] = delay_tmp[core_id];
                         
                         cache_cur->incPersistCount();
                         persist_count++;      
@@ -1780,6 +1825,8 @@ int System::epochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, L
                 }
         }
     } 
+
+    delay[core_id] = delay_tmp[core_id];
 
     //Counts
     if(core_id == req_core_id){
@@ -1894,6 +1941,10 @@ int System::epochPersistWithPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_
         delay[core_id]  = 0;
     }
 
+    delay_tmp[core_id] = delay[core_id];
+    int start_delay = delay_tmp[core_id];
+    delay_llc[core_id] = 0; return_delay[core_id] = 0; return_timer[core_id]= 0;
+
     //delay_tmp[core_id] += delay[core_id];
     //start_delay = delay_tmp[core_id];
 
@@ -1902,21 +1953,21 @@ int System::epochPersistWithPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_
 
     //Check thi: method-local intialization
     
-    uint64_t writes_per_epoch [20000];
-    uint64_t is_epoch_checked [20000]; //This can be improved with last epoch checked. Without keeping 10000 size which is a waste.
+    uint64_t writes_per_epoch [40000];
+    bool is_epoch_checked [40000]; //This can be improved with last epoch checked. Without keeping 10000 size which is a waste.
     //int last_checked_epoch = 0; //this could be set global.
 
-    for(int ei=0;ei<20000;ei++){
+    for(int ei=0;ei<40000;ei++){
         writes_per_epoch[ei] = 0;
         is_epoch_checked[ei] = false;
     }
 
-    int lowest_epoch_id = 20000;    
+    int lowest_epoch_id = 40000;    
     int largest_max_epoch_id = 0;
 
     //asplos-after: build the epoch table from the cache?. Can be implemented as a linkedlist or hashmap. But not good.
     //asplos-after: we need to know what to flush. Building Epoch table
-    int et_lowest_epoch_id = 20000; //lowest epoch id.
+    int et_lowest_epoch_id = 40000; //lowest epoch id.
     // /int et_lowest_epoch_size = 0;
     
     for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {            
@@ -1972,6 +2023,7 @@ int System::epochPersistWithPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_
                         }                       
 
                         //timing- delay[core_id] = start_delay;
+                        delay[core_id] = start_delay;
                         //involes writebacks.
                         
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
@@ -1984,6 +2036,8 @@ int System::epochPersistWithPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_
                         //FUTURE NOTE: also we can do eager when epoch count>20000 or the limit. 
 
                         //timing-
+                        delay_tmp[core_id] += delay[core_id]; //delay[core_id] = start_delay;
+                        timer += return_delay[core_id]; //delay[core_id] = delay_tmp[core_id];
                         //delay_tmp[core_id] += delay[core_id];
                         //timer += return_delay[core_id];
 
@@ -1997,7 +2051,7 @@ int System::epochPersistWithPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_
                         //cache_cur->all_pf_persists++;
 
                         //asplos-after: counting the average number of cachelines per epoch that is flushing
-                        if(line_cur->max_epoch_id >= 20000){
+                        if(line_cur->max_epoch_id >= 40000){
                             //Error
                             cerr<<"Error: Wrong home id\n";
                             printf("Errorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
@@ -2023,6 +2077,7 @@ int System::epochPersistWithPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_
 
     //Check. Need to flush the calling line as well
     //printf("Here \n");
+    delay[core_id] = delay_tmp[core_id];
 
     //asplos-after: distinct epochs that is flushed and the amount of writes in the lowest epoch id
     //1. average number of writes in the minimum epoch.
@@ -2157,6 +2212,10 @@ int System::fullFlush(int64_t clk_timer, Cache *cache_cur, SyncLine * syncline, 
     if(core_id != req_core_id){
         delay[core_id]  = 0;
     }
+
+    delay_tmp[core_id] = delay[core_id];
+    int start_delay = delay_tmp[core_id];
+    delay_llc[core_id] = 0; return_delay[core_id] = 0; return_timer[core_id]= 0;
     
     int level = cache_cur->getLevel(); 
     int persist_count =0;   
@@ -2179,13 +2238,18 @@ int System::fullFlush(int64_t clk_timer, Cache *cache_cur, SyncLine * syncline, 
                         //uint64_t address_tag = line_cur->tag;
                         ins_mem.mem_type = WB;   
                         ins_mem.atom_type = NON; 
-                        ins_mem.lazy_wb = false;                                            
+                        ins_mem.lazy_wb = false;     
+                        delay[core_id] = start_delay; 
+
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
                         
                         cache_cur->incPersistCount();
                         persist_count++;
+
+                        delay_tmp[core_id] += delay[core_id]; //delay[core_id] = start_delay;
+                        timer += return_delay[core_id]; //delay[core_id] = delay_tmp[core_id];
                         
                         line_cur->dirty = 0;
                         line_cur->state = I;
@@ -2193,6 +2257,8 @@ int System::fullFlush(int64_t clk_timer, Cache *cache_cur, SyncLine * syncline, 
                 }
         }
     } 
+
+    delay[core_id] = delay_tmp[core_id];
 
     //Counts
     if(core_id == req_core_id){
@@ -2299,6 +2365,10 @@ int System::releaseFlush(int64_t clk_timer, Cache *cache_cur, SyncLine * synclin
         delay[core_id]  = 0;
     }
 
+    delay_tmp[core_id] = delay[core_id];
+    int start_delay = delay_tmp[core_id];
+    delay_llc[core_id] = 0; return_delay[core_id] = 0; return_timer[core_id]= 0;
+
     int level = cache_cur->getLevel(); 
     int persist_count =0;   
 
@@ -2328,7 +2398,10 @@ int System::releaseFlush(int64_t clk_timer, Cache *cache_cur, SyncLine * synclin
                         //uint64_t address_tag = line_cur->tag;
                         ins_mem.mem_type = WB;   //PutM
                         ins_mem.atom_type = NON;     
-                        ins_mem.lazy_wb = false;                                        
+                        ins_mem.lazy_wb = false;  
+
+                        delay[core_id] = start_delay;
+
                         line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, &ins_mem, timer + delay[core_id]);
@@ -2337,7 +2410,8 @@ int System::releaseFlush(int64_t clk_timer, Cache *cache_cur, SyncLine * synclin
                         persist_count++;
                         cache_cur->all_persists++;   
                         //cache_cur->critical_conflict_persists++; //But not in the critical path of this core
-                        
+                        delay_tmp[core_id] += delay[core_id]; //delay[core_id] = start_delay;
+                        timer += return_delay[core_id]; //delay[core_id] = delay_tmp[core_id];
                         //asplos-after counter bug found.
                         //cache_cur->write_back_count++;
                         //cache_cur->noncritical_write_back_count++;
@@ -2353,6 +2427,8 @@ int System::releaseFlush(int64_t clk_timer, Cache *cache_cur, SyncLine * synclin
 
     //printf("Here\n"); 
     //Counts
+    delay[core_id] = delay_tmp[core_id];
+
     //For the relese delays
     cache_cur->last_rel_persists = persist_count; 
     cache_cur->last_rel_persists_cycles = delay[core_id];
@@ -2457,6 +2533,10 @@ int System::releaseFlushWithPF(int64_t clk_timer, Cache *cache_cur, SyncLine * s
         delay[core_id]  = 0;
     }
 
+    delay_tmp[core_id] = delay[core_id];
+    int start_delay = delay_tmp[core_id];
+    delay_llc[core_id] = 0; return_delay[core_id] = 0; return_timer[core_id]= 0;
+
     int level = cache_cur->getLevel(); 
     int persist_count =0;   
 
@@ -2500,6 +2580,8 @@ int System::releaseFlushWithPF(int64_t clk_timer, Cache *cache_cur, SyncLine * s
                         ins_mem.atom_type = NON;     
                         ins_mem.lazy_wb = false;
 
+                        delay[core_id] = start_delay;
+
                         //option 1: randomly flush. Option 2: minimal epoch flush.
                         flipped = !flipped; //Interleaved Release Flush. NOTE: THIS SEEMS BUGGY.
                         if(!flipped){
@@ -2526,7 +2608,8 @@ int System::releaseFlushWithPF(int64_t clk_timer, Cache *cache_cur, SyncLine * s
                         persist_count++;
                         cache_cur->all_persists++;   
                         //cache_cur->critical_conflict_persists++; //But not in the critical path of this core
-                        
+                        delay_tmp[core_id] += delay[core_id]; //delay[core_id] = start_delay;
+                        timer += return_delay[core_id];       //delay[core_id] = delay_tmp[core_id];
                         //asplos-after counter bug
                         //cache_cur->write_back_count++;
                         //cache_cur->noncritical_write_back_count++;
@@ -2541,6 +2624,7 @@ int System::releaseFlushWithPF(int64_t clk_timer, Cache *cache_cur, SyncLine * s
     } 
 
     //printf("Here\n"); 
+    delay[core_id] = delay_tmp[core_id];
     //For the relese delays
     cache_cur->last_rel_persists = persist_count; 
     cache_cur->last_rel_persists_cycles = delay[core_id];
@@ -3232,14 +3316,14 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
                 delay += inval(cache[num_levels-1][(*line_cur->sharer_set.begin())], &ins_mem_old, core_id, timer+delay);
                 delay += network.transmit(*line_cur->sharer_set.begin(), home_id, cache_level[num_levels-1].block_size, timer+delay);
                 //dram.access(&ins_mem_old); - DRAMOut
-                dram.access(timer, &ins_mem_old);
+                dram.access(timer+delay, &ins_mem_old);
             }
             else if (line_cur->state == E) {
                 delay += network.transmit(home_id, *line_cur->sharer_set.begin(), 0, timer+delay);
                 delay += inval(cache[num_levels-1][(*line_cur->sharer_set.begin())], &ins_mem_old, core_id, timer+delay);
                 delay += network.transmit(*line_cur->sharer_set.begin(), home_id , 0, timer+delay);
                 //dram.access(&ins_mem_old); - DRAMOut
-                dram.access(timer, &ins_mem_old);
+                dram.access(timer+delay, &ins_mem_old);
             }
             else if (line_cur->state == S) {
                 delay_pipe = 0;
@@ -3284,7 +3368,7 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
         line_cur->sharer_set.clear();
         line_cur->sharer_set.insert(cache_id);
         //delay += dram.access(ins_mem); //Read data from DRAM
-        delay += dram.access(timer, ins_mem); // DRAMOut //Read data from DRAM
+        delay += dram.access(timer+delay, ins_mem); // DRAMOut //Read data from DRAM
     }   
     //Shard llc hit
     else {
@@ -3357,7 +3441,7 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
                 }else{
                     //NOP: M->S transition.
                     //delay += dram.access(ins_mem); -DRAMOut
-                    delay += dram.access(timer, ins_mem);
+                    delay += dram.access(timer+delay, ins_mem);
                 }            
 
             }
@@ -3383,17 +3467,19 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
         //asplos-after: WB also needs a variant for lazy and nlazy.
         else if((ins_mem->mem_type == WB)){
             //printf("writeback 0x%lx \n",ins_mem->addr_dmem);
+            return_delay[core_id] = this->delay[core_id];
+            return_timer[core_id] = timer+delay;
 
             //asplos-after: nonp dont need to writeback data.
             if(pmodel != NONB){
                 //delay += dram.access(ins_mem); - DRAMOut
-                delay += dram.access(timer, ins_mem);
+                delay += dram.access(timer+delay, ins_mem);
 
                 line_cur->state = I; //Remark:This need to be changed with. No need to invalidate.
             }                 
             else{
                //dram.access(ins_mem); 
-                dram.access(timer, ins_mem); 
+                dram.access(timer+delay, ins_mem); 
             } 
 
             //line_cur->state = I;
@@ -3402,14 +3488,16 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
 
         //after-asplos: add new clwb operations. //next lazy and nlazy operations.
         else if(ins_mem->mem_type == CLWB){ //Write-back
-                
+
+            return_delay[core_id] = this->delay[core_id];
+            return_timer[core_id] = timer+delay;
                 //Non-Invalidation writenbacks
             if(pmodel != NONB){ 
-                delay += dram.access(ins_mem);
+                delay += dram.access(timer+delay, ins_mem);
             }
             else {
                 //dram.access(ins_mem); //delay is not added.
-                dram.access(timer, ins_mem); //delay is not added. - DRAMOut
+                dram.access(timer+delay, ins_mem); //delay is not added. - DRAMOut
             }
                 //line_cur->state = I;
                 //line_cur->sharer_set.clear(); //Not necessary
@@ -3419,7 +3507,7 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
             line_cur->state = V;
             line_cur->sharer_set.clear();
             //dram.access(ins_mem); -DRAMOut
-            dram.access(timer, ins_mem);
+            dram.access(timer+delay, ins_mem);
         }
     }
     if (line_cur->state == B) {

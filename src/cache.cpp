@@ -193,7 +193,7 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
         for (uint64_t i = 0; i < num_sets; i++ ) {
             pthread_mutex_init(&lock_up[i], NULL);
             pthread_mutex_init(&lock_down[i], NULL);
-            line[i] = new Line [num_ways];
+            line[i] = new Line [num_ways]; // Fixed Size. Num of Ways
             for (uint64_t j = 0; j < num_ways; j++ ) {
                 line[i][j].state = I;
                 line[i][j].id = 0;
@@ -211,6 +211,7 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
         if(cache_type == DATA_CACHE && level==0){
             initSyncMap(SYNCMAP_SIZE); // Need the size
         }
+        
         
     }
     else if (cache_type == TLB_CACHE) {

@@ -41,9 +41,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "xml_parser.h"
 #include "bus.h"
 #include "common.h"
-//#define SYNCMAP_SIZE 1000
+//#define SYNCMAP_SIZE 1000 - largeser the better.
 #define SYNCMAP_SIZE 10000
 
+#define PBUFF_SIZE 4
 
 typedef struct Addr
 {
@@ -138,6 +139,33 @@ typedef struct SyncMap{
     int epoch_id;
     int size;
 }SyncMap;
+
+
+//Persist-Buffer based Design
+typedef struct PBuffEntry
+{
+    uint64_t cache_tag; 
+    uint64_t data;
+    bool is_barrier; //release or acquire.
+    bool is_empty;
+
+    //Only for Acquires- barrier. Need to track dependencies.
+    bool  is_dependent; //persistent depends on another core..
+    uint64_t dep_core_id; // Released-core id
+    uint64_t dep_cache_tag; //Cachline/ address.
+    uint64_t dep_rel_addr;
+
+} PBuffEntry;
+
+typedef struct PBuffFIFO{
+    PBuffEntry pbuff [PBUFF_SIZE]; //Lets keep initial size of 4.
+    int pbuff_size;
+
+    //ring buffer. start -> end as 
+    int start_index;
+    int end_index;
+    bool overplay; // when the end < start 
+}PBuffFIFO;
 
 class Cache
 {
