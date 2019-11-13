@@ -14,7 +14,7 @@ optype=regular
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
 
 #This was not run from 23-25
-CONF_NAME=syncbench-mbank-300cycles-nopfixed-33
+CONF_NAME=syncbench-mbank-300cycles-nopfixed-44-1
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DIMP2_FILE=${HOME}/repos/primesim/output/${optype}/stat2.txt
@@ -75,7 +75,7 @@ do
               		urate=100
             	fi
             	
-				for pmodel in 0 3 4 6
+				for pmodel in 0 8 3 7 4 6
 				do
 					echo "Executing $pmodel"
 					#operations=${rate2}
