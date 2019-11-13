@@ -36,6 +36,7 @@ using namespace std;
 
 void PBuff::init(int pbuff_size_in, int delay_in)
 {
+    cur_size = 0;
     max_size = pbuff_size_in;
     access_delay = delay_in;      
     lock = new pthread_mutex_t;

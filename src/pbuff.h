@@ -46,6 +46,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pthread.h> 
 
 //Persist-Buffer based Design
+#define PBUFF_SIZE 4
+#define MCQBUFF_SIZE 1
+
 typedef struct PBuffLine
 {
 	uint64_t timestamp;

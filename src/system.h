@@ -164,6 +164,8 @@ class System
         //only for the persist buffer dependencies. 
         int*       unique_write_id;
         //Only for the DPO dependency tracking.
+
+        bool*      is_last_access_dep;    
         int*       last_access_core; 
         int*       last_access_addr; //Cache_tag or address.
         int*       last_access_cache_tag;

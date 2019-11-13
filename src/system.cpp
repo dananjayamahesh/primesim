@@ -178,13 +178,19 @@ void System::init(XmlSys* xml_sys_in)
     }
 
     //Persist Buffer Based Design.
-    persist_buffer = new PBuff[num_cores];
-    //initialize
-    mem_ctrl_queue =  new MCQBuff[1];
-    //initialize
+    persist_buffer = new PBuff[num_cores];  
+    int pbuff_delay = 5;
 
+    for (i=0; i<num_cores; i++) {
+        //initialize persist buffers.
+        persist_buffer[i].init(PBUFF_SIZE, pbuff_delay);
+    }
+
+    mem_ctrl_queue =  new MCQBuff[1];
+    //initialize-
     unique_write_id = new int [num_cores];
     
+    is_last_access_dep = new bool [num_cores];
     last_access_core = new int [num_cores];
     last_access_addr = new int [num_cores];
     last_access_cache_tag = new int [num_cores];
@@ -194,12 +200,15 @@ void System::init(XmlSys* xml_sys_in)
     for (i=0; i<num_cores; i++) {
         unique_write_id[i] = 0;
 
+        is_last_access_dep[i] = false;
         last_access_core[i] = 0;
         last_access_addr[i] = 0;
         last_access_cache_tag[i] = 0;
-        is_last_acc_barrier[i] = 0;
+        is_last_acc_barrier[i] = false;
         unique_last_write_id[i] = 0;
     }
+
+
 
     page_table.init(page_size, xml_sys->page_miss_delay);
     dram.init(dram_access_time);
@@ -242,11 +251,21 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
         //Delay has been added to the Core-Id.
         // persist buffer-based design. delay += (persist buffer design). cache_cur = cache[0][core_id];
         //pbuff_insert(); --> mcq_insert(); --> dram_access();
+        
+        //Need some extra work to track dependencies.
+        is_last_access_dep[core_id] = false;
+        last_access_core[core_id] = -1;
+        last_access_addr[core_id] = -1;
+        last_access_cache_tag[core_id] = -1;
+        is_last_acc_barrier [core_id] = false;
+        unique_last_write_id[core_id] = 0;
+
+
         if(pmodel == NONB && pbuff_enabled){
             //Access Persist Buffer.
             printf("Access Persist Buffer Design"); //
             //Need to add delays.
-            if(ins_mem->mem_type == WR) accessPersistBuffer(timer+delay[core_id], core_id, ins_mem);
+            if(ins_mem->mem_type == WR) delay[core_id] += accessPersistBuffer(timer+delay[core_id], core_id, ins_mem);
         }
     }
     else {

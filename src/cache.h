@@ -44,8 +44,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //#define SYNCMAP_SIZE 1000 - largeser the better.
 #define SYNCMAP_SIZE 10000
 
-#define PBUFF_SIZE 4
-
 typedef struct Addr
 {
     uint64_t    index;
@@ -158,7 +156,7 @@ typedef struct PBuffEntry
 } PBuffEntry;
 
 typedef struct PBuffFIFO{
-    PBuffEntry pbuff [PBUFF_SIZE]; //Lets keep initial size of 4.
+    PBuffEntry pbuff [1]; //Lets keep initial size of 4.
     int pbuff_size;
 
     //ring buffer. start -> end as 
