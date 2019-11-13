@@ -117,4 +117,62 @@ Add epoch meters to RP.
 //
 34: diferent Epoch Persistency numbers to 32. 33 was running with PF.
  possible cause: lazy_wb random.
- 32 was un without PF and lazy_wb.
+ 32 was un without PF and lazy_wb. Fixed this issue in 35.
+
+ ASPLOS-AFTER: 35
+ 1. Need to fix the M->I and M->S writebacks in LLC for BEP/RP. This may increase the persistency overhead if we want. 
+
+ 2. RP's proactive flushing. How to do that?. RP can coaleacse writeback cachelines.
+
+ 3. Linkelist break issue.
+
+
+
+
+2019/10/04: Friday.
+BEP: eviction (M and E issue): change the only M model and see. RP does not effect since. But Both BEP and RP invoke a persist operation for the eviction(M and E).
+
+My ssumptoin fails: In BEP persist epoch time dominate than write back of individual cachelines.
+
+Also, M->S and M->E problem in both RP and BEP. NOP is fixed.
+
+
+Serious bug Found: else
+    if(pmodel == RLSB){
+        //printf("Release Persistence \n");
+        if(!proactive_flushing)
+            delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc);
+        else 
+            delay_tmp = releaseFlushWithPF(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc);
+        
+        cache_cur->incPersistDelay(delay_tmp); //Counters
+        //delay_tmp =  delay_tmp/2;
+    }
+
+    if(pmodel == FBRP){ //Epoch PErsistency
+        //printf("Full barrier Release Persistence \n");
+        delay_tmp = releaseFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc); 
+        cache_cur->incPersistDelay(delay_tmp); //Counters
+        //delay_tmp =  delay_tmp/2;
+    }
+    else if(pmodel == FLLB){
+        //printf("Epoch Persistence \n");
+        delay_tmp = fullFlush(cache_cur, syncline, line_cur, rel_epoch_id, req_core_id, psrc); //Full barrier
+        cache_cur->incPersistDelay(delay_tmp); //Counters
+        //delay_tmp =  delay_tmp/2;
+    }
+
+    else {
+        //printf("No Persistence \n");
+        //NO need to check syncmap
+        delay_tmp = 0;
+    }
+
+#ERRORl: else is running regardless of RLSB.
+Chaged : else if(pmodel == FBRP){ 
+
+Record of new bug found: delay_tmp is always 0 for the RLSB.
+37: without fixed
+38/39 -> fixed this. But seems to have a less effect. But lfqueue acts wierd.
+
+40: Add updated latencies for RLSB piggybacking. reduced latencies rather than full latencies.still running.
