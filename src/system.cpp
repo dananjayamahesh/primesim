@@ -101,14 +101,12 @@ void System::init(XmlSys* xml_sys_in)
         delay_mc[i] = 0;
         return_delay[i] = 0;
         return_timer[i] = 0;
-
     }
 
     delay_persist = new int [num_cores];
     for (i=0; i<num_cores; i++) {
         delay_persist[i] = 0;
     }
-
 
     cache_level = new CacheLevel [num_levels];
     for (i=0; i<num_levels; i++) {
@@ -180,14 +178,18 @@ void System::init(XmlSys* xml_sys_in)
     //Persist Buffer Based Design.
     persist_buffer = new PBuff[num_cores];  
     int pbuff_delay = 5;
+    int mcq_delay = 30;
 
     for (i=0; i<num_cores; i++) {
         //initialize persist buffers.
         persist_buffer[i].init(PBUFF_SIZE, pbuff_delay);
+        persist_buffer[i].dp_vector = new bool[num_cores];
+        persist_buffer[i].has_dp = false;        
     }
 
     mem_ctrl_queue =  new MCQBuff[1];
-    //initialize-
+    mem_ctrl_queue->init(MCQBUFF_SIZE, mcq_delay); //MCQ delay is too much
+    //initialize- 
     unique_write_id = new int [num_cores];
     
     is_last_access_dep = new bool [num_cores];
@@ -207,7 +209,6 @@ void System::init(XmlSys* xml_sys_in)
         is_last_acc_barrier[i] = false;
         unique_last_write_id[i] = 0;
     }
-
 
 
     page_table.init(page_size, xml_sys->page_miss_delay);
@@ -245,29 +246,47 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
     if (tlb_enable) {
         delay[core_id] = tlb_translate(ins_mem, core_id, timer);
     }
- 
+
+    //persist-buffer clean up- NOTE: TAKE CARE OF WRITES AFTER READ DEPENDENT.
+    ins_mem->return_unique_wr_id = 0;
+    ins_mem->response_core_id = 0;
+    ins_mem->is_return_dep = false; //CAN BE READ AD WELL.
+    ins_mem->is_return_dep_barrier = false; 
+
     if (sys_type == DIRECTORY) {
+
+        if(ins_mem->mem_type == WR){
+            unique_write_id[core_id]++; 
+            ins_mem->unique_wr_id = unique_write_id[core_id]; 
+        } else{
+            ins_mem->unique_wr_id = 0;
+        }//Only for persist-buffer design
+
         mesi_directory(cache[0][core_id], 0, cache_id, core_id, ins_mem, timer + delay[core_id]);
         //Delay has been added to the Core-Id.
-        // persist buffer-based design. delay += (persist buffer design). cache_cur = cache[0][core_id];
+        //persist buffer-based design. delay += (persist buffer design). cache_cur = cache[0][core_id];
         //pbuff_insert(); --> mcq_insert(); --> dram_access();
         
-        //Need some extra work to track dependencies.
-        is_last_access_dep[core_id] = false;
-        last_access_core[core_id] = -1;
-        last_access_addr[core_id] = -1;
-        last_access_cache_tag[core_id] = -1;
-        is_last_acc_barrier [core_id] = false;
-        unique_last_write_id[core_id] = 0;
-
-
         if(pmodel == NONB && pbuff_enabled){
             //Access Persist Buffer.
             printf("Access Persist Buffer Design"); //
-            //Need to add delays.
-            if(ins_mem->mem_type == WR) delay[core_id] += accessPersistBuffer(timer+delay[core_id], core_id, ins_mem);
+            //Adding to add delays.
+            if(ins_mem->is_return_dep){
+                //Insert into the dep vector.
+                if(ins_mem->is_return_dep_barrier){
+                    persist_buffer[core_id].has_dp = true;
+                    persist_buffer[core_id].dp_vector[ins_mem->response_core_id] = true;
+                }
+            }
+
+            if(ins_mem->mem_type == WR){
+                //need to clean the dep vector.
+                delay[core_id] += accessPersistBuffer(timer+delay[core_id], core_id, ins_mem);
+            }
+
         }
-    }
+
+    }//Mesi DIrectory
     else {
         mesi_bus(cache[0][core_id], 0, cache_id, core_id, ins_mem, timer + delay[core_id]);
     }
@@ -299,17 +318,36 @@ int System::accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem){
     PBuff * cur_pbuff = &persist_buffer[core_id];
     PBuffLine * cur_pbuff_line = cur_pbuff->access(ins_mem->addr_dmem); //Access Cacheline.
 
-    //pbuff hit. check barriers also. if a barrier presents, then no hit.
-    if(cur_pbuff_line != NULL){
+    //NOTE : write+barrier must always start a new epoch.--------->
+    //InsMem does not have it.
+    if(cur_pbuff->has_dp){ 
+            ins_mem->atom_type = RELEASE;
+            cur_pbuff_line = NULL; // New barrier logic
+    }
+
+    //pbuff hit. check barriers also. if a barrier presents, then no hit. cannot cross the barrier.
+    if( (cur_pbuff_line != NULL) ){
         //Just Access.  No barrier In between.     
         delay += cur_pbuff->getAccessDelay(); 
         cur_pbuff_line->last_addr = ins_mem->addr_dmem; //Check this.
+        cur_pbuff_line->unique_wr_id = ins_mem->unique_wr_id;
+        cur_pbuff_line->last_unique_wr_id = ins_mem->unique_wr_id;
+        cur_pbuff_line->num_wr_coal++;
 
     }else{
         //Insert. and solve conflicts.
         if(cur_pbuff->isFull()){
             //Removing line from the queue. Buff should not be empty
             PBuffLine * rline = cur_pbuff->remove();  //rline = removed line from the local pbuff
+            
+            //NOTE: Check dependencies and enforce to the same cacheline.
+            if(rline->has_dp){
+                for(int i=0; i<num_cores;i++){
+                    //Enforcing dependencies. //need a special function to accedd MCQ while solving dependencies of every core.
+                    if(i != core_id)
+                        if(rline->dp_vector[i]) delay+= flushPersistBuffer(timer, i, rline->last_addr); //IDEALLY CACHE TAG
+                }
+            }
             delay += accessMCQBuffer(timer+delay, core_id, rline);
         }  
 
@@ -322,6 +360,27 @@ int System::accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem){
             new_line.core_id = core_id;
             new_line.last_addr = ins_mem->addr_dmem;
             new_line.is_barrier = (ins_mem->atom_type != NON)? true: false; // Now: Only for the release.
+            new_line.unique_wr_id = ins_mem->unique_wr_id;
+            new_line.last_unique_wr_id = ins_mem->unique_wr_id;
+            new_line.num_wr_coal = 1;
+
+            //dp_vecotor : This is wrong. Acquire ceates a persist barrier.
+            if(cur_pbuff->has_dp){ 
+                cur_pbuff_line->has_dp = true;
+                cur_pbuff_line->dp_vector = cur_pbuff->dp_vector;
+                cur_pbuff->dp_vector = new bool[num_cores];
+                cur_pbuff->has_dp = false;
+                //for(int i=0;i<num_cores;i++){
+                //    cur_pbuff_line->dp_vecotor[i] = (cur_pbuff_line->dp_vecotor[i] | cur_pbuff->dp_vector[i]);
+                //}//Check this.
+            }
+
+            //persist-buffer dependencies
+            ins_mem->return_unique_wr_id = 0;
+            ins_mem->response_core_id = 0;
+            ins_mem->is_return_dep = false;
+            ins_mem->is_return_dep_barrier = false; //Read or write to the barrier.
+
             // NEED TO UPDATE ACQUIRE BARRIER BY TRACKING COHERENCE.
             //Update dependent details. This need to be coded. On Acquire we need to have a barrier on dependent side.
             cur_pbuff->insert(&new_line);
@@ -329,6 +388,27 @@ int System::accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem){
     }
     //unlock
     return delay;
+}
+
+int System::flushPersistBuffer(uint64_t timer, int core_id, uint64_t addr){
+
+    int delay=0;
+    //Go throught he buffer. Flush all dependednt and required cachline.
+    PBuff * cur_pbuff = &persist_buffer[core_id];
+    PBuffLine * cur_pbuff_line = cur_pbuff->access(addr); // CHECK this!!!!!!!!!!!!!!!!!!!
+
+    //PBuffLine * tmp = cur_pbuff->head;
+    if(cur_pbuff_line != NULL){
+
+        while(true){
+        
+            PBuffLine * rline = cur_pbuff->remove(); //This moves the HEAD pointer as well.
+            delay += accessMCQBuffer(timer+delay, core_id, rline);    
+            if(rline == cur_pbuff_line)break;
+         } 
+    }
+
+     return delay;
 }
 
 //MCQ-BUFFER
@@ -357,6 +437,7 @@ int System::accessMCQBuffer(uint64_t timer, int core_id, PBuffLine * new_line){
     //unlock
     return delay;
 }
+
 
 //Only call in level0
 int System::epoch_meters(int core_id, InsMem * ins_mem){
@@ -651,7 +732,6 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
 
     if(cache_cur->largest_epoch_id < ins_mem->epoch_id) cache_cur->largest_epoch_id = ins_mem->epoch_id; 
 
-
     if(level==0){
         //Epoch meters
         epoch_meters(core_id, ins_mem);
@@ -749,15 +829,17 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                                           cache_id*cache_level[level].share/cache_level[level+1].share, 
                                           core_id, ins_mem, timer + delay[core_id]);
 
-               }
-               
+               }                              
                 //if(ins_mem->atom_type != NON) line_cur->atom_type = ins_mem->atom_type;                   
     
                     if(level==0){ //Changed only for RP, BEP
 
+                        //for the persist buffers - PBUFF
+                        line_cur->unique_wr_id = ins_mem->unique_wr_id;
+
                         if(ins_mem->atom_type != NON){
                             line_cur->atom_type = ins_mem->atom_type; //Update only when atomic word is inserted.                                        
-                            
+                             
                             if(pmodel==RLSB){
                                 SyncLine * new_line =  cache_cur->addSyncLine(ins_mem); //Can write isFull();
                                 if(new_line == NULL) {
@@ -1005,7 +1087,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
                         //Added        
                     }
                     else if (level == 0) {
-                        //Dont do anything!.
+                        //Dont do anything!. This fixed the error!.
                     }                   
                 }
 
@@ -1038,7 +1120,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
 
         //Set atomic type of the cache blocks
        // printf("Messi miss 0x%lx cache %d level %d \n", ins_mem->addr_dmem, cache_id, level); //printf("Mesi Miss 2\n");
-        line_cur = cache_cur->replaceLine(&ins_mem_old, ins_mem);
+        line_cur = cache_cur->replaceLine(&ins_mem_old, ins_mem); 
         //Cacheline replacement logic.
         #ifdef DEBUG 
         if(ins_mem->atom_type != NON){
@@ -1218,11 +1300,18 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
         line_cur->timestamp = timer + delay[core_id];
         
         if (level != num_levels-1) {
+
+            //This shold properly return the persist-buffer (PBUFF) dependencies. RD or WR. Just record the dependencies.
+
             line_cur->state = mesi_directory(cache_cur->parent, level+1, 
                                    cache_id*cache_level[level].share/cache_level[level+1].share, core_id, 
                                    ins_mem, timer);
 
-            
+            if(level==0 && ins_mem->mem_type==WR){
+                //Persist Buffer Design: PBUFF
+                line_cur->unique_wr_id = ins_mem->unique_wr_id;
+            }
+
             // line_cur->state == M 3 modified
             if(level==0 && ins_mem->atom_type!=NON && ins_mem->mem_type==WR){ //in Modified State
                         line_cur->atom_type = ins_mem->atom_type; //Acquire or Release write.RMW
@@ -1267,6 +1356,8 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
             }
         }
         else {
+
+            //persist-buffer design (PBUFF).
 
             id_home = getHomeId(ins_mem);
             delay[core_id] += network.transmit(cache_id, id_home, 0,  timer+delay[core_id]);
@@ -3054,10 +3145,19 @@ int System::share(Cache* cache_cur, InsMem* ins_mem, int core_id, int64_t clk_ti
                 if(line_cur->state ==M) cache_cur->shares_M++;
                 else cache_cur->shares_E++;
 
+                //PBUFF
+                //persist-buffer----------------------------------------------------------------------
+                    ins_mem->return_unique_wr_id = line_cur->unique_wr_id; //THIS IS NOT SURE.
+                    ins_mem->response_core_id = cache_cur->getId();
+                    ins_mem->return_atomic_type = line_cur->atom_type;
+
+                    ins_mem->is_return_owned = true;
+                    ins_mem->is_return_dep = false; //CHECK THIS. THIS MUST BE ENABLED IN THE DIRECTORY.
+                    ins_mem->is_return_dep_barrier = (line_cur->atom_type != NON)? true: false; //ANY BARRIER.
+                //persist-buffer code for dependencies- CHECK.
+                //SIMPLE TECHNIQUE: FLUSH ALL OF THE PERSISTS FROM THE BUFFER. NO DEPENDENCY TRACKING.
             }
-
             //Need more care here to write-back the release andacquires.
-
             line_cur->state = S; //Check this
             //Update atomic type
             line_cur->atom_type = NON;     
@@ -3080,7 +3180,6 @@ int System::share(Cache* cache_cur, InsMem* ins_mem, int core_id, int64_t clk_ti
 }
 
 // This function propagates down shared state starting from childern nodes
-
 int System::share_children(Cache* cache_cur, InsMem* ins_mem, int core_id, int64_t clk_timer)
 {
     int i, delay = 0, delay_tmp = 0, delay_max = 0;
@@ -3152,10 +3251,22 @@ int System::inval(Cache* cache_cur, InsMem* ins_mem, int core_id, int64_t clk_ti
                     if(line_cur->state ==M) cache_cur->invals_M++;
                     else cache_cur->invals_E++;
 
+                    //persist-buffer----------------------------------------------------------------------
+                    ins_mem->return_unique_wr_id = line_cur->unique_wr_id; //THIS IS NOT SURE.
+                    ins_mem->response_core_id = cache_cur->getId();
+                    ins_mem->return_atomic_type = line_cur->atom_type;
+
+                    ins_mem->is_return_owned = true;
+                    ins_mem->is_return_dep = false; //CHECK THIS. THIS MUST BE ENABLED IN THE DIRECTORY.
+                    ins_mem->is_return_dep_barrier = (line_cur->atom_type != NON)? true: false; //ANY BARRIER.
+                    //persist-buffer code for dependencies- CHECK.
+
+                    //SIMPLE TECHNIQUE: FLUSH ALL OF THE PERSISTS FROM THE BUFFER. NO DEPENDENCY TRACKING.
+
                 }//Delay of invalidation and shar is added to the cycles by coherence itself.
                 //No need to write-back                 
             }
-                  
+                         
             line_cur->state = I;
             //update_atomic
             line_cur->atom_type = NON; // If removed Invalidation messages will be printed
@@ -3415,9 +3526,12 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
     line_cur = directory_cache[home_id]->accessLine(ins_mem);
     directory_cache[home_id]->incInsCount();
     delay += directory_cache[home_id]->getAccessTime();
-    //Shard llc miss
+
+    //Shard llc miss: //Persist-Buffer: Note: need to avoid replacing line updating request side PBUFF dependencies
     if ((line_cur == NULL) && (ins_mem->mem_type != WB)) {
         line_cur = directory_cache[home_id]->replaceLine(&ins_mem_old, ins_mem);
+
+        //check for persist-buffer: NO DEPENDENCY HERE. BE CAREFUL
         if (line_cur->state) {
             directory_cache[home_id]->incEvictCount();
             if (line_cur->state == M) {
@@ -3426,6 +3540,7 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
                 delay += network.transmit(*line_cur->sharer_set.begin(), home_id, cache_level[num_levels-1].block_size, timer+delay);
                 //dram.access(&ins_mem_old); - DRAMOut
                 dram.access(timer+delay, &ins_mem_old);
+
             }
             else if (line_cur->state == E) {
                 delay += network.transmit(home_id, *line_cur->sharer_set.begin(), 0, timer+delay);
@@ -3465,12 +3580,18 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
                 }
                 delay += delay_max;
             } 
+
+            //persist buffer
+            line_cur->is_previously_owned = false;
         }
+
         if(ins_mem->mem_type == WR) {
             line_cur->state = M;
+            //persist-buffer (PBUFF)
+            line_cur->is_previously_owned = true;
         }
         else {
-            line_cur->state = E;
+            line_cur->state = E; //Read.
         }
 
         directory_cache[home_id]->incMissCount();
@@ -3479,13 +3600,15 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
         //delay += dram.access(ins_mem); //Read data from DRAM
         delay += dram.access(timer+delay, ins_mem); // DRAMOut //Read data from DRAM
     }   
-    //Shard llc hit
+    //Shard llc hit (persist-buffer)
     else {
         if (ins_mem->mem_type == WR) {
 
             //asplos-after: This does not writeback data. need to change. 
 
             if ((line_cur->state == M) || (line_cur->state == E)) {
+
+                ins_mem->is_return_owned = false;  //Persist-buffer code              
                 delay += network.transmit(home_id, *line_cur->sharer_set.begin(), 0, timer+delay);
                 delay += inval(cache[num_levels-1][(*line_cur->sharer_set.begin())], ins_mem, core_id, timer+delay);
                 delay += network.transmit(*line_cur->sharer_set.begin(), home_id, cache_level[num_levels-1].block_size, timer+delay);
@@ -3493,12 +3616,21 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
                 //asplos-after: 
                 if(pmodel != NONB){
                     //Do something: (1) this is important when non-invalidating write is used.
-
-                }else{
-                    //NOP-No need to do anything.
-                    //delay += dram.access(ins_mem);
+                }else{ //NOP-No need to do anything. //delay += dram.access(ins_mem); 
                 }
 
+                //PBUFF: only for persist-buffer dependencies--------------
+                if(ins_mem->is_return_owned){
+                    //no need to set the owner. new owner will take off;
+                    line_cur->previous_owner = ins_mem->response_core_id;
+                    line_cur->previous_unique_wr_id = ins_mem->return_unique_wr_id;
+                    line_cur->is_previous_barrier = ins_mem->is_return_dep_barrier; //Barrier Identification
+                    ins_mem->is_return_dep = true;
+                }
+                else ins_mem->is_return_dep = false;
+
+                line_cur->is_previously_owned = true;
+                //--------------------------------------------------
             }
             else if (line_cur->state == S) {
                 delay_pipe = 0;
@@ -3515,7 +3647,19 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
                     delay_pipe += network.getHeaderFlits();
                 }
                 delay += delay_max;
+
+                //persist-buffer-----------------------------------------------
+                //There can be shared variables that previously owned.
+                if(line_cur->is_previously_owned){
+                    ins_mem->is_return_dep = true;
+                    ins_mem->return_unique_wr_id = line_cur->previous_unique_wr_id;
+                    ins_mem->response_core_id = line_cur->previous_owner; //previous owner is saved.
+                    ins_mem->is_return_dep_barrier = line_cur->is_previous_barrier; //Include last owner barrier.
+                }
+                else ins_mem->is_return_dep = false;
+                //-------------------------------------------------------------
             }
+
             else if (line_cur->state == B) {
                 total_num_broadcast++;
                 for(int i = 0; i < num_cores; i++) { 
@@ -3532,13 +3676,18 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
                 delay += delay_max;
             } 
             else if(line_cur->state == V) {
+                //Do nothing
             }
             line_cur->state = M;
             line_cur->sharer_set.clear();
             line_cur->sharer_set.insert(cache_id);
         }
+        
         else if (ins_mem->mem_type == RD) {
+
              if ((line_cur->state == M) || (line_cur->state == E)) {
+
+                ins_mem->is_return_owned = false; 
                 delay += network.transmit(home_id, *line_cur->sharer_set.begin(), 0, timer+delay);
                 delay += share(cache[num_levels-1][(*line_cur->sharer_set.begin())], ins_mem, core_id, timer+delay);
                 delay += network.transmit(*line_cur->sharer_set.begin(), home_id, cache_level[num_levels-1].block_size, timer+delay);
@@ -3551,9 +3700,22 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
                     //NOP: M->S transition.
                     //delay += dram.access(ins_mem); -DRAMOut
                     delay += dram.access(timer+delay, ins_mem);
-                }            
+                }      
 
+                //PBUFF: only for persist-buffer dependencies--------------
+                if(ins_mem->is_return_owned){
+                    //no need to set the owner. new owner will take off;
+                    line_cur->previous_owner = ins_mem->response_core_id;
+                    line_cur->previous_unique_wr_id = ins_mem->return_unique_wr_id;
+                    line_cur->is_previous_barrier = ins_mem->is_return_dep_barrier; //Barrier Identification
+                    ins_mem->is_return_dep = true;
+                }
+                else ins_mem->is_return_dep = false;
+                line_cur->is_previously_owned = true; //previously owned by someone else.
+                //--------------------------------------------------
             }
+
+            //This must be handled in the persist buffers.
             else if (line_cur->state == S) {
 
                 //This is the only change with direcotry access: delay += dram.access(ins_mem);
@@ -3563,7 +3725,20 @@ int System::accessSharedCache(int cache_id, int home_id, InsMem* ins_mem, int64_
                 else {
                     line_cur->state = S;
                 }
+
+                //persist-buffer-----------------------------------------------
+                //There can be shared variables that previously owned.
+                if(line_cur->is_previously_owned){
+                    ins_mem->is_return_dep = true;
+                    ins_mem->return_unique_wr_id = line_cur->previous_unique_wr_id;
+                    ins_mem->response_core_id = line_cur->previous_owner; //previous owner is saved.
+                    ins_mem->is_return_dep_barrier = line_cur->is_previous_barrier; //Include last owner barrier.
+                }else{
+                   ins_mem->is_return_dep = false; 
+                }
+                //-------------------------------------------------------------
             } 
+
             else if (line_cur->state == B) {
                 line_cur->state = B;
             } 

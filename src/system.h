@@ -77,8 +77,6 @@ typedef struct CacheLevel
 } CacheLevel;
 
 
-
-
 class System
 {
     public:
@@ -116,7 +114,9 @@ class System
         ~System();
 
         int accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem);
-        int accessMCQBuffer(uint64_t timer, int core_id, PBuffLine * new_line); 
+        int accessMCQBuffer(uint64_t timer, int core_id, PBuffLine * new_line);
+        int flushPersistBuffer(uint64_t timer, int core_id, uint64_t addr); 
+
     private:
         int        sys_type;
         int        protocol_type;
@@ -176,3 +176,13 @@ class System
 };
 
 #endif // SYSTEM_H
+
+/*
+//Need some extra work to track dependencies.
+is_last_access_dep[core_id] = false;
+last_access_core[core_id] = -1;
+last_access_addr[core_id] = -1; // Not necessary. check
+last_access_cache_tag[core_id] = -1; //Not necessary. check.
+is_last_acc_barrier [core_id] = false;
+unique_last_write_id[core_id] = 0;
+*/

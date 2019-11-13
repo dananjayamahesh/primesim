@@ -212,7 +212,7 @@ void Cache::init(XmlCache* xml_cache, CacheType cache_type_in, int bus_latency, 
             initSyncMap(SYNCMAP_SIZE); // Need the size
         }
         
-        
+
     }
     else if (cache_type == TLB_CACHE) {
         line = new Line* [num_sets];
@@ -359,6 +359,10 @@ Line* Cache::replaceLine(InsMem* ins_mem_old, InsMem* ins_mem)
     
     //Save old atomic type
     ins_mem_old->atom_type = set_cur[way_rp].atom_type;
+
+    //PBuff extension - persist buffer
+    ins_mem_old->unique_wr_id=set_cur[way_rp].unique_wr_id;
+
     //
     set_cur[way_rp].id = ins_mem->prog_id; 
     set_cur[way_rp].tag = addr_temp.tag;

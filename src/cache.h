@@ -96,6 +96,16 @@ typedef struct Line
     int         min_epoch_id;
     int         max_epoch_id;
     bool        dirty;
+
+    //pbuff extension - owner tracking.
+    bool        is_previously_owned;
+    int         previous_owner; //only for LLC
+    uint64_t    previous_unique_wr_id;
+    bool        is_previous_barrier;
+
+    uint64_t    unique_wr_id;  //nedd this and owner's core-id.
+    bool        escape_from_pbuff;
+    //identified the last write to the cacheline
 } Line;
 
 
@@ -105,7 +115,7 @@ typedef struct InsMem
 {
     char        mem_type; // 2 means writeback, 1 means write, 0 means read , 3 clwb, 4 clflush
     int         prog_id;
-    int         thread_id;
+    int         thread_id; //same as core_id.
     int         rec_thread_id;
     uint64_t    addr_dmem; 
     AtomicType  atom_type;
@@ -114,6 +124,17 @@ typedef struct InsMem
     bool        lazy_wb;
     //int         min_epoch; //Should be < Byte (only for L1)
     //int         max_epoch; //Shouls be < Byte (only for L1)
+    uint64_t    unique_wr_id;
+
+    //Only for the tracking persist-buffer dependencies.
+    uint64_t    return_unique_wr_id;
+    uint64_t    response_core_id;
+    bool        is_return_owned;
+    bool        is_return_dep;
+    bool        is_return_dep_barrier;
+    AtomicType  return_atomic_type;
+    //-------------------------------------
+
 } InsMem;
 
 

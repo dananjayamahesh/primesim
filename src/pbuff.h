@@ -51,15 +51,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 typedef struct PBuffLine
 {
-	uint64_t timestamp;
+	uint64_t timestamp; //timestamp should be changed. 
     uint64_t cache_tag; // cachline address 
     uint64_t data;  // Not required
-    bool is_barrier; //release or acquire.
+    bool is_barrier; //release or acquire
+
+    bool * dp_vector;
+    bool has_dp;
 
     uint64_t last_addr;
     bool is_empty;
     int core_id;
-    uint64_t unique_id; // for each core.
+    //uint64_t unique_id; // for each core. may be for a write
+    uint64_t unique_wr_id;
+    uint64_t last_unique_wr_id;
+    uint64_t num_wr_coal;
 
     //Only for Acquires- barrier. Need to track dependencies.
     bool  is_dependent; //persistent depends on another core.. PERSIST CONFLICTS
@@ -102,6 +108,9 @@ class PBuff
         ~PBuff(); 
         uint64_t num_persists;
         uint64_t num_pbarriers;
+
+        bool * dp_vector; //Dependency Tracking Vector.
+        bool has_dp; //At least one dependency.
 
     private:
     	int cur_size;
