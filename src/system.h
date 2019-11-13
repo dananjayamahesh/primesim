@@ -113,7 +113,10 @@ class System
         int tlb_translate(InsMem *ins_mem, int core_id, int64_t timer);
         int getCoreCount();
         void report(ofstream* result, ofstream* stat);
-        ~System();        
+        ~System();
+
+        int accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem);
+        int accessMCQBuffer(uint64_t timer, int core_id, PBuffLine * new_line); 
     private:
         int        sys_type;
         int        protocol_type;
@@ -157,6 +160,16 @@ class System
         //Persist Buffer
         PBuff * persist_buffer; 
         MCQBuff * mem_ctrl_queue;
+
+        //only for the persist buffer dependencies. 
+        int*       unique_write_id;
+        //Only for the DPO dependency tracking.
+        int*       last_access_core; 
+        int*       last_access_addr; //Cache_tag or address.
+        int*       last_access_cache_tag;
+        bool*      is_last_acc_barrier; // For Acquire
+        int*       unique_last_write_id;
+        //----------------------------------------
 
 };
 

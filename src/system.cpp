@@ -183,6 +183,24 @@ void System::init(XmlSys* xml_sys_in)
     mem_ctrl_queue =  new MCQBuff[1];
     //initialize
 
+    unique_write_id = new int [num_cores];
+    
+    last_access_core = new int [num_cores];
+    last_access_addr = new int [num_cores];
+    last_access_cache_tag = new int [num_cores];
+    is_last_acc_barrier = new bool [num_cores];
+    unique_last_write_id = new int [num_cores];
+
+    for (i=0; i<num_cores; i++) {
+        unique_write_id[i] = 0;
+
+        last_access_core[i] = 0;
+        last_access_addr[i] = 0;
+        last_access_cache_tag[i] = 0;
+        is_last_acc_barrier[i] = 0;
+        unique_last_write_id[i] = 0;
+    }
+
     page_table.init(page_size, xml_sys->page_miss_delay);
     dram.init(dram_access_time);
 }
@@ -226,13 +244,16 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
         //pbuff_insert(); --> mcq_insert(); --> dram_access();
         if(pmodel == NONB && pbuff_enabled){
             //Access Persist Buffer.
+            printf("Access Persist Buffer Design"); //
+            //Need to add delays.
+            if(ins_mem->mem_type == WR) accessPersistBuffer(timer+delay[core_id], core_id, ins_mem);
         }
     }
     else {
         mesi_bus(cache[0][core_id], 0, cache_id, core_id, ins_mem, timer + delay[core_id]);
     }
 
-     #ifdef DEBUG
+    #ifdef DEBUG
         if(ins_mem->atom_type == RELEASE)
             {
                 printf("[System] Core: %d accessed address 0x%lx within %d ns - atomics %s \n", core_id, (uint64_t) ins_mem->addr_dmem, delay[core_id], (ins_mem->atom_type == RELEASE)?" is RELEASE":"is ACQUIRE");
@@ -247,7 +268,76 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
     return delay[core_id];
 }
 
+//PERSIST-BUFFER
+int System::accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem){
+    int delay = 0;
+    //lock
+    int offset = (int) log2(xml_sys->directory_cache.block_size);
+    assert(offset == 8); //May be set the offset here.
+    cout << "Check Offset : " << offset << endl;
+    //addrParse(ins_mem->addr_dmem, &addr_temp); //Cache address parser
 
+    PBuff * cur_pbuff = &persist_buffer[core_id];
+    PBuffLine * cur_pbuff_line = cur_pbuff->access(ins_mem->addr_dmem); //Access Cacheline.
+
+    //pbuff hit. check barriers also. if a barrier presents, then no hit.
+    if(cur_pbuff_line != NULL){
+        //Just Access.  No barrier In between.     
+        delay += cur_pbuff->getAccessDelay(); 
+        cur_pbuff_line->last_addr = ins_mem->addr_dmem; //Check this.
+
+    }else{
+        //Insert. and solve conflicts.
+        if(cur_pbuff->isFull()){
+            //Removing line from the queue. Buff should not be empty
+            PBuffLine * rline = cur_pbuff->remove();  //rline = removed line from the local pbuff
+            delay += accessMCQBuffer(timer+delay, core_id, rline);
+        }  
+
+        assert(!cur_pbuff->isFull());     
+            //Create a new pbuffline. Only after solving conflicts
+            PBuffLine new_line;
+            //unique-id.
+            new_line.timestamp = timer+delay; 
+            new_line.cache_tag = (ins_mem->addr_dmem) >> offset;
+            new_line.core_id = core_id;
+            new_line.last_addr = ins_mem->addr_dmem;
+            new_line.is_barrier = (ins_mem->atom_type != NON)? true: false; // Now: Only for the release.
+            // NEED TO UPDATE ACQUIRE BARRIER BY TRACKING COHERENCE.
+            //Update dependent details. This need to be coded. On Acquire we need to have a barrier on dependent side.
+            cur_pbuff->insert(&new_line);
+        //solve conflicts.
+    }
+    //unlock
+    return delay;
+}
+
+//MCQ-BUFFER
+int System::accessMCQBuffer(uint64_t timer, int core_id, PBuffLine * new_line){
+    
+    int delay = 0; // delay_dram = 0;
+    //lock
+    delay += mem_ctrl_queue->getAccessDelay();
+
+    if(mem_ctrl_queue->isFull()){
+        //remove
+        PBuffLine * rm_line = mem_ctrl_queue->remove();
+        uint64_t addr = rm_line->last_addr;
+
+        //Persist----------------------------------------check
+        InsMem im;
+        im.addr_dmem = addr;
+        delay += dram.access(&im); //DRAM Access
+        //persist ---------------------------------------check
+    }
+
+    assert(!mem_ctrl_queue->isFull());        
+    delay += mem_ctrl_queue->getAccessDelay(); 
+    //insert
+    mem_ctrl_queue->insert(new_line, new_line->last_addr, core_id);
+    //unlock
+    return delay;
+}
 
 //Only call in level0
 int System::epoch_meters(int core_id, InsMem * ins_mem){

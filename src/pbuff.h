@@ -53,8 +53,10 @@ typedef struct PBuffLine
     uint64_t data;  // Not required
     bool is_barrier; //release or acquire.
 
+    uint64_t last_addr;
     bool is_empty;
     int core_id;
+    uint64_t unique_id; // for each core.
 
     //Only for Acquires- barrier. Need to track dependencies.
     bool  is_dependent; //persistent depends on another core.. PERSIST CONFLICTS
@@ -83,19 +85,26 @@ class PBuff
 {
     public:
         void init(int pbuff_size_in, int delay_in);           
-        PBuffLine * access(uint64_t addr, bool barrier, bool release);  //If already in, coalesce writes.
-        int insert(uint64_t addr); //This can push down some of the 
-        PBuffLine * remove(uint64_t addr); //When remove, first access mcq buffer and then dram. Remove the head.
+        PBuffLine * access(uint64_t addr);
+
+        int insert(uint64_t addr);
+        int insert(PBuffLine * new_line); //This can push down some of the 
+        //PBuffLine * remove(uint64_t addr); //When remove, first access mcq buffer and then dram. Remove the head.
+        PBuffLine * remove(); // FIFO Out
         void report(ofstream* result); 
+        int getBuffSize();
+       	bool isFull();
+       	bool isEmpty();
+       	int getAccessDelay();
         ~PBuff(); 
         uint64_t num_persists;
         uint64_t num_pbarriers;
 
     private:
     	int cur_size;
-    	int max_pbuf_size;
-        int pbuff_size; //static size
+    	int max_size; //static size
         int access_delay;
+        int offset; //for cache-lines
         pthread_mutex_t   *lock; //access control
         PBuffLine * pbuff; //This can be used as an array
         PBuffLine * head; //Individual Persist Buffer.
@@ -106,10 +115,18 @@ class MCQBuff{
 	public:
 		void init(int mcq_buff_size_in, int delay_in);
 		int insert(PBuffLine * pbuff_line, uint64_t addr, int core_id);
-		PBuffLine * remove(uint64_t addr); //return type may be PBuffLine*
+		
+		PBuffLine * remove(uint64_t addr);
+		PBuffLine * remove(); //return type may be PBuffLine*
+		int getAccessDelay();
+		bool isFull();
+		bool isEmpty();	
 		~MCQBuff(); 
-		uint64_t num_persists;
-        uint64_t num_pbarriers;		
+
+		// /uint64_t num_persists;
+        uint64_t num_pbarriers;
+        uint64_t num_access;
+		uint64_t num_persists;	
 	 
 	private:
 		pthread_mutex_t   *lock; //access control
@@ -118,7 +135,7 @@ class MCQBuff{
 		int cur_size;
 		int max_size;	
 		int persists;
-		int access_delay;	
+		int access_delay;		
 };
 
 #endif //PBUFF_H

@@ -36,7 +36,7 @@ using namespace std;
 
 void PBuff::init(int pbuff_size_in, int delay_in)
 {
-    pbuff_size = pbuff_size_in;
+    max_size = pbuff_size_in;
     access_delay = delay_in;      
     lock = new pthread_mutex_t;
     pthread_mutex_init(lock, NULL);
@@ -44,26 +44,92 @@ void PBuff::init(int pbuff_size_in, int delay_in)
     head = NULL;
     tail = NULL;
 }
-         
-PBuffLine * PBuff::access(uint64_t addr, bool barrier, bool release){
+
+//This should in InsMem          
+PBuffLine * PBuff::access(uint64_t addr){
     
-    //If the access successful then 
-    cout << "PBuff Access" << endl;
-    return NULL;
+    //If the access successful then. This sends a access hit or access miss.
+  uint64_t ctag =  addr >> 8;
+  cout << "PBuff Access : "<< addr << " and " << ctag << endl;
+  PBuffLine * tmp  = head;
+  PBuffLine * catched = NULL;
+  bool barrier_hit = false; 
+
+    while(tmp != NULL){
+      if(tmp->cache_tag == ctag){
+        catched = tmp;
+      }
+      if(catched !=NULL && tmp->is_barrier){
+        barrier_hit = true;
+      }
+      tmp = tmp->next_line;
+      //break;
+    }    
+
+    if(catched !=NULL && !barrier_hit) return catched; // Hit  
+    return NULL; // Miss
+
+    //Access Delay?.
 }  
 
 int PBuff::insert(uint64_t addr){
     
     PBuffLine pline;
     pline.timestamp = 0;
-    printf("%lx \n", pline.timestamp);
+    printf("Dummy Insert : %lx \n", pline.timestamp);
     return 1;
 }
 
-//Remove the head-only head can be removed.
-PBuffLine * PBuff::remove(uint64_t addr){
+int PBuff::insert(PBuffLine * new_line){
+    if(isFull()){
+      return -1; //This must be avoided
+    } 
+    else if (isEmpty()){
+        new_line->next_line = NULL;
+        tail = new_line;
+        head = new_line;
+        cur_size++;
+        return 1;
+    }
+    else{
+      new_line->next_line = NULL;
+      tail->next_line = new_line;
+      tail = new_line;
+      cur_size++;
+      return 1;
+    }
+}
+
+int PBuff::getBuffSize(){
+  return cur_size;
+}
+
+bool PBuff::isFull(){
+  if(cur_size >= max_size)return true;
+  else return false;
+}
+
+bool PBuff::isEmpty(){
+  if(cur_size == 0) return true;
+  else return false;
+}
+
+//Remove the head-only head can be removed. remove(uint64_t addr)
+PBuffLine * PBuff::remove(){
     cout << "PBuff Remove" << endl;
+
+    if(!isEmpty()){
+      PBuffLine * rm_line = head;
+      head = head->next_line;
+      cur_size--;
+      return rm_line;
+    }
+
     return NULL;
+}
+
+int PBuff::getAccessDelay(){
+  return this->access_delay;
 }
 
 void PBuff::report(ofstream* result)
@@ -79,6 +145,7 @@ PBuff::~PBuff()
 
 
 //-------------------------------------------------------------------------------------------
+//Memory Controller Queue
 void MCQBuff::init(int mcq_buff_size_in, int delay_in){
    
    cur_size = 0;
@@ -89,15 +156,67 @@ void MCQBuff::init(int mcq_buff_size_in, int delay_in){
 
 }
 
-int MCQBuff::insert(PBuffLine * pbuff_line, uint64_t addr, int core_id){
+//May be access for a cacheline can be added.
+
+int MCQBuff::insert(PBuffLine * new_pbuff_line, uint64_t addr, int core_id){
     cout << "MCQBuff Insert" << endl;
-    return 1;
+    //This cannot happen by design
+    if(!isFull()){        
+      if(isEmpty()){
+        //core id and addr are alredy inside.
+        new_pbuff_line->next_line = NULL;
+        tail = new_pbuff_line;
+        head = new_pbuff_line;
+        cur_size++;
+
+      }else{ //if not empty
+          new_pbuff_line->next_line = NULL;
+          tail->next_line = new_pbuff_line;
+          tail = new_pbuff_line;
+          cur_size++;
+      }
+
+      return 1;
+    }
+
+    else cout << "Error--------" << endl;
+    
+    return -1;
+} 
+
+PBuffLine * MCQBuff::remove(){
+    cout << "MCQBuff Remove" << endl;
+    
+    if(!isEmpty()){
+      //showing.
+      PBuffLine * rm_line = head;
+      head = head->next_line;
+      cur_size--;
+      return rm_line;     
+
+    }
+    else return  NULL;
 } 
 
 PBuffLine * MCQBuff::remove(uint64_t addr){
-    cout << "MCQBuff Remove" << endl;
+
+    cout << "MCQBuff Remove wit address" << endl;
     return  NULL;
 } 
+
+int MCQBuff::getAccessDelay(){
+  return access_delay;
+}
+
+bool MCQBuff::isEmpty(){
+  if(cur_size == 0) return true;
+  else return false;
+}
+
+bool MCQBuff::isFull(){
+  if(cur_size >= max_size) return true;
+  else return false;
+}
 
 MCQBuff::~MCQBuff(){
     pthread_mutex_destroy(lock);
