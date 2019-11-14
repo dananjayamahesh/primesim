@@ -179,12 +179,14 @@ void System::init(XmlSys* xml_sys_in)
     persist_buffer = new PBuff[num_cores];  
     int pbuff_delay = 5;
     int mcq_delay = 30;
+    int pbuff_offset = (int) log2(xml_sys->directory_cache.block_size);
 
     for (i=0; i<num_cores; i++) {
         //initialize persist buffers.
-        persist_buffer[i].init(PBUFF_SIZE, pbuff_delay);
+        persist_buffer[i].init(PBUFF_SIZE, pbuff_delay, pbuff_offset);
         persist_buffer[i].dp_vector = new bool[num_cores];
-        persist_buffer[i].has_dp = false;        
+        persist_buffer[i].has_dp = false;  
+        persist_buffer[i].core_id = i;
     }
 
     mem_ctrl_queue =  new MCQBuff[1];
@@ -265,11 +267,10 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
         mesi_directory(cache[0][core_id], 0, cache_id, core_id, ins_mem, timer + delay[core_id]);
         //Delay has been added to the Core-Id.
         //persist buffer-based design. delay += (persist buffer design). cache_cur = cache[0][core_id];
-        //pbuff_insert(); --> mcq_insert(); --> dram_access();
-        
+        //pbuff_insert(); --> mcq_insert(); --> dram_access();        
         if(pmodel == NONB && pbuff_enabled){
             //Access Persist Buffer.
-            printf("Access Persist Buffer Design"); //
+            printf("\n\n Access Persist Buffer : Core %d - Address %lx \n", core_id, ins_mem->addr_dmem); //
             //Adding to add delays.
             if(ins_mem->is_return_dep){
                 //Insert into the dep vector.
@@ -310,9 +311,9 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
 int System::accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem){
     int delay = 0;
     //lock
-    int offset = (int) log2(xml_sys->directory_cache.block_size);
-    assert(offset == 8); //May be set the offset here.
-    cout << "Check Offset : " << offset << endl;
+    int offset = (int) log2(xml_sys->directory_cache.block_size);    
+    //cout << "Check Offset : " << offset << endl;
+    assert(offset == 6); //May be set the offset here.
     //addrParse(ins_mem->addr_dmem, &addr_temp); //Cache address parser
 
     PBuff * cur_pbuff = &persist_buffer[core_id];
@@ -321,13 +322,15 @@ int System::accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem){
     //NOTE : write+barrier must always start a new epoch.--------->
     //InsMem does not have it.
     if(cur_pbuff->has_dp){ 
+            printf("Accumulate DP \n");
             ins_mem->atom_type = RELEASE;
             cur_pbuff_line = NULL; // New barrier logic
     }
 
     //pbuff hit. check barriers also. if a barrier presents, then no hit. cannot cross the barrier.
     if( (cur_pbuff_line != NULL) ){
-        //Just Access.  No barrier In between.     
+        //Just Access.  No barrier In between. 
+        printf("Persist Buffer < HIT > : 0x%lx cache 0x%lx \n", ins_mem->addr_dmem, ins_mem->addr_dmem >> offset);    
         delay += cur_pbuff->getAccessDelay(); 
         cur_pbuff_line->last_addr = ins_mem->addr_dmem; //Check this.
         cur_pbuff_line->unique_wr_id = ins_mem->unique_wr_id;
@@ -335,17 +338,23 @@ int System::accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem){
         cur_pbuff_line->num_wr_coal++;
 
     }else{
+        printf("Persist Buffer < MISS > : 0x%lx cache 0x%lx \n", ins_mem->addr_dmem, ins_mem->addr_dmem >> offset);
         //Insert. and solve conflicts.
         if(cur_pbuff->isFull()){
+            printf("Persist Buffer is Full \n");
+
             //Removing line from the queue. Buff should not be empty
             PBuffLine * rline = cur_pbuff->remove();  //rline = removed line from the local pbuff
-            
+            cur_pbuff->printBuffer();
+            if(rline == NULL) printf("[REMOVE] NULL \n");
+            printf("[REMOVE] Removed the pbuffline 0x%lx from buffer %d\n", rline->cache_tag, core_id);
             //NOTE: Check dependencies and enforce to the same cacheline.
             if(rline->has_dp){
+                printf("[REMOVE] dependecies \n");
                 for(int i=0; i<num_cores;i++){
                     //Enforcing dependencies. //need a special function to accedd MCQ while solving dependencies of every core.
                     if(i != core_id)
-                        if(rline->dp_vector[i]) delay+= flushPersistBuffer(timer, i, rline->last_addr); //IDEALLY CACHE TAG
+                        if(rline->dp_vector[i]) delay += flushPersistBuffer(timer, i, rline->last_addr); //IDEALLY CACHE TAG
                 }
             }
             delay += accessMCQBuffer(timer+delay, core_id, rline);
@@ -353,26 +362,26 @@ int System::accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem){
 
         assert(!cur_pbuff->isFull());     
             //Create a new pbuffline. Only after solving conflicts
-            PBuffLine new_line;
+            //PBuffLine new_line;
+            PBuffLine * new_line = (PBuffLine*) malloc(sizeof(PBuffLine)); 
             //unique-id.
-            new_line.timestamp = timer+delay; 
-            new_line.cache_tag = (ins_mem->addr_dmem) >> offset;
-            new_line.core_id = core_id;
-            new_line.last_addr = ins_mem->addr_dmem;
-            new_line.is_barrier = (ins_mem->atom_type != NON)? true: false; // Now: Only for the release.
-            new_line.unique_wr_id = ins_mem->unique_wr_id;
-            new_line.last_unique_wr_id = ins_mem->unique_wr_id;
-            new_line.num_wr_coal = 1;
+            new_line->timestamp = timer+delay; 
+            new_line->cache_tag = (ins_mem->addr_dmem) >> (cur_pbuff->getOffset()); //PBUFF Offset
+            new_line->core_id = core_id;
+            new_line->last_addr = ins_mem->addr_dmem;
+            new_line->is_barrier = (ins_mem->atom_type != NON)? true: false; // Now: Only for the release.
+            new_line->unique_wr_id = ins_mem->unique_wr_id;
+            new_line->last_unique_wr_id = ins_mem->unique_wr_id;
+            new_line->num_wr_coal = 1;
+            new_line->next_line = NULL;
 
             //dp_vecotor : This is wrong. Acquire ceates a persist barrier.
             if(cur_pbuff->has_dp){ 
+                printf("Dependency Found \n");
                 cur_pbuff_line->has_dp = true;
                 cur_pbuff_line->dp_vector = cur_pbuff->dp_vector;
                 cur_pbuff->dp_vector = new bool[num_cores];
                 cur_pbuff->has_dp = false;
-                //for(int i=0;i<num_cores;i++){
-                //    cur_pbuff_line->dp_vecotor[i] = (cur_pbuff_line->dp_vecotor[i] | cur_pbuff->dp_vector[i]);
-                //}//Check this.
             }
 
             //persist-buffer dependencies
@@ -383,7 +392,9 @@ int System::accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem){
 
             // NEED TO UPDATE ACQUIRE BARRIER BY TRACKING COHERENCE.
             //Update dependent details. This need to be coded. On Acquire we need to have a barrier on dependent side.
-            cur_pbuff->insert(&new_line);
+            cur_pbuff->insert(new_line);
+            printf("[INSERT] : 0x%lx cache_tag 0x%lx \n", new_line->last_addr, new_line->cache_tag);
+            //cur_pbuff->printBuffer();
         //solve conflicts.
     }
     //unlock
@@ -395,13 +406,16 @@ int System::flushPersistBuffer(uint64_t timer, int core_id, uint64_t addr){
     int delay=0;
     //Go throught he buffer. Flush all dependednt and required cachline.
     PBuff * cur_pbuff = &persist_buffer[core_id];
+    printf("[FLUSH] Persist Buffer Dependency Mechanism Buffer: %d Address: 0x%lx cacheline 0x%lx \n", core_id, addr, addr >> cur_pbuff->getOffset());
+
+
+
     PBuffLine * cur_pbuff_line = cur_pbuff->access(addr); // CHECK this!!!!!!!!!!!!!!!!!!!
 
     //PBuffLine * tmp = cur_pbuff->head;
     if(cur_pbuff_line != NULL){
-
+         printf("[FLUSH] Dependency Found %d Address: 0x%lx cacheline 0x%lx \n", core_id, addr, addr >> cur_pbuff->getOffset());
         while(true){
-        
             PBuffLine * rline = cur_pbuff->remove(); //This moves the HEAD pointer as well.
             delay += accessMCQBuffer(timer+delay, core_id, rline);    
             if(rline == cur_pbuff_line)break;
@@ -415,6 +429,8 @@ int System::flushPersistBuffer(uint64_t timer, int core_id, uint64_t addr){
 int System::accessMCQBuffer(uint64_t timer, int core_id, PBuffLine * new_line){
     
     int delay = 0; // delay_dram = 0;
+
+    printf("Access MCQ buffer by core %d with cacheline 0x%lx and addr 0x%lx \n", core_id, new_line->cache_tag, new_line->last_addr);
     //lock
     delay += mem_ctrl_queue->getAccessDelay();
 

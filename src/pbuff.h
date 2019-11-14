@@ -52,6 +52,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 typedef struct PBuffLine
 {
 	uint64_t timestamp; //timestamp should be changed. 
+    
     uint64_t cache_tag; // cachline address 
     uint64_t data;  // Not required
     bool is_barrier; //release or acquire
@@ -62,6 +63,7 @@ typedef struct PBuffLine
     uint64_t last_addr;
     bool is_empty;
     int core_id;
+
     //uint64_t unique_id; // for each core. may be for a write
     uint64_t unique_wr_id;
     uint64_t last_unique_wr_id;
@@ -93,7 +95,7 @@ typedef struct PBuffSet{
 class PBuff
 {
     public:
-        void init(int pbuff_size_in, int delay_in);           
+        void init(int pbuff_size_in, int delay_in, int offset_in);           
         PBuffLine * access(uint64_t addr);
 
         int insert(uint64_t addr);
@@ -105,18 +107,22 @@ class PBuff
        	bool isFull();
        	bool isEmpty();
        	int getAccessDelay();
+       	int getOffset();
+       	void printBuffer();
         ~PBuff(); 
         uint64_t num_persists;
         uint64_t num_pbarriers;
 
         bool * dp_vector; //Dependency Tracking Vector.
         bool has_dp; //At least one dependency.
+        int core_id;
 
     private:
     	int cur_size;
     	int max_size; //static size
         int access_delay;
         int offset; //for cache-lines
+
         pthread_mutex_t   *lock; //access control
         PBuffLine * pbuff; //This can be used as an array
         PBuffLine * head; //Individual Persist Buffer.

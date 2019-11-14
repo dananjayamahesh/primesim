@@ -34,30 +34,39 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using namespace std;
 
-void PBuff::init(int pbuff_size_in, int delay_in)
+void PBuff::init(int pbuff_size_in, int delay_in, int offset_in)
 {
     cur_size = 0;
     max_size = pbuff_size_in;
     access_delay = delay_in;      
+    offset = offset_in;
+
     lock = new pthread_mutex_t;
     pthread_mutex_init(lock, NULL);
     pbuff = NULL;
     head = NULL;
     tail = NULL;
+
+
 }
 
 //This should in InsMem          
 PBuffLine * PBuff::access(uint64_t addr){
     
     //If the access successful then. This sends a access hit or access miss.
-  uint64_t ctag =  addr >> 8;
-  cout << "PBuff Access : "<< addr << " and " << ctag << endl;
+  uint64_t ctag =  addr >> offset;
+  // /cout << "PBuff Access : addr- "<< addr << " and cache-tag-" << ctag << endl;
+  printf("[ACCESS] :  addr 0x%lx cache 0x%lx \n", addr, ctag);
+  printBuffer();
+
   PBuffLine * tmp  = head;
   PBuffLine * catched = NULL;
   bool barrier_hit = false; 
 
     while(tmp != NULL){
+      //printf("acecss:\t  0x%lx \t  0x%lx \n", tmp->cache_tag, tmp->last_addr);
       if(tmp->cache_tag == ctag){
+        printf("[ACCESS]: Found the line : %lx \n",tmp->cache_tag );
         catched = tmp;
       }
       if(catched !=NULL && tmp->is_barrier){
@@ -65,6 +74,7 @@ PBuffLine * PBuff::access(uint64_t addr){
       }
       tmp = tmp->next_line;
       //break;
+      // /printf("A");
     }    
 
     if(catched !=NULL && !barrier_hit) return catched; // Hit  
@@ -73,12 +83,20 @@ PBuffLine * PBuff::access(uint64_t addr){
     //Access Delay?.
 }  
 
-int PBuff::insert(uint64_t addr){
+void PBuff::printBuffer(){
+  PBuffLine * tmp  = head;
+  int count=0;
+  printf("\nPersist Buffer %d with size %d\n", core_id, cur_size);
+  printf("---------------------- --------------------------------\n");
+    while(tmp != NULL){
+      printf("| Entry %d \t |  0x%lx \t | 0x%lx \t | 0x%lx \t | 0x%s \n",count, tmp->cache_tag, tmp->last_addr, tmp->unique_wr_id, (tmp->is_barrier)?"Barrier":" ");
+      printf("---------------------- --------------------------------\n");
+      count++;
+      tmp = tmp->next_line;
+
+      if(count >= max_size) break;
+    }
     
-    PBuffLine pline;
-    pline.timestamp = 0;
-    printf("Dummy Insert : %lx \n", pline.timestamp);
-    return 1;
 }
 
 int PBuff::insert(PBuffLine * new_line){
@@ -86,19 +104,31 @@ int PBuff::insert(PBuffLine * new_line){
       return -1; //This must be avoided
     } 
     else if (isEmpty()){
+        printf("[INSERT]: Buffer is Empty : %lx cache %lx \n", new_line->last_addr, new_line->cache_tag);
         new_line->next_line = NULL;
         tail = new_line;
         head = new_line;
         cur_size++;
+        printBuffer();
         return 1;
     }
     else{
+      printf("[INSERT]: Buffer is NOT Empty : %lx cache %lx \n", new_line->last_addr, new_line->cache_tag);
       new_line->next_line = NULL;
       tail->next_line = new_line;
       tail = new_line;
       cur_size++;
+      printBuffer();
       return 1;
-    }
+    }    
+}
+
+int PBuff::insert(uint64_t addr){
+    
+    PBuffLine pline;
+    pline.timestamp = 0;
+    printf("Dummy Insert : %lx \n", pline.timestamp);
+    return 1;
 }
 
 int PBuff::getBuffSize(){
@@ -117,12 +147,14 @@ bool PBuff::isEmpty(){
 
 //Remove the head-only head can be removed. remove(uint64_t addr)
 PBuffLine * PBuff::remove(){
-    cout << "PBuff Remove" << endl;
+
+    printf("Removing a line from persist buffer %d \n",core_id);
 
     if(!isEmpty()){
       PBuffLine * rm_line = head;
       head = head->next_line;
       cur_size--;
+
       return rm_line;
     }
 
@@ -131,6 +163,10 @@ PBuffLine * PBuff::remove(){
 
 int PBuff::getAccessDelay(){
   return this->access_delay;
+}
+
+int PBuff::getOffset(){
+  return this->offset;
 }
 
 void PBuff::report(ofstream* result)
