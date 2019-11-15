@@ -47,7 +47,14 @@ void PBuff::init(int pbuff_size_in, int delay_in, int offset_in)
     head = NULL;
     tail = NULL;
 
-
+    num_persists = 0;
+    num_barriers = 0;
+    num_acq_barr = 0;
+    num_wr = 0;
+    num_cl_insert = 0;
+    num_cl_evict = 0;
+    num_dep_conflicts = 0;
+    num_dep_cls_flushed = 0;
 }
 
 //This should in InsMem          
@@ -109,6 +116,8 @@ int PBuff::insert(PBuffLine * new_line){
         tail = new_line;
         head = new_line;
         cur_size++;
+        num_cl_insert++;
+        if(new_line->is_barrier) num_barriers++; // Later distinguish as release and acquire.
         printBuffer();
         return 1;
     }
@@ -118,6 +127,8 @@ int PBuff::insert(PBuffLine * new_line){
       tail->next_line = new_line;
       tail = new_line;
       cur_size++;
+      num_cl_insert++;
+      if(new_line->is_barrier) num_barriers++;
       printBuffer();
       return 1;
     }    
@@ -154,7 +165,7 @@ PBuffLine * PBuff::remove(){
       PBuffLine * rm_line = head;
       head = head->next_line;
       cur_size--;
-
+      num_cl_evict++;
       return rm_line;
     }
 
@@ -171,7 +182,13 @@ int PBuff::getOffset(){
 
 void PBuff::report(ofstream* result)
 {
-    *result << "Persist Buffers - Kolli:\n";  
+    *result << "--------------Persist-Buffer - ["<< core_id << "]------------" << endl;
+    *result << "Number of Writes : " << num_wr << endl;
+    *result << "Number of Inserts : " << num_cl_insert << endl;
+    *result << "Number of Evicts : " << num_cl_evict << endl;
+    *result << "Number of Barriers : " << num_barriers << endl;
+    *result << "Number of Acquire Barriers : " <<  num_acq_barr << endl;   
+    *result << "-----------------------------------------------------" << endl;
 }
 
 PBuff::~PBuff()
@@ -190,6 +207,11 @@ void MCQBuff::init(int mcq_buff_size_in, int delay_in){
    access_delay = delay_in;
    head = NULL;
    tail = NULL;
+
+    num_barriers = 0;
+    num_cls = 0; //in
+    num_access = 0;
+    num_persists = 0;
 
 }
 
@@ -213,6 +235,10 @@ int MCQBuff::insert(PBuffLine * new_pbuff_line, uint64_t addr, int core_id){
           cur_size++;
       }
 
+      num_access++;
+      num_cls++;
+      if(new_pbuff_line->is_barrier) num_barriers++;
+
       return 1;
     }
 
@@ -229,6 +255,9 @@ PBuffLine * MCQBuff::remove(){
       PBuffLine * rm_line = head;
       head = head->next_line;
       cur_size--;
+
+      num_persists++;
+
       return rm_line;     
 
     }
@@ -253,6 +282,15 @@ bool MCQBuff::isEmpty(){
 bool MCQBuff::isFull(){
   if(cur_size >= max_size) return true;
   else return false;
+}
+
+void MCQBuff::report(ofstream * result){
+
+    *result << "--------------Memory Controller Queue----------------" << endl;
+    *result << "Number of Accesses : " << num_access << endl;
+    *result << "Number of Persists : " << num_persists << endl;
+    *result << "Number of Barriers : " << num_barriers << endl;
+    *result << "-----------------------------------------------------" << endl;
 }
 
 MCQBuff::~MCQBuff(){

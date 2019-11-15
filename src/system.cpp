@@ -184,9 +184,14 @@ void System::init(XmlSys* xml_sys_in)
     for (i=0; i<num_cores; i++) {
         //initialize persist buffers.
         persist_buffer[i].init(PBUFF_SIZE, pbuff_delay, pbuff_offset);
-        persist_buffer[i].dp_vector = new bool[num_cores];
-        persist_buffer[i].has_dp = false;  
         persist_buffer[i].core_id = i;
+
+        //Dependnecy - check
+        persist_buffer[i].dp_vector = (bool *) malloc(num_cores*sizeof(bool));
+        //persist_buffer[i].dp_vector = new bool[num_cores];
+        persist_buffer[i].has_dp = false;  
+        //DPO-Ext: adding the addr vector for the last addr. Then, later flush all cahclines below that line.
+        persist_buffer[i].dp_addr_vector = (uint64_t*) malloc(num_cores*sizeof(uint64_t));
     }
 
     mem_ctrl_queue =  new MCQBuff[1];
@@ -267,7 +272,7 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
         mesi_directory(cache[0][core_id], 0, cache_id, core_id, ins_mem, timer + delay[core_id]);
         //Delay has been added to the Core-Id.
         //persist buffer-based design. delay += (persist buffer design). cache_cur = cache[0][core_id];
-        //pbuff_insert(); --> mcq_insert(); --> dram_access();        
+          
         if(pmodel == NONB && pbuff_enabled){
             //Access Persist Buffer.
             printf("\n\n Access Persist Buffer : Core %d - Address %lx \n", core_id, ins_mem->addr_dmem); //
@@ -277,6 +282,8 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
                 if(ins_mem->is_return_dep_barrier){
                     persist_buffer[core_id].has_dp = true;
                     persist_buffer[core_id].dp_vector[ins_mem->response_core_id] = true;
+                    //DPO_ext
+                    persist_buffer[core_id].dp_addr_vector[ins_mem->response_core_id] = ins_mem->addr_dmem;
                 }
             }
 
@@ -307,7 +314,9 @@ int System::access(int core_id, InsMem* ins_mem, int64_t timer)
     return delay[core_id];
 }
 
-//PERSIST-BUFFER
+
+
+//PERSIST-BUFFER - Based on the Delegated Persist Ordering (DPO) of Asheesh Kolli.
 int System::accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem){
     int delay = 0;
     //lock
@@ -320,11 +329,15 @@ int System::accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem){
     PBuffLine * cur_pbuff_line = cur_pbuff->access(ins_mem->addr_dmem); //Access Cacheline.
 
     //NOTE : write+barrier must always start a new epoch.--------->
+    cur_pbuff->num_wr++; //increment on each write.
+
     //InsMem does not have it.
     if(cur_pbuff->has_dp){ 
             printf("Accumulate DP \n");
             ins_mem->atom_type = RELEASE;
             cur_pbuff_line = NULL; // New barrier logic
+
+            cur_pbuff->num_acq_barr++;//Acquire barrier            
     }
 
     //pbuff hit. check barriers also. if a barrier presents, then no hit. cannot cross the barrier.
@@ -351,15 +364,28 @@ int System::accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem){
             //NOTE: Check dependencies and enforce to the same cacheline.
             if(rline->has_dp){
                 printf("[REMOVE] dependecies \n");
+                printf("[REMOVE] dependecies2 \n");
+
                 for(int i=0; i<num_cores;i++){
                     //Enforcing dependencies. //need a special function to accedd MCQ while solving dependencies of every core.
-                    if(i != core_id)
-                        if(rline->dp_vector[i]) delay += flushPersistBuffer(timer, i, rline->last_addr); //IDEALLY CACHE TAG
+                    printf("[DEPEND] dependencies in pbuffer %d with buffer %d has %d \n", core_id, i, rline->dp_vector[i]);
+
+                    if(i != core_id){
+                        printf("[DEPEND] Solving dependencies in pbuffer %d with buffer %d has %d \n", core_id, i, rline->dp_vector[i]);
+                        if(rline->dp_vector[i]){
+                            printf("Persist Buffer dependnecy with core %d is %d \n", i, rline->dp_vector[i]);
+                            //THIS ADDRESS IS NOT CORRECT.
+                            delay += flushPersistBuffer(timer, i, rline->last_addr); //IDEALLY CACHE TAG
+                            printf("[DEPEND] Solved %d \n", core_id);
+                        } 
+                    }
                 }
             }
+            printf("Now the buffer is not full");
             delay += accessMCQBuffer(timer+delay, core_id, rline);
         }  
 
+        printf("Checkpoint\n");
         assert(!cur_pbuff->isFull());     
             //Create a new pbuffline. Only after solving conflicts
             //PBuffLine new_line;
@@ -376,12 +402,24 @@ int System::accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem){
             new_line->next_line = NULL;
 
             //dp_vecotor : This is wrong. Acquire ceates a persist barrier.
-            if(cur_pbuff->has_dp){ 
+            if(cur_pbuff->has_dp){  //AccumDP
                 printf("Dependency Found \n");
-                cur_pbuff_line->has_dp = true;
-                cur_pbuff_line->dp_vector = cur_pbuff->dp_vector;
-                cur_pbuff->dp_vector = new bool[num_cores];
+
+                new_line->has_dp = true;
+                new_line->dp_vector = cur_pbuff->dp_vector;
+                new_line->dp_addr_vector = cur_pbuff->dp_addr_vector;
+                //cur_pbuff_line->has_dp = true; //WRONG
+                //cur_pbuff_line->dp_vector = cur_pbuff->dp_vector; //WRONG
+
+                cur_pbuff->dp_vector = (bool *) malloc(num_cores*sizeof(bool));
+                //cur_pbuff->dp_vector = new bool[num_cores]; //This also has the same effect.
                 cur_pbuff->has_dp = false;
+                //DPO-Ext(not clear in DPO)
+                cur_pbuff->dp_addr_vector = (uint64_t*) malloc(num_cores*sizeof(uint64_t));
+
+            }else{
+                new_line->has_dp = false;
+                new_line->dp_vector = NULL;
             }
 
             //persist-buffer dependencies
@@ -409,20 +447,22 @@ int System::flushPersistBuffer(uint64_t timer, int core_id, uint64_t addr){
     printf("[FLUSH] Persist Buffer Dependency Mechanism Buffer: %d Address: 0x%lx cacheline 0x%lx \n", core_id, addr, addr >> cur_pbuff->getOffset());
 
 
-
     PBuffLine * cur_pbuff_line = cur_pbuff->access(addr); // CHECK this!!!!!!!!!!!!!!!!!!!
 
     //PBuffLine * tmp = cur_pbuff->head;
     if(cur_pbuff_line != NULL){
+
+        cur_pbuff->num_dep_conflicts++;
          printf("[FLUSH] Dependency Found %d Address: 0x%lx cacheline 0x%lx \n", core_id, addr, addr >> cur_pbuff->getOffset());
         while(true){
             PBuffLine * rline = cur_pbuff->remove(); //This moves the HEAD pointer as well.
             delay += accessMCQBuffer(timer+delay, core_id, rline);    
+            cur_pbuff->num_dep_cls_flushed++;
             if(rline == cur_pbuff_line)break;
          } 
     }
 
-     return delay;
+    return delay;
 }
 
 //MCQ-BUFFER
@@ -3908,6 +3948,28 @@ void System::report(ofstream* result, ofstream* stat)
 
     network.report(result); 
     dram.report(result); 
+
+    //MCQ and PBuff Stats
+    mem_ctrl_queue->report(result);
+
+    uint64_t num_wr_tot = 0;
+    uint64_t num_cls_tot = 0;
+    uint64_t num_evi_tot = 0;
+    uint64_t num_barr_tot = 0;
+    uint64_t num_acq_tot = 0;    
+
+    for (int i = 0; i < num_cores; i++) {
+        persist_buffer[i].report(result);
+        num_wr_tot += persist_buffer[i].num_wr;
+        num_cls_tot += persist_buffer[i].num_cl_insert;
+        num_evi_tot += persist_buffer[i].num_cl_evict;
+        num_barr_tot += persist_buffer[i].num_barriers;
+        num_acq_tot += persist_buffer[i].num_acq_barr;
+
+    }
+
+    *result << num_wr_tot << ", " << num_cls_tot << ", " << num_evi_tot << ", " << num_barr_tot << ", " << num_acq_tot << endl;
+
     *result << endl <<  "Simulation result for cache system: \n\n";
     
     if (verbose_report) {

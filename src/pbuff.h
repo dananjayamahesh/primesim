@@ -59,6 +59,9 @@ typedef struct PBuffLine
 
     bool * dp_vector;
     bool has_dp;
+	//DPO-ext
+    uint64_t * dp_addr_vector; //Ideally cache-tag
+
 
     uint64_t last_addr;
     bool is_empty;
@@ -110,12 +113,26 @@ class PBuff
        	int getOffset();
        	void printBuffer();
         ~PBuff(); 
-        uint64_t num_persists;
-        uint64_t num_pbarriers;
 
         bool * dp_vector; //Dependency Tracking Vector.
         bool has_dp; //At least one dependency.
+        uint64_t * dp_addr_vector;
         int core_id;
+
+        //counters
+ 		uint64_t num_acq_barr;
+
+        uint64_t num_persists;
+        uint64_t num_barriers;
+        uint64_t num_wr;
+        uint64_t num_cl_insert;
+        uint64_t num_cl_evict; //removed from the buffer.
+
+        uint64_t num_dep_conflicts;
+        uint64_t num_dep_cls_flushed; //number of cachlines flushed due to dependencies.
+
+
+
 
     private:
     	int cur_size;
@@ -139,12 +156,15 @@ class MCQBuff{
 		int getAccessDelay();
 		bool isFull();
 		bool isEmpty();	
+		void report(ofstream* result); 
+
 		~MCQBuff(); 
 
 		// /uint64_t num_persists;
-        uint64_t num_pbarriers;
+        uint64_t num_barriers;
+        uint64_t num_cls; //inserted.
         uint64_t num_access;
-		uint64_t num_persists;	
+		uint64_t num_persists; //drained to the memory	
 	 
 	private:
 		pthread_mutex_t   *lock; //access control
