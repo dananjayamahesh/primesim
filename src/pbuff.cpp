@@ -187,7 +187,10 @@ void PBuff::report(ofstream* result)
     *result << "Number of Inserts : " << num_cl_insert << endl;
     *result << "Number of Evicts : " << num_cl_evict << endl;
     *result << "Number of Barriers : " << num_barriers << endl;
-    *result << "Number of Acquire Barriers : " <<  num_acq_barr << endl;   
+    *result << "Number of Acquire Barriers : " <<  num_acq_barr << endl;  
+    *result << "Number of DEP conflicts : " << num_dep_conflicts << endl;
+    *result << "Number of DEP cls flushed : " << num_dep_cls_flushed << endl;
+
     *result << "-----------------------------------------------------" << endl;
 }
 

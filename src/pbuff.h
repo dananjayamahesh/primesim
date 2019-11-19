@@ -47,7 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //Persist-Buffer based Design
 #define PBUFF_SIZE 4
-#define MCQBUFF_SIZE 1
+#define MCQBUFF_SIZE 32
 
 typedef struct PBuffLine
 {
