@@ -375,7 +375,10 @@ int System::accessPersistBuffer(uint64_t timer, int core_id, InsMem * ins_mem){
                         if(rline->dp_vector[i]){
                             printf("Persist Buffer dependnecy with core %d is %d \n", i, rline->dp_vector[i]);
                             //THIS ADDRESS IS NOT CORRECT.
-                            delay += flushPersistBuffer(timer, i, rline->last_addr); //IDEALLY CACHE TAG
+                            uint64_t dep_addr = rline->dp_addr_vector[i];
+                            printf("Dependnecy Address is 0x%lx in buffer %d", dep_addr, i);
+                            delay += flushPersistBuffer(timer, i, dep_addr); //IDEALLY CACHE TAG
+                            //delay += flushPersistBuffer(timer, i, rline->last_addr); //IDEALLY CACHE TAG
                             printf("[DEPEND] Solved %d \n", core_id);
                         } 
                     }
@@ -1750,8 +1753,6 @@ int System::bepochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, 
     cache_cur->incPersistDelay(delay[core_id]);
     return delay[core_id];
 }
-
-
 
 //Buffered Epoch Persistence- Inv-version
 //asplos-after: adding psrc bit
@@ -3942,7 +3943,7 @@ void System::report(ofstream* result, ofstream* stat)
  
    uint64_t all_persists_tot =0, all_pf_persists_tot=0, vis_pf_persists_tot = 0, evi_pf_persists_tot=0, inter_pf_persists_tot=0; 
    uint64_t invals_tot = 0, invals_M_tot = 0, invals_E_tot = 0, shares_tot = 0, shares_M_tot = 0, shares_E_tot = 0;
-    
+   double lrp_ratio=0.5, bep_ratio=0.8;
    //RET
    uint64_t atom_clk_timestamp_tot=0, clk_timestamp_tot=0, ret_add_tot=0, ret_delete_tot=0, ret_delete_lower_tot=0, ret_lookup_tot=0, ret_intra_lookup_tot = 0, ret_inter_lookup_tot = 0;
 
@@ -3957,6 +3958,8 @@ void System::report(ofstream* result, ofstream* stat)
     uint64_t num_evi_tot = 0;
     uint64_t num_barr_tot = 0;
     uint64_t num_acq_tot = 0;    
+    uint64_t num_dep_conflicts_tot = 0;
+    uint64_t num_dep_cls_flushed_tot = 0;
 
     for (int i = 0; i < num_cores; i++) {
         persist_buffer[i].report(result);
@@ -3966,9 +3969,11 @@ void System::report(ofstream* result, ofstream* stat)
         num_barr_tot += persist_buffer[i].num_barriers;
         num_acq_tot += persist_buffer[i].num_acq_barr;
 
+        num_dep_conflicts_tot += persist_buffer[i].num_dep_conflicts;
+        num_dep_cls_flushed_tot += persist_buffer[i].num_dep_cls_flushed;
     }
 
-    *result << num_wr_tot << ", " << num_cls_tot << ", " << num_evi_tot << ", " << num_barr_tot << ", " << num_acq_tot << endl;
+    *result << num_wr_tot << ", " << num_cls_tot << ", " << num_evi_tot << ", " << num_barr_tot << ", " << num_acq_tot <<  ", " << num_dep_conflicts_tot << ", " << num_dep_cls_flushed_tot << endl;
 
     *result << endl <<  "Simulation result for cache system: \n\n";
     
@@ -4223,17 +4228,17 @@ void System::report(ofstream* result, ofstream* stat)
         *result << "The # of cache-missed instructions: " << miss_count << endl;
         *result << "The # of evicted instructions: " << evict_count << endl;
         *result << "The # of writeback instructions: " << wb_count << endl;
-        *result << "The cache miss rate: " << 100 * miss_rate << "%" << endl;
+        *result << "The cache miss rate: " << 100 * miss_rate << "%" << endl;        
+        *result << "-----------------------------------------------------------------------\n";
+        *result << "Inter-thread conflicting Persists: " <<  inter_persist_tot << endl;
+        *result << "Intra-thread conflicting Persists: " <<  intra_persist_tot << endl;
+        *result << "Inter-Intra P ratio (SUM): " << (double)inter_persist_tot/(inter_persist_tot+intra_persist_tot) << endl;
+        *result << "Inter-Intra P ratio (AVG): " << ratio_inter_intra_persists/cache_level[i].num_caches << endl;
         *result << "=----------------------------------------------------------------------\n";
         *result << "Inter-thread conflicts: " <<  inter_tot << endl;
         *result << "Intra-thread conflicts: " <<  intra_tot << endl;
         *result << "Inter-Intra ratio (SUM): " << (double)inter_tot/(inter_tot+intra_tot) << endl;
         *result << "Inter-Intra ratio (AVG): " << ratio_inter_intra_conflicts/cache_level[i].num_caches << endl;
-        *result << "-----------------------------------------------------------------------\n";
-        *result << "Inter-thread Persists: " <<  inter_persist_tot << endl;
-        *result << "Intra-thread Persists: " <<  intra_persist_tot << endl;
-        *result << "Inter-Intra P ratio (SUM): " << (double)inter_persist_tot/(inter_persist_tot+intra_persist_tot) << endl;
-        *result << "Inter-Intra P ratio (AVG): " << ratio_inter_intra_persists/cache_level[i].num_caches << endl;
         *result << "-----------------------------------------------------------------------\n";
         *result << "Inter-thread Persist Cycles: " <<  inter_pcycles_tot << endl;
         *result << "Intra-thread Persist Cycles: " <<  intra_pcycles_tot << endl;
@@ -4244,18 +4249,19 @@ void System::report(ofstream* result, ofstream* stat)
         *result << "Critical Write-Backs count and delay " <<  critical_clwb << " \t" << delay_critical_clwb << endl;
         *result << "NonCritical Write-Backs count and delay " <<  noncritical_clwb << " \t" << delay_noncritical_clwb << endl;
         *result << "External Write-Backs count and delay " <<  external_clwb << " \t" << delay_external_clwb << endl;
-        *result << "Natural Write-Backs count and delay " <<  natural_clwb << " \t" << delay_natural_clwb << endl;
-        *result << "ALL Natural Write-Backs count and delay " <<  all_natural_clwb << " \t" << delay_all_natural_clwb << endl;
+        *result << "Eviction count and delay " <<  natural_clwb << " \t" << delay_natural_clwb << endl;
+        *result << "Write-Backs count and delay (all) " <<  all_natural_clwb << " \t" << delay_all_natural_clwb << endl;
         
 
-        uint64_t conflicting_nat_wb = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?natural_clwb*0.5: all_natural_clwb*0.8);
-        uint64_t conflicting_nat_wb_cycle = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?delay_natural_clwb*0.5: delay_all_natural_clwb*0.8);
+        uint64_t conflicting_nat_wb = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?natural_clwb*lrp_ratio: all_natural_clwb*bep_ratio);
+        uint64_t conflicting_nat_wb_cycle = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?delay_natural_clwb*lrp_ratio: delay_all_natural_clwb*bep_ratio);
 
-        uint64_t conflicting_nat_wb2 = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?natural_clwb*0.5: all_natural_clwb*0.9);
-        uint64_t conflicting_nat_wb_cycle2 = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?delay_natural_clwb*0.5: delay_all_natural_clwb*0.9);
+        uint64_t conflicting_nat_wb2 = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?natural_clwb*lrp_ratio: all_natural_clwb*0.9);
+        uint64_t conflicting_nat_wb_cycle2 = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?delay_natural_clwb*lrp_ratio: delay_all_natural_clwb*0.9);
 
-        *result << "Conflicting natural Evictions/Write-Backs count and delay " << conflicting_nat_wb   << " \t" << conflicting_nat_wb_cycle << endl;
+        *result << "Conflicting natural Evictions/Write-Backs count and delay " << conflicting_nat_wb << " \t" << conflicting_nat_wb_cycle << endl;
 
+        uint64_t tot_writeback_conflicts = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?intra_evi_persists_tot: intra_evi_M_allconflicts_tot); //same as nat_wb
 
         *result << "Sync Write-Backs count and delay " <<  sync_clwb << " \t" << delay_sync_clwb << endl;
         *result << "Critical Persist count and delay " <<  critical_persist_wb << " \t" << critical_persist_wb << endl;
@@ -4344,10 +4350,7 @@ void System::report(ofstream* result, ofstream* stat)
 
         //Something to add.
         //Conflicting WB.
-
-
-
-        //Statistic FIle
+        //Statistic FIle.
         double conf_rate =(double)inter_persist_tot/(inter_persist_tot+intra_persist_tot);
         double wbdelay_rate = (double)delay_critical_clwb/(delay_critical_clwb+delay_noncritical_clwb);
         double wb_rate = (double)critical_clwb/(critical_clwb+noncritical_clwb);
@@ -4401,15 +4404,14 @@ void System::report(ofstream* result, ofstream* stat)
                 << shares_M_tot << ","
                 << shares_E_tot << ","   
 
-                //later adition-after data2
+                //later addition-after data2
                 <<  conflicting_nat_wb << ","
                 <<  conflicting_nat_wb_cycle << ","
                 <<  conflicting_nat_wb2 << ","
-                <<  conflicting_nat_wb_cycle2 << endl;
+                <<  conflicting_nat_wb_cycle2 << ","
+                <<  tot_writeback_conflicts << endl ;
 
                 //Need to add propoer conlficting writebacks for each one.
-
-
         //Adding new division of visibility/evictions/ and PF to stat file
 
         *result << conf_rate << "," << wb_rate << "," << wbdelay_rate << "," << p_rate << "," << pdelay_rate << "," << clwb_tot << "," << epoch_sum_tot << "," << epoch_id_tot << "," << epoch_id2_tot << endl;
