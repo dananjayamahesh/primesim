@@ -14,7 +14,7 @@ optype=regular
 #syncbench-mbank-120cycles-nopfixed-4-2 ->add more counters for write backs and epoch sizes, add thread 1,
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
 
-CONF_NAME=syncbench-mbank-120cycles-nopfixed-53-3-linkedlist-A
+CONF_NAME=syncbench-mbank-120cycles-nopfixed-54-3-linkedlist-A
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DIMP2_FILE=${HOME}/repos/primesim/output/${optype}/stat2.txt
@@ -170,9 +170,14 @@ DATA2_FILE=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/data2.txt
 
 #52 with 128B load.
 
-##-----------------------------------------------
+##------------------------------------------------------------------------------------------
 #53 - Persist Buffer is added.
 #53-2 first pbuff design test.
+#53-3 run 32 threads.
+#--------------------------------------------------------------------------------------------
+#53 has MCQ buffer size of 1. Dependnecy flush is to the same address. I added a new dp_addr_vector;
+
+#54 - 1 amd 2 inversed. 
 
 if [ ! -d ${CONF_PATH} ] 
 then
@@ -208,10 +213,11 @@ for threads in 8 32
 do
 	#for operations in 1000 4000
     #for threads in 1 8 16 32
-    for operations in 1000
+    for operations in 1000 2000
 	do
 			
-			for bench in  linkedlist
+			#for bench in hashmap bstree skiplist lfqueue2 lfqueue
+			for bench in linkedlist
 			#for bench in  hashmap bstree skiplist lfqueue linkedlist lfqueue2
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist

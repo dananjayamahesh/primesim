@@ -6,7 +6,7 @@
 #remove delay from natural write back. it may have effected core 1
 
 #balanced, addony, mremoved
-optype=balanced
+optype=iterate
 #optype=balanced
 #RUn History
 #syncbench-mbank-120cycles-nopfixed-4 ->initial run after fixing rp writeback delays
@@ -14,7 +14,7 @@ optype=balanced
 #syncbench-mbank-120cycles-nopfixed-4-2 ->add more counters for write backs and epoch sizes, add thread 1,
 #CONF_NAME=syncbench-mbank-120cycles-nopfixed-6 original with u 100
 
-CONF_NAME=syncbench-mbank-120cycles-nopfixed-52-1-hashmap
+CONF_NAME=syncbench-mbank-120cycles-nopfixed-55-2-lfqueue2
 CONF_PATH=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/
 DIMP_FILE=${HOME}/repos/primesim/output/${optype}/stat.txt
 DIMP2_FILE=${HOME}/repos/primesim/output/${optype}/stat2.txt
@@ -168,7 +168,14 @@ DATA2_FILE=${HOME}/repos/primesim/output/${optype}/${CONF_NAME}/data2.txt
 #51 NOTE: system.ccp file has been deleted. SO i rewrite the changes. So timing can be vary.
 #51 shows low output.
 
-#52 with 128B load.
+#52 with 128B load.  (all persist buffer designs)
+#Mistake 51-54 : Only hashmap is changed to 128B. Others remian as B256.
+#All pbuffer design is based on the
+
+#54-1: hashmap and linkedlist, hashmap, queue1/2 is 128B, other B256
+#Therefore, 54-2 : is INVERSED 
+#------------------------------------------------------------------------------------------
+#55 : with iterate
 
 
 if [ ! -d ${CONF_PATH} ] 
@@ -187,6 +194,8 @@ fi
 #for upd in 50 100
 #do
 #make -B
+
+alter="-A"
 urate=100
 #rate=1000
 #rate2=64000
@@ -208,7 +217,7 @@ do
     for operations in 1000 2000
 	do
 			
-			for bench in  hashmap
+			for bench in  lfqueue2
 			#for bench in  hashmap bstree skiplist lfqueue linkedlist lfqueue2
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
 			#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
