@@ -23,11 +23,14 @@
 
 #include "intset.h"
 
-//#define OPRATION
+//Per process operations.
+#define DEFAULT_OPERATIONS 1000
+
+#define OPRATION
 #define OFFSET 4
 
 barrier_t barrier, barrier_global;
-int stop1 = 0;
+int stop1 =0;
 
 /* 
  * Returns a pseudo-random value in [1; range].
@@ -108,18 +111,11 @@ void *test(void *data) {
 	
 	/* Is the first op an update? */
 	unext = (rand_range_re(&d->seed, 100) - 1 < d->update);
-/*	
-#ifdef ICC 
-	while (stop == 0) {
-#else
-	while (AO_load_full(&stop) == 0) {
-#endif  ICC */
-	//int count = 
-	//while (stop1 == 0) {
+
 	for (int i=0; i<d->operations;i++) {
 		if (unext) { // update
 			
-			if (last < 0) { // add - ENQUE
+			if (last < 0) { // add
 		
 				val = rand_range_re(&d->seed, d->range);
 				pthread_t tid = pthread_self() ;
@@ -133,16 +129,21 @@ void *test(void *data) {
 				d->nb_add++;
 
 				//New Logic: n:1 inserts and deletes. val+M : to avoid comeplete randomness.
-	      		#ifdef OPRATION
+				#ifdef OPRATION
 					val = (val + OFFSET) % d->range;
 					if (set_add(d->set, val, TRANSACTIONAL)) {
+						//printf("add thread");
 						d->nb_added++;
-						last = val;					
+						last = val;
+
+						//printf("Added %d \n", val);
 					} 				
 					d->nb_add++;
-	      		#endif
+				#endif
+				//---------------------------------------------------------------------
+
 				
-			} else { // remove - DEQUE
+			} else { // remove
 				
 				if (d->alternate) { // alternate mode (default)
 					if (set_remove(d->set, last, TRANSACTIONAL)) {
@@ -156,8 +157,8 @@ void *test(void *data) {
 					if (set_remove(d->set, val, TRANSACTIONAL)) {
 						d->nb_removed++;
 						/* Repeat until successful, to avoid size variations */
-						//last = -1; for balanced
-						//Balanced -> equal number of inserts and deletes
+						
+						//last = -1; Removed from here to outside.
 					} 
 					last = -1;
 				}
@@ -209,6 +210,11 @@ void *test(void *data) {
 	printf("CAUGHT SIGNAL %d\n", sig);
 }*/
 
+//This balanced test is for the equal number of inserts and delets to the key value stors.
+//I think i should make it all update.
+//Or may be 1% removes.
+//Then i should remove the mian thread from persistenc and must create a new thread for initialization.
+
 int main(int argc, char **argv) {
 	struct option long_options[] = {
 		// These options don't set a flag
@@ -247,7 +253,7 @@ int main(int argc, char **argv) {
 	int unit_tx = DEFAULT_ELASTICITY;
 	int alternate = DEFAULT_ALTERNATE;
 	int effective = DEFAULT_EFFECTIVE;
-	int operations = 200;
+	int operations = DEFAULT_OPERATIONS;
 	sigset_t block_set;
 	
 	while(1) {
@@ -345,7 +351,7 @@ int main(int argc, char **argv) {
 	assert(range > 0 && range >= initial);
 	assert(update >= 0 && update <= 100);
 	
-	printf("Bench type   : lfqueue2\n");
+	printf("Bench type   : linked list\n");
 	printf("Duration     : %d\n", duration);
 	printf("Initial size : %d\n", initial);
 	printf("Nb threads   : %d\n", nb_threads);

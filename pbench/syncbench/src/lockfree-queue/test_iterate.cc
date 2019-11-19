@@ -23,11 +23,11 @@
 
 #include "intset.h"
 
-//#define OPRATION
+#define OPRATION
 #define OFFSET 4
 
 barrier_t barrier, barrier_global;
-int stop1 = 0;
+int stop1 =0;
 
 /* 
  * Returns a pseudo-random value in [1; range].
@@ -131,10 +131,10 @@ void *test(void *data) {
 					//printf("Added %d \n", val);
 				} 				
 				d->nb_add++;
-
-				//New Logic: n:1 inserts and deletes. val+M : to avoid comeplete randomness.
+				//OPRATION might not necessary for the queue model.
+	      		//New Logic: n:1 inserts and deletes. val+M : to avoid comeplete randomness.
 	      		#ifdef OPRATION
-					val = (val + OFFSET) % d->range;
+	      			val = (val + OFFSET) % d->range;
 					if (set_add(d->set, val, TRANSACTIONAL)) {
 						d->nb_added++;
 						last = val;					
@@ -345,7 +345,7 @@ int main(int argc, char **argv) {
 	assert(range > 0 && range >= initial);
 	assert(update >= 0 && update <= 100);
 	
-	printf("Bench type   : lfqueue2\n");
+	printf("Bench type   : lfqueue\n");
 	printf("Duration     : %d\n", duration);
 	printf("Initial size : %d\n", initial);
 	printf("Nb threads   : %d\n", nb_threads);

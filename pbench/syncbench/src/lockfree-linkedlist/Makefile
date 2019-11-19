@@ -35,11 +35,15 @@ test_addonly.o: linkedlist.h harris.h intset.h
 test_mremoved.o: linkedlist.h harris.h intset.h
 	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_mremoved.o test_mremoved.cc
 
-main: linkedlist.o harris.o intset.o test.o test_balanced.o test_addonly.o test_mremoved.o
+test_iterate.o: linkedlist.h harris.h intset.h
+	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_iterate.o test_iterate.cc
+
+main: linkedlist.o harris.o intset.o test.o test_balanced.o test_addonly.o test_mremoved.o test_iterate.o
 	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/harris.o $(BUILDIR)/intset.o $(BUILDIR)/test.o -o $(BINDIR)/linkedlist_regular $(LDFLAGS)
 	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/harris.o $(BUILDIR)/intset.o $(BUILDIR)/test_balanced.o -o $(BINDIR)/linkedlist_balanced $(LDFLAGS)
 	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/harris.o $(BUILDIR)/intset.o $(BUILDIR)/test_addonly.o -o $(BINDIR)/linkedlist_addonly $(LDFLAGS)
 	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/harris.o $(BUILDIR)/intset.o $(BUILDIR)/test_mremoved.o -o $(BINDIR)/linkedlist_mremoved $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/harris.o $(BUILDIR)/intset.o $(BUILDIR)/test_iterate.o -o $(BINDIR)/linkedlist_iterate $(LDFLAGS)
 
 clean:
 	-rm -f $(BINS) $(BUILDIR)

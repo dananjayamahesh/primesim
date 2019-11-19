@@ -29,7 +29,7 @@
 #include "wfrbt.h"
 #include "operations.h"
 
-//#define OPRATION
+#define OPRATION
 #define OFFSET 4
 
 #define DEFAULT_DURATION                1000

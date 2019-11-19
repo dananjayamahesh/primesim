@@ -23,6 +23,9 @@
 
 #include "intset.h"
 
+//#define OPRATION
+#define OFFSET 4
+
 /* Hashtable length (# of buckets) */
 unsigned int maxhtlength;
 
@@ -178,12 +181,23 @@ void *test(void *data) {
 	      
 	    } else if (last < 0) { // add
 	      
-	      val = rand_range_re(&d->seed, d->range);
-	      if (ht_add(d->set, val, TRANSACTIONAL)) {
-					d->nb_added++;
-					last = val;
-	      } 				
-	      d->nb_add++;
+	      	val = rand_range_re(&d->seed, d->range);
+	      	if (ht_add(d->set, val, TRANSACTIONAL)) {
+						d->nb_added++;
+						last = val;
+	      	} 				
+	      	d->nb_add++;
+
+	      	//New Logic: n:1 inserts and deletes. val+M : to avoid comeplete randomness.
+	      	#ifdef OPRATION
+	      		val = (val + OFFSET) % d->range; 
+	      		if (ht_add(d->set, val, TRANSACTIONAL)) {
+						d->nb_added++;
+						last = val;
+	      		} 				
+	      		d->nb_add++;
+	      	#endif
+	      	//-------------------------------------------------------------------------
 	      
 	    } else { // remove
 	      

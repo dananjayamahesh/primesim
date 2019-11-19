@@ -23,7 +23,7 @@
 
 #include "intset.h"
 
-//#define OPRATION
+#define OPRATION
 #define OFFSET 4
 
 barrier_t barrier, barrier_global;

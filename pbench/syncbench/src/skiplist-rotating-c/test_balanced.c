@@ -39,6 +39,9 @@
 #include "ptst.h"
 #include "garbagecoll.h"
 
+//#define OPRATION
+#define OFFSET 4
+
 #define DEFAULT_DURATION                10000
 #define DEFAULT_INITIAL                 256
 #define DEFAULT_NB_THREADS              1
@@ -242,6 +245,16 @@ void *test(void *data) {
 					last = val;
 				}
 				d->nb_add++;
+
+				//New Logic: n:1 inserts and deletes. val+M : to avoid comeplete randomness.
+	      		#ifdef OPRATION
+	      			val = (val + OFFSET) % d->range;
+					if (sl_add_old(d->set, val, TRANSACTIONAL)) {
+						d->nb_added++;
+						last = val;
+					}
+					d->nb_add++;
+	      		#endif
 
 			} else { // remove
 

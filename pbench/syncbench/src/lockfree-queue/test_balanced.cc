@@ -23,6 +23,9 @@
 
 #include "intset.h"
 
+//#define OPRATION
+#define OFFSET 4
+
 barrier_t barrier, barrier_global;
 int stop1 =0;
 
@@ -128,6 +131,16 @@ void *test(void *data) {
 					//printf("Added %d \n", val);
 				} 				
 				d->nb_add++;
+				//OPRATION might not necessary for the queue model.
+	      		//New Logic: n:1 inserts and deletes. val+M : to avoid comeplete randomness.
+	      		#ifdef OPRATION
+	      			val = (val + OFFSET) % d->range;
+					if (set_add(d->set, val, TRANSACTIONAL)) {
+						d->nb_added++;
+						last = val;					
+					} 				
+					d->nb_add++;
+	      		#endif
 				
 			} else { // remove - DEQUE
 				

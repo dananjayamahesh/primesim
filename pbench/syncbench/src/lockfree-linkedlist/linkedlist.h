@@ -71,8 +71,9 @@ typedef intptr_t val_t;
 //RET Evaluation
 //#define B32 //Change and see
 
-//#define B4
-#define B128
+#define B4
+//#define B128
+//#define B256
 
 typedef long load_t;
 
@@ -148,7 +149,14 @@ typedef struct node {
 
 	#ifdef B128
 		load_t load1 __attribute__((aligned(64)));
+		//load_t load2; __attribute__((aligned(64)));
 		load_t load2; 
+	#endif
+
+	#ifdef B128_MALLOC
+		load_t load1 __attribute__((aligned(64)));
+		load_t * load2; 
+		load_t load3; 
 	#endif
 
 

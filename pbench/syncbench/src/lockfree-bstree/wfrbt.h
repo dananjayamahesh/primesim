@@ -26,8 +26,10 @@ typedef uintptr_t Word;
 
 //#define B4
 //#define B96 38-40
-//#define B4
-#define B256
+#define B4
+
+//#define B256
+//#define B128
 
 typedef long load_t;
 
@@ -104,6 +106,12 @@ typedef struct node{
   #ifdef B128
     load_t load1 __attribute__((aligned(64)));
     load_t load2; 
+  #endif
+
+  #ifdef B128_MALLOC
+    load_t load1 __attribute__((aligned(64)));
+    load_t * load2; 
+    load_t load3; 
   #endif
 
   #ifdef B256

@@ -22,7 +22,13 @@
  */
 
 #include "intset.h"
+
+//Per process operations.
 #define DEFAULT_OPERATIONS 1000
+
+//#define OPRATION
+#define OFFSET 4
+
 barrier_t barrier, barrier_global;
 int stop1 =0;
 
@@ -121,6 +127,21 @@ void *test(void *data) {
 					//printf("Added %d \n", val);
 				} 				
 				d->nb_add++;
+
+				//New Logic: n:1 inserts and deletes. val+M : to avoid comeplete randomness.
+				#ifdef OPRATION
+					val = (val + OFFSET) % d->range;
+					if (set_add(d->set, val, TRANSACTIONAL)) {
+						//printf("add thread");
+						d->nb_added++;
+						last = val;
+
+						//printf("Added %d \n", val);
+					} 				
+					d->nb_add++;
+				#endif
+				//---------------------------------------------------------------------
+
 				
 			} else { // remove
 				

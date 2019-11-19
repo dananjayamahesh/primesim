@@ -168,11 +168,11 @@ int lfqueue_enque(intset_t *set, val_t val) {
 
 		if(tail == set->tail){
 			if(next == NULL){
-				if(ATOMIC_CAS_MB(&tail->next, next, newnode))
+				if(ATOMIC_CAS_MB(&tail->next, next, newnode)) //Release Barrier
 					break;
 			}
 			else{
-				ATOMIC_CAS_MB_NOB(&set->tail, tail, next); //Check for no barrier semantics.
+				ATOMIC_CAS_MB_NOB(&set->tail, tail, next); //Check for no barrier semantics.Must be release
 			}
 		}	
 		
