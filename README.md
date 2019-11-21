@@ -1,4 +1,4 @@
-This README is only for the Laxy Release Persistency (LRP).
+# Lazy Release Persistency (LRP).
 
 LRP is integrated to the PriME simulator.  PriME is an execution-driven x86 simulator for manycore architectures. It is capable of simulating 1000+ cores with rich cache hierarchies, coherence protocols and On-chip Network. It is capable of running both multi-threaded and multi-programmed workloads. Moreover, it can distribute multi-programmed workloads into multiple host machines and communicate via OpenMPI.
 
@@ -30,37 +30,40 @@ Directory structure
 * ppin: pin tests
 
 
-Requirements for LRP (Lazy Release Persistency)
+Requirements for LRP
 --------------------
 
 * gcc v4.8 or higher is recommended 
 * Intel Pin tested under v2.14 71313
-* OpenMPI tested under v3.0.0  (need to support MPI_THREAD_MULTIPLE which can be done by adding --enable-mpi-thread-multiple option during installation)
+* OpenMPI tested under v3.0.0  (need to support MPI_THREAD_MULTIPLE which can be done by adding --enable-mpi-thread-multiple option during installation. If you already have OPEN MPI you can chek this by running "ompi_info | grep -i thread" command)
 * libxml2 tested under v2.9.1
 
 Download LRP
 ------------
-0. cd primesim (Go to the primesim directory)
-0. make sure that your are in the dimp branch
+* cd primesim (Go to the primesim directory)
+* make sure that your are in the dimp branch
 
 How to compile
 --------------
-0. cd primesim (Go to the primesim directory)
-0. Modify env.sh to set those environment variables to be the correct paths. And then run follwoing
-0. source env.sh.
-0. make -B
+* cd primesim (Go to the primesim directory)
+* Modify env.sh to set those environment variables to be the correct paths. And then run follwoing
+* source env.sh.
+* make -B
 
 
 How to compile benchmarks
 -------------------------
-0. cd pbench/syncbench
-0. Run make -B
-0. come back to the primesim path 
+* cd pbench/syncbench
+* Run make -B
+* come back to the primesim path 
 
 
-What can possibly go wrong
+Possible Issues/Errors
 --------------------------
-
+* libxml2 file path not found. Plase check if your libxml2 path in the env.sh is right ()
+* libmpi.so path not found. Please check OPENMPI_LIB_PATH in env.sh and check if the path is in the right path.
+* please check the MPI_THREAD_MULTIPLE flag. It should be set. Most of the time it is not set by default. In case, you have to reinstall MPI with the flag set (--enable-mpi-thread-multiple).
+* ompi_info | grep -i thread . Run this command and see. It should say yes. (Thread support: posix (MPI_THREAD_MULTIPLE: yes, OPAL support: yes, OMPI progress: no, ORTE progress: yes, Event lib: yes))
 
 How to run LRP
 --------------
