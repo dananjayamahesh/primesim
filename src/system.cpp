@@ -3943,7 +3943,7 @@ void System::report(ofstream* result, ofstream* stat)
  
    uint64_t all_persists_tot =0, all_pf_persists_tot=0, vis_pf_persists_tot = 0, evi_pf_persists_tot=0, inter_pf_persists_tot=0; 
    uint64_t invals_tot = 0, invals_M_tot = 0, invals_E_tot = 0, shares_tot = 0, shares_M_tot = 0, shares_E_tot = 0;
-   double lrp_ratio=0.5, bep_ratio=0.8;
+   double lrp_ratio=0.5, bep_ratio=0.75;
    //RET
    uint64_t atom_clk_timestamp_tot=0, clk_timestamp_tot=0, ret_add_tot=0, ret_delete_tot=0, ret_delete_lower_tot=0, ret_lookup_tot=0, ret_intra_lookup_tot = 0, ret_inter_lookup_tot = 0;
 
@@ -3962,7 +3962,7 @@ void System::report(ofstream* result, ofstream* stat)
     uint64_t num_dep_cls_flushed_tot = 0;
 
     for (int i = 0; i < num_cores; i++) {
-        persist_buffer[i].report(result);
+        //persist_buffer[i].report(result);
         num_wr_tot += persist_buffer[i].num_wr;
         num_cls_tot += persist_buffer[i].num_cl_insert;
         num_evi_tot += persist_buffer[i].num_cl_evict;
@@ -4230,20 +4230,20 @@ void System::report(ofstream* result, ofstream* stat)
         *result << "The # of writeback instructions: " << wb_count << endl;
         *result << "The cache miss rate: " << 100 * miss_rate << "%" << endl;        
         *result << "-----------------------------------------------------------------------\n";
-        *result << "Inter-thread conflicting Persists: " <<  inter_persist_tot << endl;
-        *result << "Intra-thread conflicting Persists: " <<  intra_persist_tot << endl;
-        *result << "Inter-Intra P ratio (SUM): " << (double)inter_persist_tot/(inter_persist_tot+intra_persist_tot) << endl;
-        *result << "Inter-Intra P ratio (AVG): " << ratio_inter_intra_persists/cache_level[i].num_caches << endl;
+        *result << "Average Inter-thread conflicting Persists: " <<  inter_persist_tot << endl;
+        *result << "Average Intra-thread conflicting Persists: " <<  intra_persist_tot << endl;
+        *result << "Average Inter-Intra P ratio (SUM): " << (double)inter_persist_tot/(inter_persist_tot+intra_persist_tot) << endl;
+        *result << "Average Inter-Intra P ratio (AVG): " << ratio_inter_intra_persists/cache_level[i].num_caches << endl;
         *result << "=----------------------------------------------------------------------\n";
-        *result << "Inter-thread conflicts: " <<  inter_tot << endl;
-        *result << "Intra-thread conflicts: " <<  intra_tot << endl;
-        *result << "Inter-Intra ratio (SUM): " << (double)inter_tot/(inter_tot+intra_tot) << endl;
-        *result << "Inter-Intra ratio (AVG): " << ratio_inter_intra_conflicts/cache_level[i].num_caches << endl;
+        *result << "Average Inter-thread conflicts: " <<  inter_tot << endl;
+        *result << "Average Intra-thread conflicts: " <<  intra_tot << endl;
+        *result << "Average Inter-Intra ratio (SUM): " << (double)inter_tot/(inter_tot+intra_tot) << endl;
+        *result << "Average Inter-Intra ratio (AVG): " << ratio_inter_intra_conflicts/cache_level[i].num_caches << endl;
         *result << "-----------------------------------------------------------------------\n";
-        *result << "Inter-thread Persist Cycles: " <<  inter_pcycles_tot << endl;
-        *result << "Intra-thread Persist Cycles: " <<  intra_pcycles_tot << endl;
-        *result << "Inter-Intra PC ratio (SUM): " << (double)inter_pcycles_tot/(inter_pcycles_tot+intra_pcycles_tot) << endl;
-        *result << "Inter-Intra PC ratio (AVG): " << ratio_inter_intra_persist_cycles/cache_level[i].num_caches << endl;
+        *result << "Average Inter-thread Persist Cycles: " <<  inter_pcycles_tot << endl;
+        *result << "Average Intra-thread Persist Cycles: " <<  intra_pcycles_tot << endl;
+        *result << "Average Inter-Intra PC ratio (SUM): " << (double)inter_pcycles_tot/(inter_pcycles_tot+intra_pcycles_tot) << endl;
+        *result << "Average Inter-Intra PC ratio (AVG): " << ratio_inter_intra_persist_cycles/cache_level[i].num_caches << endl;
         *result << "-----------------------------------------------------------------------\n";
         *result << "Write-Backs count and delay " <<  clwb_tot << " \t" << delay_clwb_tot << endl;
         *result << "Critical Write-Backs count and delay " <<  critical_clwb << " \t" << delay_critical_clwb << endl;
@@ -4252,7 +4252,6 @@ void System::report(ofstream* result, ofstream* stat)
         *result << "Eviction count and delay " <<  natural_clwb << " \t" << delay_natural_clwb << endl;
         *result << "Write-Backs count and delay (all) " <<  all_natural_clwb << " \t" << delay_all_natural_clwb << endl;
         
-
         uint64_t conflicting_nat_wb = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?natural_clwb*lrp_ratio: all_natural_clwb*bep_ratio);
         uint64_t conflicting_nat_wb_cycle = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?delay_natural_clwb*lrp_ratio: delay_all_natural_clwb*bep_ratio);
 
@@ -4262,6 +4261,7 @@ void System::report(ofstream* result, ofstream* stat)
         *result << "Conflicting natural Evictions/Write-Backs count and delay " << conflicting_nat_wb << " \t" << conflicting_nat_wb_cycle << endl;
 
         uint64_t tot_writeback_conflicts = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?intra_evi_persists_tot: intra_evi_M_allconflicts_tot); //same as nat_wb
+        uint64_t tot_evi_conflicts = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?intra_evi_M_conflicts_tot: intra_evi_M_allconflicts_tot);
 
         *result << "Sync Write-Backs count and delay " <<  sync_clwb << " \t" << delay_sync_clwb << endl;
         *result << "Critical Persist count and delay " <<  critical_persist_wb << " \t" << critical_persist_wb << endl;
@@ -4322,7 +4322,6 @@ void System::report(ofstream* result, ofstream* stat)
         *result << "Average largest epoch flushed (/num-threads) " <<  largest_epoch_size_tot << endl;
         
         *result << "-----------------------------------------------------------------------\n\n\n";      
-
 
         *result << "Total Persists " <<  all_persists_tot << endl;
         *result << "all_pf_persists " <<  all_pf_persists_tot << endl;
@@ -4409,7 +4408,8 @@ void System::report(ofstream* result, ofstream* stat)
                 <<  conflicting_nat_wb_cycle << ","
                 <<  conflicting_nat_wb2 << ","
                 <<  conflicting_nat_wb_cycle2 << ","
-                <<  tot_writeback_conflicts << endl ;
+                <<  tot_writeback_conflicts << ","
+                <<  tot_evi_conflicts << endl ;
 
                 //Need to add propoer conlficting writebacks for each one.
         //Adding new division of visibility/evictions/ and PF to stat file

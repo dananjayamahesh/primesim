@@ -900,8 +900,7 @@ void Cache::report(ofstream* result)
     *result << "evi_pf_persists " <<  evi_pf_persists << endl;
     *result << "inter_pf_persists " <<  inter_pf_persists << endl;    
 
-
-     *result << "\n---------------------------------------------------------------------- " << endl;
+    *result << "\n---------------------------------------------------------------------- " << endl;
     *result << "Updated Epoch ID : " << epoch_updated_id <<endl;
     *result << "Counted Epoch ID : " << epoch_counted_id <<endl;    
     *result << "Epoch Sum : " << epoch_sum <<endl;
