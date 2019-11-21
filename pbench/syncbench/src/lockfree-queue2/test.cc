@@ -375,7 +375,10 @@ int main(int argc, char **argv) {
 	
 	/* Populate set */
 	printf("Adding %d entries to set\n", initial);
-
+	#ifdef OP_REDUCED
+      operations = operations*0.5; //Effective operations.
+    #endif  
+    printf("Ops %d \n", operations);
 	
 	i = 0;
 	while (i < initial) {

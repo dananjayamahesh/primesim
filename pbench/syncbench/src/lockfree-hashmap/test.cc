@@ -23,6 +23,7 @@
 
 #include "intset.h"
 
+#define OP_REDUCED
 /* Hashtable length (# of buckets) */
 unsigned int maxhtlength;
 
@@ -568,6 +569,12 @@ int main(int argc, char **argv)
 	
 	// Populate set 
 	printf("Adding %d entries to set\n", initial);
+	#ifdef OP_REDUCED
+		operations = operations*0.5; //Effective operations.
+	#endif	
+	printf("Num %d \n", operations);
+
+
 	i = 0;
 	maxhtlength = (int) (initial / load_factor);
 	while (i < initial) {

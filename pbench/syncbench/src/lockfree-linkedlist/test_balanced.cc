@@ -24,10 +24,11 @@
 #include "intset.h"
 
 //Per process operations.
-#define DEFAULT_OPERATIONS 1000
+//#define DEFAULT_OPERATIONS 10000
 
 //#define OPRATION
 #define OFFSET 4
+
 
 barrier_t barrier, barrier_global;
 int stop1 =0;
@@ -396,7 +397,10 @@ int main(int argc, char **argv) {
 	
 	/* Populate set */
 	printf("Adding %d entries to set\n", initial);
-
+	#ifdef OP_REDUCED
+		operations = operations*0.5; //Effective operations.
+	#endif	
+	printf("Num %d \n", operations);
 	
 	i = 0;
 	while (i < initial) {

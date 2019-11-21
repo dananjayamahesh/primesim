@@ -65,6 +65,8 @@
 #define VAL_MIN                         INT_MIN
 #define VAL_MAX                         INT_MAX
 
+#define OP_REDUCED
+
 inline long rand_range(long r); /* declared in test.c */
 
 #include "intset.h"
@@ -521,6 +523,11 @@ int main(int argc, char **argv)
 		srand((int)time(0));
 	else
 		srand(seed);
+
+	#ifdef OP_REDUCED
+      operations = operations*0.5; //Effective operations.
+    #endif  
+    printf("Ops %d \n", operations);
 
 	levelmax = floor_log_2((unsigned int) initial);
 

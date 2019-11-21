@@ -248,7 +248,7 @@ int main(int argc, char **argv) {
 	int unit_tx = DEFAULT_ELASTICITY;
 	int alternate = DEFAULT_ALTERNATE;
 	int effective = DEFAULT_EFFECTIVE;
-	int operations = 200;
+	int operations = DEFAULT_OPERATIONS;
 	sigset_t block_set;
 	
 	while(1) {
@@ -391,7 +391,10 @@ int main(int argc, char **argv) {
 	
 	/* Populate set */
 	printf("Adding %d entries to set\n", initial);
-
+	#ifdef OP_REDUCED
+      operations = operations*0.5; //Effective operations.
+    #endif  
+    printf("Ops %d \n", operations);
 	
 	i = 0;
 	while (i < initial) {

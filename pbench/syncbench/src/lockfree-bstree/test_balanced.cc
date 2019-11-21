@@ -46,6 +46,7 @@
 #define XSTR(s)                         STR(s)
 #define STR(s)                          #s
 
+#define OP_REDUCED
 //#define THROTTLE_NUM  1000
 //#define THROTTLE_TIME 10000
 //#define THROTTLE_MAINTENANCE
@@ -534,6 +535,11 @@ void *test2(void *data)
       srand((int)time(0));
     else
       srand(seed);
+
+      #ifdef OP_REDUCED
+        operations = operations*0.5; //Effective operations.
+      #endif  
+      printf("Ops %d \n", operations);
 		
     node_t * newRT = (node_t*)xmalloc(sizeof(node_t));
  node_t * newLC = (node_t*)xmalloc(sizeof(node_t));

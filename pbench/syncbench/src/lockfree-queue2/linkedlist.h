@@ -37,6 +37,8 @@
 #define DEFAULT_ALTERNATE								0
 #define DEFAULT_EFFECTIVE								1
 
+#define OP_REDUCED
+
 #define XSTR(s)                         STR(s)
 #define STR(s)                          #s
 

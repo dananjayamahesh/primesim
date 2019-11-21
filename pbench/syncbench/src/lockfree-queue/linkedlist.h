@@ -27,6 +27,7 @@
 /* Note: stdio is thread-safe */
 #endif
 
+#define DEFAULT_OPERATIONS              10000
 #define DEFAULT_DURATION                10000
 #define DEFAULT_INITIAL                 256
 #define DEFAULT_NB_THREADS              1
@@ -36,6 +37,8 @@
 #define DEFAULT_ELASTICITY							4
 #define DEFAULT_ALTERNATE								0
 #define DEFAULT_EFFECTIVE								1
+
+#define OP_REDUCED
 
 #define XSTR(s)                         STR(s)
 #define STR(s)                          #s
@@ -78,6 +81,11 @@ typedef struct node {
 	#ifdef B8
 	load_t load1;
 	load_t load2;
+	#endif
+
+	#ifdef B8_MALLOC
+	load_t *load1;
+	load_t *load2;
 	#endif
 
 	#ifdef B32

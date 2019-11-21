@@ -25,6 +25,7 @@
 
 //#define OPRATION
 #define OFFSET 4
+#define OP_REDUCED
 
 /* Hashtable length (# of buckets) */
 unsigned int maxhtlength;
@@ -575,6 +576,11 @@ int main(int argc, char **argv)
 	set = ht_new();
 	
 	stop = 0;
+
+	#ifdef OP_REDUCED
+		operations = operations*0.5; //Effective operations.
+	#endif	
+	printf("Num %d \n", operations);
 	
 	// Init STM 
 	printf("Initializing STM\n");
