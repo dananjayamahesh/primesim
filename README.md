@@ -54,17 +54,22 @@ How to compile
 How to compile benchmarks
 -------------------------
 * cd pbench/syncbench
-* Run make -B
-* come back to the primesim path 
+* make -B
+* cd ../.. (come back to the primesim path) 
+
+
+Simple Test for MPI
+--------------------
+mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ls
+
 
 
 Possible Issues/Errors
 --------------------------
 * libxml2 file path not found. Plase check if your libxml2 path in the env.sh is right ()
 * libmpi.so path not found. Please check OPENMPI_LIB_PATH in env.sh and check if the path is in the right path.
-* please check the MPI_THREAD_MULTIPLE flag. It should be set. Most of the time it is not set by default. In case, you have to reinstall MPI with the flag set (--enable-mpi-thread-multiple).
-* ompi_info | grep -i thread . Run this command and see. It should say yes. (Thread support: posix (MPI_THREAD_MULTIPLE: yes, OPAL support: yes, OMPI progress: no, ORTE progress: yes, Event lib: yes))
+* please check the MPI_THREAD_MULTIPLE flag. Most of the time it is not set by default. In case, you have to reinstall MPI with the flag set (--enable-mpi-thread-multiple).
+* Run ompi_info | grep -i thread. It should say yes. (Thread support: posix (MPI_THREAD_MULTIPLE: yes, OPAL support: yes, OMPI progress: no, ORTE progress: yes, Event lib: yes))
 
-How to run LRP
---------------
+
 
