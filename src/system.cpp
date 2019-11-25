@@ -568,7 +568,8 @@ Cache* System::init_caches(int level, int cache_id)
         }
     }
     cache_init_done[level][cache_id] = true;
-    printf("[Cache Initialization] Initiated Cache : %d of level %d \n", cache_id, level);
+
+    //printf("[Cache Initialization] Initiated Cache : %d of level %d \n", cache_id, level);
     pthread_mutex_unlock(&cache_lock[level][cache_id]);
     return cache[level][cache_id];
 }
@@ -583,7 +584,7 @@ void System::init_directories(int home_id)
 
     }
     directory_cache_init_done[home_id] = true;
-    printf("Directory is created : Home Id - %d of level %d \n\n", home_id, num_levels);
+    //printf("Directory is created : Home Id - %d of level %d \n\n", home_id, num_levels);
     pthread_mutex_unlock(&directory_cache_lock[home_id]);
 }
 
@@ -747,9 +748,9 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
     InsMem ins_mem_old; 
     
     if (!cache_init_done[level][cache_id]) {
-        printf("\n[Cache] -----------------------Initiating Cache %d of %d --------------------\n", cache_id, level);
+        //printf("\n[Cache] -----------------------Initiating Cache %d of %d --------------------\n", cache_id, level);
         cache_cur = init_caches(level, cache_id);       
-        printf("[Cache] -----------------------Initiated  Cache %d of %d --------------------\n\n\n", cache_id, level);  
+        //printf("[Cache] -----------------------Initiated  Cache %d of %d --------------------\n\n\n", cache_id, level);  
     }
 
     assert(cache_cur != NULL);
@@ -1168,7 +1169,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
 
         //Serious Bug: There are some cacheline in the L0 that are not onvalidaed ot shared and no state in the higher level cache. Check invalidate..
         //Same probelm Everywhere. Happenes when epoch sizes are large. Temporary solution is to ignore writebacks for missed cachelines.
-        //Invariant: If something is in the cacheline, highler levels should also ahve it. Inclusive caches.
+        //Invariant: If something is in the cacheline, highler levels should also ahve it. i.e. Inclusive caches.
        
         if(ins_mem->mem_type == WB){
             return I;
@@ -1194,7 +1195,7 @@ char System::mesi_directory(Cache* cache_cur, int level, int cache_id, int core_
             //delay[core_id] += inval_children(cache_cur, &ins_mem_old);
 
             //asplos-after; this must be dirty cacheline
-            if(line_cur->state == M || line_cur->state == E) {  //              
+            if(line_cur->state == M || (level==0 && line_cur->state == E && line_cur->dirty) || (level!=0 && line_cur->state == E)){  //              
                 cache_cur->incWbCount();
                 if (level == num_levels-1) {
                     delay[core_id] += inval_children(cache_cur, &ins_mem_old, core_id, timer+delay[core_id]); //Previous One
@@ -2310,8 +2311,8 @@ int System::epochPersistWithPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_
                         //asplos-after: counting the average number of cachelines per epoch that is flushing
                         if(line_cur->max_epoch_id >= 40000){
                             //Error
-                            cerr<<"Error: Wrong home id\n";
-                            printf("Errorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
+                            cerr<<"Error: PF overflows: only for PF. This is not for standard BB or LRP.\n";
+                            //printf("Errorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
                             return -1;
                         }
 
@@ -3943,7 +3944,7 @@ void System::report(ofstream* result, ofstream* stat)
  
    uint64_t all_persists_tot =0, all_pf_persists_tot=0, vis_pf_persists_tot = 0, evi_pf_persists_tot=0, inter_pf_persists_tot=0; 
    uint64_t invals_tot = 0, invals_M_tot = 0, invals_E_tot = 0, shares_tot = 0, shares_M_tot = 0, shares_E_tot = 0;
-   double lrp_ratio=0.5, bep_ratio=0.75;
+   double lrp_ratio=0.5, bep_ratio=0.8;
    //RET
    uint64_t atom_clk_timestamp_tot=0, clk_timestamp_tot=0, ret_add_tot=0, ret_delete_tot=0, ret_delete_lower_tot=0, ret_lookup_tot=0, ret_intra_lookup_tot = 0, ret_inter_lookup_tot = 0;
 

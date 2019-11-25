@@ -608,7 +608,7 @@ int Cache::initSyncMap(int size){
     syncmap.size = 0;
     syncmap.head = NULL;    
     syncmap.epoch_id = 0;  
-    printf("Initialized Sync Map with size %d", SYNCMAP_SIZE);  
+    //printf("Initialized Sync Map with size %d", SYNCMAP_SIZE);  
     return 0;
 }
 
@@ -872,6 +872,8 @@ void Cache::report(ofstream* result)
     *result << "The # of persist counts: " << persist_count << endl;
     *result << "The # of persist delays: " << persist_delay << endl;
     *result << "---------------------------------------------------------------------- " << endl;
+    
+    /*
     *result << "Intra-thread Conflicts : " << intra_conflicts <<endl;   
     *result << "Inter-thread Conflicts : " << inter_conflicts <<endl;  
     *result << "Inter/Intra Conflict Ratio : " << (double)inter_conflicts/(intra_conflicts+inter_conflicts) <<endl;  
@@ -884,6 +886,7 @@ void Cache::report(ofstream* result)
     *result << "Inter-thread Persists Cycles: " << inter_persist_cycles <<endl;  
     *result << "Inter/Intra Persists Cycles Ratio : " << (double)inter_persist_cycles/(intra_persist_cycles+inter_persist_cycles) <<endl; 
     *result << "---------------------------------------------------------------------- " << endl;
+    */
     *result << "Write-Backs count and delay " <<  write_back_count << " \t" << write_back_delay << endl;
     *result << "Critical Write-Backs count and delay " <<  critical_write_back_count << " \t" << critical_write_back_delay << endl;
     *result << "NonCritical Write-Backs count and delay " <<  noncritical_write_back_count << " \t" << noncritical_write_back_delay << endl;
@@ -893,6 +896,7 @@ void Cache::report(ofstream* result)
     *result << "Critical Persist count and delay " <<  critical_conflict_persists << " \t" << critical_conflict_persist_cycles << endl;
     *result << "All perisist (Persistence)" <<  getPersistCount() << " \t" << getPersistDelay() << endl;
 
+    /*
     *result << "\n---------------------------------------------------------------------- " << endl;
     *result << "Total Persists " <<  all_persists << endl;
     *result << "all_pf_persists " <<  all_pf_persists << endl;
@@ -957,6 +961,7 @@ void Cache::report(ofstream* result)
     *result << "Lookup Release Success " << cnt_sm_rel_succ_lookups <<endl;
     *result << "Delete Calls" << cnt_sm_delete_call <<endl;
     *result << "Delete_Lower Calls " << cnt_sm_delete_lower_call <<endl;
+    */
 
     *result << "=================================================================\n\n";
 
