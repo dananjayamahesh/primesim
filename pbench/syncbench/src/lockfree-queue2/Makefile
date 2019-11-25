@@ -29,6 +29,7 @@ test.o: linkedlist.h lfqueue2.h intset.h
 	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_addonly.o test_addonly.cc
 	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_mremoved.o test_mremoved.cc
 	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_iterate.o test_iterate.cc
+	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_backed.o test_backed.cc
 
 main: linkedlist.o lfqueue2.o intset.o test.o
 	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue2.o $(BUILDIR)/intset.o $(BUILDIR)/test.o -o $(BINDIR)/lfqueue2_regular $(LDFLAGS)
@@ -36,6 +37,7 @@ main: linkedlist.o lfqueue2.o intset.o test.o
 	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue2.o $(BUILDIR)/intset.o $(BUILDIR)/test_addonly.o -o $(BINDIR)/lfqueue2_addonly $(LDFLAGS)
 	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue2.o $(BUILDIR)/intset.o $(BUILDIR)/test_mremoved.o -o $(BINDIR)/lfqueue2_mremoved $(LDFLAGS)
 	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue2.o $(BUILDIR)/intset.o $(BUILDIR)/test_iterate.o -o $(BINDIR)/lfqueue2_iterate $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/linkedlist.o $(BUILDIR)/lfqueue2.o $(BUILDIR)/intset.o $(BUILDIR)/test_backed.o -o $(BINDIR)/lfqueue2_backed $(LDFLAGS)
 
 clean:
 	-rm -f $(BINS) 

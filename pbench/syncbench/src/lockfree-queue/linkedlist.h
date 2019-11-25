@@ -64,7 +64,10 @@ typedef intptr_t val_t;
 
 //#define B4 - Original result for run11-paper
 //#define B96 38-40
-#define B4
+
+#define B8_MALLOC
+
+//#define B4
 
 //#define B128
 //#define B256
@@ -87,6 +90,20 @@ typedef struct node {
 	load_t *load1;
 	load_t *load2;
 	#endif
+
+	#ifdef B16
+  	load_t load1;
+  	load_t load2;
+  	load_t load3;
+  	load_t load4;
+  	#endif
+	
+  	#ifdef B16_MALLOC
+  	load_t *load1;
+  	load_t *load2;
+  	load_t *load3;
+  	load_t *load4;
+  	#endif
 
 	#ifdef B32
 	load_t load1;

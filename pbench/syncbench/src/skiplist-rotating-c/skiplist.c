@@ -86,6 +86,35 @@ node_t* node_new(unsigned long key, void *val, node_t *prev,
       node->load1=val+1;
       node->load2=val+2;
     #endif
+
+    #ifdef B8_MALLOC
+    node->load1= (load_t*)malloc(sizeof(load_t));
+    *(node->load1)= (long)val+1;    
+
+    node->load2=(load_t*)malloc(sizeof(load_t));
+    *(node->load2) = (long)val+2;  
+    #endif
+
+    #ifdef B16
+      node->load1=val+1;
+      node->load2=val+2;
+      node->load3=val+3;
+      node->load4=val+4;
+    #endif
+
+    #ifdef B16_MALLOC
+    node->load1= (load_t*)malloc(sizeof(load_t));
+    *(node->load1)= (long)val+1;    
+
+    node->load2=(load_t*)malloc(sizeof(load_t));
+    *(node->load2) = (long)val+2;  
+
+    node->load3=(load_t*)malloc(sizeof(load_t));
+    *(node->load3) = (long)val+3; 
+
+    node->load4=(load_t*)malloc(sizeof(load_t));
+    *(node->load4) = (long)val+4;  
+    #endif
     
     #ifdef B32
       node->load1=val+1;
@@ -148,6 +177,13 @@ node_t* node_new(unsigned long key, void *val, node_t *prev,
     #ifdef B128
       node->load1=val+1;
       node->load2=val+2;
+    #endif
+
+    #ifdef B128_MALLOC
+    node->load1=(long)val+1;
+    node->load2= (load_t*)malloc(sizeof(load_t));
+    *(node->load2)= (long)val+2; 
+    node->load3=(long)val+3;
     #endif
 
     #ifdef B256

@@ -23,7 +23,9 @@ unsigned long sl_zero;
 
 //#define B4 - asplos paper
 //#define B96 - 38-41
-#define B4
+
+#define B8_MALLOC
+//#define B4
 
 //#define B256
 //#define B128
@@ -49,6 +51,25 @@ struct sl_node {
     #ifdef B8
     load_t load1;
     load_t load2;
+    #endif
+
+    #ifdef B8_MALLOC
+    load_t *load1;
+    load_t *load2;
+    #endif
+
+    #ifdef B16
+    load_t load1;
+    load_t load2;
+    load_t load3;
+    load_t load4;
+    #endif
+    
+    #ifdef B16_MALLOC
+    load_t *load1;
+    load_t *load2;
+    load_t *load3;
+    load_t *load4;
     #endif
 
     #ifdef B32

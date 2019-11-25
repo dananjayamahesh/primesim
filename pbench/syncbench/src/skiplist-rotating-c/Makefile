@@ -35,6 +35,7 @@ test.o: intset.h
 	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_addonly.o test_addonly.c
 	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_mremoved.o test_mremoved.c
 	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_iterate.o test_iterate.c
+	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test_backed.o test_backed.c
 
 main: intset.o $(BUILDIR)/background.o $(BUILDIR)/skiplist.o $(BUILDIR)/nohotspot_ops.o test.o $(BUILDIR)/ptst.o $(BUILDIR)/garbagecoll.o
 	$(CC) $(CFLAGS) $(BUILDIR)/garbagecoll.o $(BUILDIR)/ptst.o $(BUILDIR)/skiplist.o $(BUILDIR)/nohotspot_ops.o $(BUILDIR)/intset.o $(BUILDIR)/background.o $(BUILDIR)/test.o -o$(BINDIR)/skiplist_regular $(LDFLAGS)
@@ -42,6 +43,7 @@ main: intset.o $(BUILDIR)/background.o $(BUILDIR)/skiplist.o $(BUILDIR)/nohotspo
 	$(CC) $(CFLAGS) $(BUILDIR)/garbagecoll.o $(BUILDIR)/ptst.o $(BUILDIR)/skiplist.o $(BUILDIR)/nohotspot_ops.o $(BUILDIR)/intset.o $(BUILDIR)/background.o $(BUILDIR)/test_addonly.o -o $(BINDIR)/skiplist_addonly $(LDFLAGS)
 	$(CC) $(CFLAGS) $(BUILDIR)/garbagecoll.o $(BUILDIR)/ptst.o $(BUILDIR)/skiplist.o $(BUILDIR)/nohotspot_ops.o $(BUILDIR)/intset.o $(BUILDIR)/background.o $(BUILDIR)/test_mremoved.o -o $(BINDIR)/skiplist_mremoved $(LDFLAGS)
 	$(CC) $(CFLAGS) $(BUILDIR)/garbagecoll.o $(BUILDIR)/ptst.o $(BUILDIR)/skiplist.o $(BUILDIR)/nohotspot_ops.o $(BUILDIR)/intset.o $(BUILDIR)/background.o $(BUILDIR)/test_iterate.o -o $(BINDIR)/skiplist_iterate $(LDFLAGS)
+	$(CC) $(CFLAGS) $(BUILDIR)/garbagecoll.o $(BUILDIR)/ptst.o $(BUILDIR)/skiplist.o $(BUILDIR)/nohotspot_ops.o $(BUILDIR)/intset.o $(BUILDIR)/background.o $(BUILDIR)/test_backed.o -o $(BINDIR)/skiplist_backed $(LDFLAGS)
 
 clean:
 	-rm -rf ${BUILDIR}

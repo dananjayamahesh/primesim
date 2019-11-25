@@ -21,7 +21,7 @@
  * GNU General Public License for more details.
  */
 
-#include "../lockfree-linkedlist/intset.h"
+#include "../lockfree-linkedlist2/intset.h"
 
 #define DEFAULT_MOVE                    0
 #define DEFAULT_SNAPSHOT                0

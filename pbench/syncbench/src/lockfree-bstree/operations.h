@@ -30,6 +30,35 @@ int perform_one_insert_window_operation(thread_data_t* data, seekRecord_t * R, s
 	newLeaf->load2=(long)newKey+2;
 	#endif
 
+	#ifdef B8_MALLOC
+    newLeaf->load1= (load_t*)malloc(sizeof(load_t));
+    *(newLeaf->load1)= (long)newKey+1;    
+
+    newLeaf->load2=(load_t*)malloc(sizeof(load_t));
+    *(newLeaf->load2) = (long)newKey+2;  
+    #endif
+
+    #ifdef B16
+  	newLeaf->load1=(long)newKey+1;
+	newLeaf->load2=(long)newKey+2;
+	newLeaf->load3=(long)newKey+3;
+	newLeaf->load4=(long)newKey+4;
+	#endif
+
+	#ifdef B16_MALLOC
+    newLeaf->load1= (load_t*)malloc(sizeof(load_t));
+    *(newLeaf->load1)= (long)newKey+1;    
+
+    newLeaf->load2=(load_t*)malloc(sizeof(load_t));
+    *(newLeaf->load2) = (long)newKey+2;  
+
+    newLeaf->load3=(load_t*)malloc(sizeof(load_t));
+    *(newLeaf->load3) = (long)newKey+3;
+
+    newLeaf->load4=(load_t*)malloc(sizeof(load_t));
+    *(newLeaf->load4) = (long)newKey+4;  
+    #endif
+
 	#ifdef B32
   	newLeaf->load1=(long)newKey+1;
 	newLeaf->load2=(long)newKey+2;
@@ -92,6 +121,13 @@ int perform_one_insert_window_operation(thread_data_t* data, seekRecord_t * R, s
   	newLeaf->load1=(long)newKey+1;
 	newLeaf->load2=(long)newKey+2;
 	#endif
+
+	#ifdef B128_MALLOC
+    newLeaf->load1=(long)newKey+1;
+    newLeaf->load2= (load_t*)malloc(sizeof(load_t));
+    *(newLeaf->load2)= (long)newKey+2; 
+    newLeaf->load3=(long)newKey+3;
+    #endif
 
 	#ifdef B256
   	newLeaf->load1=(long)newKey+1;

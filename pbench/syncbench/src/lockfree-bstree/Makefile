@@ -18,6 +18,7 @@ main: test.o
 	$(CC) $(CFLAGS) ${BUILDIR}/test_addonly.o -o $(BINDIR)/bstree_addonly $(LDFLAGS)
 	$(CC) $(CFLAGS) ${BUILDIR}/test_mremoved.o -o $(BINDIR)/bstree_mremoved $(LDFLAGS)
 	$(CC) $(CFLAGS) ${BUILDIR}/test_iterate.o -o $(BINDIR)/bstree_iterate $(LDFLAGS)
+	$(CC) $(CFLAGS) ${BUILDIR}/test_backed.o -o $(BINDIR)/bstree_backed $(LDFLAGS)
 
 test.o: wfrbt.h test.cc test_balanced.cc test_addonly.cc test_mremoved.cc
 	$(CC) $(CFLAGS) -c -o ${BUILDIR}/test.o test.cc
@@ -25,5 +26,6 @@ test.o: wfrbt.h test.cc test_balanced.cc test_addonly.cc test_mremoved.cc
 	$(CC) $(CFLAGS) -c -o ${BUILDIR}/test_addonly.o test_addonly.cc
 	$(CC) $(CFLAGS) -c -o ${BUILDIR}/test_mremoved.o test_mremoved.cc
 	$(CC) $(CFLAGS) -c -o ${BUILDIR}/test_iterate.o test_iterate.cc
+	$(CC) $(CFLAGS) -c -o ${BUILDIR}/test_backed.o test_backed.cc
 clean:
 	-rm -f $(BINS) *.o $(BUILDIR) $(BINDIR)

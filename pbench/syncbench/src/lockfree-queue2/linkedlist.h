@@ -62,8 +62,10 @@ typedef intptr_t val_t;
 #define VAL_MAX                         INT_MAX
 
 //#define B4
+#define B8_MALLOC
 //#define B96
-#define B4
+
+//#define B4
 
 //#define B128
 //#define B256
@@ -81,6 +83,25 @@ typedef struct node {
 	load_t load1;
 	load_t load2;
 	#endif
+
+	#ifdef B8_MALLOC
+    load_t *load1;
+    load_t *load2;
+    #endif
+
+    #ifdef B16
+  	load_t load1;
+  	load_t load2;
+  	load_t load3;
+  	load_t load4;
+  	#endif
+	
+  	#ifdef B16_MALLOC
+  	load_t *load1;
+  	load_t *load2;
+  	load_t *load3;
+  	load_t *load4;
+  	#endif
 
 	#ifdef B32
 	load_t load1;
