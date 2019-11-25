@@ -6,8 +6,11 @@
 import sys
 
 def main():
-	#filename = sys.argv[1]
-	#print(filename)
+
+	infile_path = sys.argv[1]
+	print(infile_path)
+	outfile_path = sys.argv[2]
+	print(outfile_path)
 
 	progs = [
 		'linkedlist',
@@ -18,11 +21,13 @@ def main():
 		'lfqueue2',
 		]
 	
-	out_exec = open('../asplos-output/cached/b8m-run-1/exec_time.out', 'w+')
+	#out_exec = open('../asplos-output/cached/syncbench-mbank-120cycles/exec_time.out', 'w+')
+	out_exec = open(outfile_path, 'w+')
 	out_exec.write('benchmarks-T, \t\t sb, \t bb, \t bb+pf, \t lrp, \t lrp+pf \n')
 	
 	for prog_name in progs:
-		infile = open('../asplos-output/cached/syncbench-mbank-120cycles/data_cpi.txt', 'r')
+		#infile = open('../asplos-output/cached/syncbench-mbank-120cycles/data_cpi.txt', 'r')
+		infile = open(infile_path, 'r')
 		#output = open('../asplos-output/cached/syncbench-mbank-120cycles/' + prog_name + '-exec.out', 'w+')
 	
 		# Repeat for each song in the text file

@@ -4,18 +4,18 @@ echo $PRIME_PATH
 #optype=balanced
 
 prime_output=${PRIME_PATH}/asplos
-output_directory=${prime_output}/asplos-output/uncached
+output_directory=${prime_output}/asplos-output/cached
 
 echo $output_directory
 
 repeat=1
 num_threads=32
-config=small #large set takes a lot of time to run.
+config=small
 
 #Repeat for averages
 for r in 1
 do
-	CONF_NAME=run-${r}
+	CONF_NAME=run-A-${r}
 	CONF_PATH=${output_directory}/${CONF_NAME}
 	DIMP_FILE=${output_directory}/stat.txt
 	DIMP2_FILE=${output_directory}/stat2.txt
@@ -46,7 +46,7 @@ do
 	#Configurations
 	num_threads=32
 	alter="-A"
-	mode="uncached"
+	mode="cached"
 	max_operations=100000 #nb_threads*per_thread_ops
 	ops_pro=6000
 	urate=100 #syncbench update rate
@@ -68,6 +68,7 @@ do
 				
 				#for bench in  linkedlist
 				for bench in  hashmap bstree skiplist lfqueue2 linkedlist lfqueue
+				#for bench in  hashmap bstree skiplist lfqueue2 linkedlist lfqueue
 				#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
 				#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
 				#for bench in lfqueue
@@ -95,12 +96,12 @@ do
 						#${HOME}/repos/primesim/xml/shared-llc/config_mbank_120cycles_${pmodel}.xml \					
 						mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 \
 						-np 1 ${PRIME_PATH}/bin/prime \
-						${PRIME_PATH}/xml/banked-llc/config_mbank_300cycles_${pmodel}.xml \
+						${PRIME_PATH}/xml/banked-llc/config_mbank_120cycles_${pmodel}.xml \
 						${CONF_PATH}/config_${threads}_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out : \
 						-np 1 pin.sh -ifeellucky -t ${PRIME_PATH}/bin/prime.so \
-						-c ${PRIME_PATH}/xml/banked-llc/config_mbank_300cycles_${pmodel}.xml \
+						-c ${PRIME_PATH}/xml/banked-llc/config_mbank_120cycles_${pmodel}.xml \
 						-o ${CONF_PATH}/config_${threads}_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out \
-						-- ${PRIME_PATH}/pbench/syncbench/bin/${bench}_${optype} -t ${threads} -i ${rate} -r ${rate2} -o ${operations} -d 10 -x 6 -u ${urate}
+						-- ${PRIME_PATH}/pbench/syncbench/bin/${bench}_${optype} -t ${threads} -i ${rate} -r ${rate2} -o ${operations} -d 10 -x 6 -u ${urate} -A
 						
 						#cat ${DIMP_FILE} >> ${DATA_FILE3}
 						DIMP_FILE=${CONF_PATH}/config_${threads}_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out_stat
@@ -120,10 +121,9 @@ do
 						rm -f ${DIMP_FILE}
 						rm -f ${DIMP2_FILE}
 					done
-					
-					now=$(date +"%T")
-					echo "${bench} End time : $now" >> ${TIME_FILE}	
 
+				   	now=$(date +"%T")
+					echo "${bench} End time : $now" >> ${TIME_FILE}	
 				done
 			
 		done

@@ -8,21 +8,21 @@ output_directory=${prime_output}/asplos-output/uncached
 
 echo $output_directory
 
-repeat=1
-num_threads=32
-config=small #large set takes a lot of time to run.
-
+repeat=1 #for averages
+num_threads=32 #number of threads --all
+config=small # < 100000 workloads
+op_t=balanced #optional
 #Repeat for averages
 for r in 1
 do
-	CONF_NAME=run-${r}
+	CONF_NAME=run-B-${r}
 	CONF_PATH=${output_directory}/${CONF_NAME}
 	DIMP_FILE=${output_directory}/stat.txt
 	DIMP2_FILE=${output_directory}/stat2.txt
 	DATA_FILE=${output_directory}/${CONF_NAME}/data_cpi.txt
 	DATA2_FILE=${output_directory}/${CONF_NAME}/data_meta.txt
 	
-	optype=regular
+	optype=balanced
 	
 	if [ ! -d ${CONF_PATH} ] 
 		rm -rf ${CONF_PATH}
@@ -46,8 +46,8 @@ do
 	#Configurations
 	num_threads=32
 	alter="-A"
-	mode="uncached"
-	max_operations=100000 #nb_threads*per_thread_ops
+	mode="cached"
+	max_operations=100000 #=nb_threads*per_thread_ops
 	ops_pro=6000
 	urate=100 #syncbench update rate
 	lfd_size=64000
@@ -67,7 +67,8 @@ do
 		do
 				
 				#for bench in  linkedlist
-				for bench in  hashmap bstree skiplist lfqueue2 linkedlist lfqueue
+				for bench in  hashmap bstree skiplist lfqueue2 lfqueue linkedlist
+				#for bench in  hashmap bstree skiplist lfqueue2 linkedlist lfqueue
 				#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
 				#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
 				#for bench in lfqueue
@@ -83,6 +84,17 @@ do
 	              	else
 	              		urate=100
 	            	fi
+
+	            	optype=balanced
+            		if [ "${bench}" == "linkedlist" ]; then
+						echo "optype rate changed"
+              		  	optype=regular
+              		else
+              			optype=balanced
+            		fi
+
+            		now=$(date +"%T")
+					echo "${bench} ${optype} Start time : $now" >> ${TIME_FILE}	
 	
 					#for pmodel in 7
 					for pmodel in 0 8 3 7 4 6
@@ -120,7 +132,7 @@ do
 						rm -f ${DIMP_FILE}
 						rm -f ${DIMP2_FILE}
 					done
-					
+				 
 					now=$(date +"%T")
 					echo "${bench} End time : $now" >> ${TIME_FILE}	
 

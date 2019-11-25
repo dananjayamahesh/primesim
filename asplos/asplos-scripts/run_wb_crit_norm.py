@@ -4,30 +4,35 @@ import sys
 
 def main():
     # inter intra persist wb crit ncrit nat ext
+    infile_path = sys.argv[1]
+    print(infile_path)
+    outfile_path = sys.argv[2]
+    print(outfile_path)
     
     progs = ['linkedlist', 'hashmap', 'bstree',
              'skiplist', 'lfqueue', 'lfqueue2']
     
-    bench=['NULL','LRP_PF', 'LRP', 'BB+PF', 'BB', 'SB']
+    bench=['NULL','LRP+PF', 'LRP', 'BB+PF', 'BB', 'SB']
     
-    input_path=""
-    output_path="../asplos-output/cached/syncbench-mbank-120cycles/data_meta.txt"
+    #input_path=""
+    #output_path="../asplos-output/cached/syncbench-mbank-120cycles/data_meta.txt"
     
-    wb_output_path="../asplos-output/cached/syncbench-mbank-120cycles/wb_crit.out"
-    wb_output = open(wb_output_path, 'w')
+    #wb_output_path="../asplos-output/cached/syncbench-mbank-120cycles/wb_crit.out"
+    wb_output = open(outfile_path, 'w')
     #"../asplos-output/cached/syncbench-mbank-120cycles/data_meta.txt"
-    infile = open(output_path, "r")
-    output = open("../asplos-result/cached/data2" + ".out", "w")
-    output_wb = open("../asplos-result/cached/data_wb" + ".out", "w")
-    output_wb_all = open("../asplos-result/cached/data_wb_all" + ".out", "w")
-    output_wb_tot = open("../asplos-result/cached/data_wb_tot" + ".out", "w")
+    infile = open(infile_path, "r")
+
+    #output = open("../asplos-result/cached/data2" + ".out", "w")
+    #output_wb = open("../asplos-result/cached/data_wb" + ".out", "w")
+    #output_wb_all = open("../asplos-result/cached/data_wb_all" + ".out", "w")
+    #output_wb_tot = open("../asplos-result/cached/data_wb_tot" + ".out", "w")
     
     #output_wb_conflicts = open("result/data_wb_conflicts" + ".out", "w")
     
     for prog_name in progs:
     
         # Repeat for each song in the text file
-        infile = open(output_path, "r")
+        infile = open(infile_path, "r")
         tline = ""
         count = 0
         input_data = []
@@ -119,14 +124,17 @@ def main():
                     #intra_all = intra_persist_tot+intra_vis_conflicts_tot+all_natural_clwb
                     #intra_crit_all =  intra_persist_tot+intra_vis_conflicts_tot+(natural_clwb*0.5 if (persist_model==0) else all_natural_clwb*0.8)
                     
-                    intra_all = intra_persist_tot+intra_vis_conflicts_tot+all_natural_clwb + (0 if (persist_model==0) else natural_clwb)
-                    intra_crit_all =  intra_persist_tot+intra_vis_conflicts_tot+conflict_evi_persists
-                    
+                    #intra_all = intra_persist_tot+intra_vis_conflicts_tot+all_natural_clwb + (0 if (persist_model==0) else natural_clwb)
+                    intra_all = intra_persist_tot+intra_vis_conflicts_tot+all_natural_clwb
+                    #intra_crit_all =  intra_persist_tot+intra_vis_conflicts_tot+conflict_evi_persists
+                    intra_crit_all =  intra_persist_tot+intra_vis_conflicts_tot+(intra_evi_M_conflicts_tot if(persist_model==0) else 0)
+
                     non_conflict_evictions = intra_all-intra_crit_all
     
                     #after PF:
                     #Only for the proactive flushing
-                    intra_crit_all = intra_crit_all- ((vis_pf_persists_tot+evi_pf_persists_tot)*0.9)
+                    intra_crit_all = intra_crit_all- ((vis_pf_persists_tot+evi_pf_persists_tot)*0.5)
+                    #intra_crit_all = intra_crit_all- ((vis_pf_persists_tot+evi_pf_persists_tot)*0.9)
     
                     inter_M_all = inter_persist_tot+invals_M_tot+shares_M_tot
                     inter_all = inter_persist_tot+invals_tot+shares_tot
@@ -173,28 +181,32 @@ def main():
                         int(tline_fileds[3])) + "\t" + str(int(tline_fileds[4])) + "\t")
                     #str_wb_line += (tline_fileds[0] + "\t" + tline_fileds[1] + "\t" + tline_fileds[2] + "\t" + str(
                     #    int(tline_fileds[3])) + "\t" + str(int(tline_fileds[4])) + "\t")
-    
+                    #wb_str_line += tline_fileds[0] + '-' + tline_fileds[1] + ',     \t'
+
                     str_line += str(input_data[0] * 100) + "\t"
                     str_line += str(input_data[2] * 100) + "\t"
                     str_line += str(input_data[1] * 100) + "\t"
                     str_line += str(input_data[3] * 100) + "\t"
+
+
     
-                    output.write(str_line + "\n")
-                    output_wb.write(str_wb_line + "\n")
-                    output_wb_all.write(str_wb_all_line + "\n")
+                    #output.write(str_line + "\n")
+                    #output_wb.write(str_wb_line + "\n")
+                    #output_wb_all.write(str_wb_all_line + "\n")
                     #print(prog_name+"\t"+str_wb_all_line + "\n")
                     print(prog_name+"  \t"+str_wb_all_line)
                     wb_output.write(prog_name+"  \t"+str_wb_all_line+'\n')
                     
-                    output_wb_tot.write(str_wb_tot_line + "\n")
+                    #output_wb_tot.write(str_wb_tot_line + "\n")
     
             count = count + 1
     
     # It is good practice to close the file at the end to free up resources
     infile.close()
-    output.close()
-    output_wb.close()
-    output_wb_all.close()
-    output_wb_tot.close()
+    #output.close()
+    #output_wb.close()
+    #output_wb_all.close()
+    #output_wb_tot.close()
+    wb_output.close()
 
 main()
