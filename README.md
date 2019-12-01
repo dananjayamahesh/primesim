@@ -62,8 +62,8 @@ How to Compile Benchmarks (PBench)
 
 Simple Test for MPI and Pin
 ---------------------------
-mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ls
-also check if your pin is working
+* mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ls
+* Please also check pin. You can test both with the following test.
 
 
 Test and Run the Framework
@@ -74,12 +74,12 @@ Test and Run the Framework
 * ./run_all.sh test
 
 
-Possible Issues/Errors and Fix(Please go to next if no errors)
+Possible Issues/Errors and Fix(Please go to next section if no errors)
 --------------------------------------------------------------
 * libxml2 file path not found. Plase check if your libxml2 path in the env.sh is right ()
 * libmpi.so path not found. Please check OPENMPI_LIB_PATH in env.sh and check if the path is in the right path.
 * please check the MPI_THREAD_MULTIPLE flag. Most of the time it is not set by default. In case, you have to reinstall MPI with the flag set (--enable-mpi-thread-multiple).
-* Run ompi_info | grep -i thread. It should say yes. (Thread support: posix (MPI_THREAD_MULTIPLE: yes, OPAL support: yes, OMPI progress: no, ORTE progress: yes, Event lib: yes))
+* Run **"ompi_info | grep -i thread"**. It should say yes. (Thread support: posix (MPI_THREAD_MULTIPLE: yes, OPAL support: yes, OMPI progress: no, ORTE progress: yes, Event lib: yes))
 * echo 0 > /proc/sys/kernel/yama/ptrace_scop . If you are asked to do this, please do it. 
 
 
@@ -101,7 +101,7 @@ Output Result Format
 				* run-1/
 				* run-2/
 * Two .csv files contain average values of two outputs: **normalized execution time** (exec_time.csv) to ideal and percentage of **critical path writebacks** (wb_crit.csv).
-*  In case of running multiple times, you will see run-1, run-2 ... run-x.  And 2 csv files give averages of all runs while each directory contains the result of each run.
+*  In case of running multiple times, you will see run-1, run-2 ... run-x.  And csv files inside directory give averages of all runs while each directory contains the result of each run.
 
 
 Customizing Scripts to Run Different Configurations
