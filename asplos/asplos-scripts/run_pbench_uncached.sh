@@ -2,18 +2,34 @@ echo $PRIME_PATH
 #make -B
 #balanced, addony, mremoved. THIS SHOULD BE BENCHTYPE.
 #optype=balanced
+mode="uncached"
 
 prime_output=${PRIME_PATH}/asplos
-output_directory=${prime_output}/asplos-output/uncached
+output_directory=${prime_output}/asplos-output/${mode}
 
 echo $output_directory
 
 repeat=1
 num_threads=32
 config=small #large set takes a lot of time to run.
+optype=regular
+#Configurations
+num_threads=32
+alter="-A"
+
+max_operations=100000 #nb_threads*per_thread_ops
+ops_pp=3000
+urate=100 #syncbench update rate
+lfd_size=64000
+rate2=64000
+initial_size=1000
+benchmark=linkedlist
 
 #Repeat for averages
-for r in 1
+rep=`seq 1 $repeat`
+echo rep
+
+for r in `seq 1 $repeat`
 do
 	CONF_NAME=run-${r}
 	CONF_PATH=${output_directory}/${CONF_NAME}
@@ -21,8 +37,6 @@ do
 	DIMP2_FILE=${output_directory}/stat2.txt
 	DATA_FILE=${output_directory}/${CONF_NAME}/data_cpi.txt
 	DATA2_FILE=${output_directory}/${CONF_NAME}/data_meta.txt
-	
-	optype=regular
 	
 	if [ ! -d ${CONF_PATH} ] 
 		rm -rf ${CONF_PATH}
@@ -43,27 +57,15 @@ do
 	> ${DATA_FILE}
 	> ${DATA2_FILE}
 	
-	#Configurations
-	num_threads=32
-	alter="-A"
-	mode="uncached"
-	max_operations=100000 #nb_threads*per_thread_ops
-	ops_pro=6000
-	urate=100 #syncbench update rate
-	lfd_size=64000
-	rate2=64000
-	initial_size=1000
-	benchmark=linkedlist
-	
 	#Original rate = initial size =1000/
 	for rate in 1000 
 	do
 	
-	for threads in 32
+	for threads in ${num_threads}
 	do
 		#for operations in 1000 4000
 	    #for threads in 1 8 16 32
-	    for operations in 3000
+	    for operations in ${ops_pp}
 		do
 				
 				#for bench in  linkedlist
@@ -163,3 +165,6 @@ done
 #END OF SCRIPTS
 
 echo 'LRP Simulation End'
+echo 'Taking Averages of $repeat Runs'
+python ${script_directory}/run_averages.py ${result_directory} run exec_time.csv $repeat ${result_directory}
+python ${script_directory}/run_averages.py ${result_directory} run wb_crit.csv $repeat ${result_directory}

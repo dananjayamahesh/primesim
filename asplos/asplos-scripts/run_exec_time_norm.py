@@ -23,7 +23,8 @@ def main():
 	
 	#out_exec = open('../asplos-output/cached/syncbench-mbank-120cycles/exec_time.out', 'w+')
 	out_exec = open(outfile_path, 'w+')
-	out_exec.write('benchmarks-T, \t\t sb, \t bb, \t bb+pf, \t lrp, \t lrp+pf \n')
+	#out_exec.write('benchmarks-T \t ,sb \t ,bb \t ,bb+pf \t ,lrp \t ,lrp+pf \n')
+	out_exec.write('benchmark-T \t ,sb \t ,bb \t ,lrp\n')
 	
 	for prog_name in progs:
 		#infile = open('../asplos-output/cached/syncbench-mbank-120cycles/data_cpi.txt', 'r')
@@ -65,8 +66,8 @@ def main():
 					str_line += tline_fileds[1] + '\t' + tline_fileds[2] \
 						+ '\t' + str(int(tline_fileds[3])) + '\t' \
 						+ str(int(tline_fileds[4])) + ' \t'
-	
-					exec_time_line += tline_fileds[0] + '-' + tline_fileds[1] + ',     \t'
+	 
+					exec_time_line += tline_fileds[0] + '-' + tline_fileds[1] + '   \t'
 			
 					rppf_nop = (float(input_data[1]) - float(input_data[0])) \
 						/ float(input_data[0])
@@ -86,11 +87,11 @@ def main():
 					str_line += str(abs(fbrp_nop * 100)) + '\t'
 	
 					
-					exec_time_line += str((abs(fbrp_nop * 100)+100)/100) + ', \t'
-					exec_time_line += str((abs(bep_nop * 100)+100)/100) + ', \t'
-					exec_time_line += str((abs(beppf_nop * 100)+100)/100) + ', \t'
-					exec_time_line += str((abs(rp_nop * 100)+100)/100) + ', \t'
-					exec_time_line += str((abs(rppf_nop * 100)+100)/100) + ', \t'	
+					exec_time_line += ','+ str((abs(fbrp_nop * 100)+100)/100) + ' \t'
+					exec_time_line += ','+  str((abs(bep_nop * 100)+100)/100) + ' \t'
+					#exec_time_line += ','+  str((abs(beppf_nop * 100)+100)/100) + ' \t'
+					exec_time_line += ','+  str((abs(rp_nop * 100)+100)/100) + ' \t'
+					#exec_time_line += ','+ str((abs(rppf_nop * 100)+100)/100) + ' \t'	
 					
 									
 			

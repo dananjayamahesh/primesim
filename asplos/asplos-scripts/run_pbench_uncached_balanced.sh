@@ -1,10 +1,12 @@
 echo $PRIME_PATH
+echo "UnCached Mode"
 #make -B
 #balanced, addony, mremoved. THIS SHOULD BE BENCHTYPE.
 #optype=balanced
+mode="uncached"
 
 prime_output=${PRIME_PATH}/asplos
-output_directory=${prime_output}/asplos-output/uncached
+output_directory=${prime_output}/asplos-output/${mode}
 
 echo $output_directory
 
@@ -12,17 +14,29 @@ repeat=1 #for averages
 num_threads=32 #number of threads --all
 config=small # < 100000 workloads
 op_t=balanced #optional
+optype=balanced 
+#Configurations
+#num_threads=32
+alter="-A"
+
+max_operations=100000 #=nb_threads*per_thread_ops
+ops_pp=3000
+urate=100 #syncbench update rate
+lfd_size=64000
+rate2=64000
+initial_size=1000
+benchmark=all
+optional_alt=""
+
 #Repeat for averages
-for r in 1
+for r in `seq 1 $repeat`
 do
-	CONF_NAME=run-B-${r}
+	CONF_NAME=run-${r}
 	CONF_PATH=${output_directory}/${CONF_NAME}
 	DIMP_FILE=${output_directory}/stat.txt
 	DIMP2_FILE=${output_directory}/stat2.txt
 	DATA_FILE=${output_directory}/${CONF_NAME}/data_cpi.txt
 	DATA2_FILE=${output_directory}/${CONF_NAME}/data_meta.txt
-	
-	optype=balanced
 	
 	if [ ! -d ${CONF_PATH} ] 
 		rm -rf ${CONF_PATH}
@@ -43,27 +57,16 @@ do
 	> ${DATA_FILE}
 	> ${DATA2_FILE}
 	
-	#Configurations
-	num_threads=32
-	alter="-A"
-	mode="cached"
-	max_operations=100000 #=nb_threads*per_thread_ops
-	ops_pro=6000
-	urate=100 #syncbench update rate
-	lfd_size=64000
-	rate2=64000
-	initial_size=1000
-	benchmark=linkedlist
-	
+
 	#Original rate = initial size =1000/
 	for rate in 1000 
 	do
 	
-	for threads in 32
+	for threads in ${num_threads}
 	do
 		#for operations in 1000 4000
 	    #for threads in 1 8 16 32
-	    for operations in 3000
+	    for operations in ${ops_pp}
 		do
 				
 				#for bench in  linkedlist
@@ -86,11 +89,14 @@ do
 	            	fi
 
 	            	optype=balanced
+	            	optional_alt=""
             		if [ "${bench}" == "linkedlist" ]; then
 						echo "optype rate changed"
               		  	optype=regular
+              		  	optional_alt="-A"
               		else
               			optype=balanced
+              			optional_alt=""
             		fi
 
             		now=$(date +"%T")
@@ -112,7 +118,7 @@ do
 						-np 1 pin.sh -ifeellucky -t ${PRIME_PATH}/bin/prime.so \
 						-c ${PRIME_PATH}/xml/banked-llc/config_mbank_300cycles_${pmodel}.xml \
 						-o ${CONF_PATH}/config_${threads}_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out \
-						-- ${PRIME_PATH}/pbench/syncbench/bin/${bench}_${optype} -t ${threads} -i ${rate} -r ${rate2} -o ${operations} -d 10 -x 6 -u ${urate}
+						-- ${PRIME_PATH}/pbench/syncbench/bin/${bench}_${optype} -t ${threads} -i ${rate} -r ${rate2} -o ${operations} -d 10 -x 6 -u ${urate} ${optional_alt}
 						
 						#cat ${DIMP_FILE} >> ${DATA_FILE3}
 						DIMP_FILE=${CONF_PATH}/config_${threads}_${rate}_${rate2}_${operations}_${bench}_${pmodel}.out_stat
@@ -175,3 +181,6 @@ done
 #END OF SCRIPTS
 
 echo 'LRP Simulation End'
+echo 'Taking Averages of $repeat Runs'
+python ${script_directory}/run_averages.py ${result_directory} run exec_time.csv $repeat ${result_directory}
+python ${script_directory}/run_averages.py ${result_directory} run wb_crit.csv $repeat ${result_directory}

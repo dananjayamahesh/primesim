@@ -29,6 +29,9 @@ def main():
     
     #output_wb_conflicts = open("result/data_wb_conflicts" + ".out", "w")
     
+    #wb_output.write("Benchmark  \t ,bb \t ,bb+pf \t ,lrp \t ,lrp+pf \n")
+    wb_output.write("Benchmark  \t ,bb \t ,lrp \n")
+
     for prog_name in progs:
     
         # Repeat for each song in the text file
@@ -109,6 +112,8 @@ def main():
     
                     conflict_evi_persists = float(fields[36])
                     eviction_conflicts =  float(fields[38])
+
+                    bb_conflict_nat_evi= (0 if (persist_model==0) else natural_clwb) #Systems passes values correctly.
     
                     inter_intra = intra_tot / (inter_tot + intra_tot)
                     wb_rate = critical_clwb / clwb_tot
@@ -124,10 +129,12 @@ def main():
                     #intra_all = intra_persist_tot+intra_vis_conflicts_tot+all_natural_clwb
                     #intra_crit_all =  intra_persist_tot+intra_vis_conflicts_tot+(natural_clwb*0.5 if (persist_model==0) else all_natural_clwb*0.8)
                     
+                    intra_all = intra_persist_tot+intra_vis_conflicts_tot+all_natural_clwb + bb_conflict_nat_evi
                     #intra_all = intra_persist_tot+intra_vis_conflicts_tot+all_natural_clwb + (0 if (persist_model==0) else natural_clwb)
-                    intra_all = intra_persist_tot+intra_vis_conflicts_tot+all_natural_clwb
-                    #intra_crit_all =  intra_persist_tot+intra_vis_conflicts_tot+conflict_evi_persists
-                    intra_crit_all =  intra_persist_tot+intra_vis_conflicts_tot+(intra_evi_M_conflicts_tot if(persist_model==0) else 0)
+                    #intra_all = intra_persist_tot+intra_vis_conflicts_tot+all_natural_clwb
+                    
+                    intra_crit_all =  intra_persist_tot+intra_vis_conflicts_tot+conflict_evi_persists
+                    #intra_crit_all =  intra_persist_tot+intra_vis_conflicts_tot+(intra_evi_M_conflicts_tot+(intra_evi_M_persists_tot*0.1) if(persist_model==0) else 0)
 
                     non_conflict_evictions = intra_all-intra_crit_all
     
@@ -158,7 +165,8 @@ def main():
     
                     #with proactive flushing?.
                     #str(crit_ration2*100)+ "\t"+ 
-                    str_wb_all_line = str(crit_ration2*100)+ "\t"+str_wb_all_line
+                    if((count % 7 == 3) or (count % 7 == 5)):
+                        str_wb_all_line = ","+ str(crit_ration2*100)+ "\t"+str_wb_all_line
                     
                     intra_inter_ratio = (intra_tot*100)/(intra_tot+inter_tot)
                     intra_inter_crit_ratio = (intra_crit_all*100)/(intra_crit_all+inter_crit_all)

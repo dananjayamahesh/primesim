@@ -19,7 +19,8 @@ def main():
 		]
 	
 	out_exec = open('../asplos-output/cached/b8m-run-1/exec_time.out', 'w+')
-	out_exec.write('benchmarks-T, \t\t sb, \t bb, \t bb+pf, \t lrp, \t lrp+pf \n')
+	out_exec.write('benchmarks-T, \t sb, \t bb, \t bb+pf, \t lrp, \t lrp+pf \n')
+	#out_exec.write('benchmark-T \t ,sb \t ,bb \t ,lrp\n')
 	
 	for prog_name in progs:
 		infile = open('../asplos-output/cached/syncbench-mbank-120cycles/data_cpi.txt', 'r')

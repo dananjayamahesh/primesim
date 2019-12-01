@@ -3,26 +3,42 @@ echo $PRIME_PATH
 #balanced, addony, mremoved. THIS SHOULD BE BENCHTYPE.
 #optype=balanced
 
+
+mode="multit"
+
+output_dir=${mode} #Let this define by the programmer. only for the generalization.
+
+#mode is acting as the output dirrectoy.
 prime_output=${PRIME_PATH}/asplos
-output_directory=${prime_output}/asplos-output/multi-t
+output_directory=${prime_output}/asplos-output/${mode}
 
 echo $output_directory
 
 repeat=1
 num_threads=16
 config=small
+optype=regular
 
+#Configurations
+#num_threads=32
+alter="-A" #Alternate flags
+max_operations=96000 #nb_threads*per_thread_ops
+ops_pp=6000
+urate=100 #syncbench update rate
+lfd_size=64000
+rate2=64000
+initial_size=1000
+benchmark=all
+	
 #Repeat for averages
-for r in 1
+for r in `seq 1 $repeat`
 do
-	CONF_NAME=run-A-${r}
+	CONF_NAME=run-multit-A-${r}
 	CONF_PATH=${output_directory}/${CONF_NAME}
 	DIMP_FILE=${output_directory}/stat.txt
 	DIMP2_FILE=${output_directory}/stat2.txt
 	DATA_FILE=${output_directory}/${CONF_NAME}/data_cpi.txt
 	DATA2_FILE=${output_directory}/${CONF_NAME}/data_meta.txt
-	
-	optype=regular
 	
 	if [ ! -d ${CONF_PATH} ] 
 		rm -rf ${CONF_PATH}
@@ -43,18 +59,6 @@ do
 	> ${DATA_FILE}
 	> ${DATA2_FILE}
 	
-	#Configurations
-	#num_threads=32
-	alter="-A"
-	mode="cached"
-	max_operations=100000 #nb_threads*per_thread_ops
-	ops_pro=6000
-	urate=100 #syncbench update rate
-	lfd_size=64000
-	rate2=64000
-	initial_size=1000
-	benchmark=linkedlist
-	
 	#Original rate = initial size =1000/
 	for rate in 1000 
 	do
@@ -63,7 +67,7 @@ do
 	do
 		#for operations in 1000 4000
 	    #for threads in 1 8 16 32
-	    for operations in 5000
+	    for operations in ${ops_pp}
 		do
 				
 				#for bench in  linkedlist
@@ -155,6 +159,7 @@ do
 	script_directory=${prime_output}/asplos-scripts
 	
 	python ${script_directory}/run_exec_time_norm.py ${DATA_FILE} ${EXEC_FILE}
+	
 	python ${script_directory}/run_wb_crit_norm.py ${DATA2_FILE} ${WBC_FILE}
 	#############################################################################
 
@@ -163,3 +168,6 @@ done
 #END OF SCRIPTS
 
 echo 'LRP Simulation End'
+echo 'Taking Averages of $repeat Runs'
+python ${script_directory}/run_averages.py ${result_directory} run exec_time.csv $repeat ${result_directory}
+python ${script_directory}/run_averages.py ${result_directory} run wb_crit.csv $repeat ${result_directory}
