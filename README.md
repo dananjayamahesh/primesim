@@ -120,13 +120,31 @@ Example Run
 
 * ths commad will run program called my_prog twice with all benchmarks on 8 threads and generate average output in the result directory asplos/asplos-results/my_prog. (You can find results of each run inside the folder asplos/asplos-results/my_prog/run-x)
 * Please check run_all.sh file for more information. It is flexible to change other paramters as well.
-
+* NOTE: if you run without any parameters it runs with defaults values. e.g program_name=example_prog
 
 LRP Paper Sample Programs (Run only Once) 
 ------------------------------------------------
-* ./run_all.sh cached (Cached mode with 32 threads. Estimated runtime : 8-15hrs in out setup)
+* ./run_all.sh cached (Cached mode with 32 threads. Estimated runtime : 8-15hrs in our setup)
 * ./run_all.sh uncached (Uncached mode with 32 threads. Estimated runtime : 10-16hrs)
 * ./run_all.sh multit (16 threads with cached mode. Estimated runtime : 8-12hrs )
 * ./run_all.sh singlet (single thread with cached mode . Estimated runtime: within few hours)
-* These programs corresponding to a up-to-date sample version of programs (that can run within hours) that we used to generate result of the paper. Also, these programs only run once. To take the averages you need to change the repeat variable. Please be aware that changing some parameters can result in completely different configuration.
-* NOTE: These program can run within much less time in faster processors.
+* These programs corresponding to a up-to-date sample version of programs (that can run within hours) that we used to generate result of the paper. Also, these programs only run once. To take the averages you need to change the repeat variable. Please be aware that changing some parameters can result in completely different configuration. 
+
+Output of LRP Programs
+-----------------------
+
+* OUTPUT: FOr every single run, as exaplined before, lrp creates a output and result folder inside asplos-output/ and asplos-result. Inside that folder you will find exec_time.csv and wb_crit.csv output files. E.g.
+	* asplos/
+		* asplos-result/
+			* cached
+				* run-1/
+				* exec_time.csv
+				* wb_crit.csv
+* You can find the **expected results** inside **asplos/asplos-results-expected** folder for each run. E.g.
+	* asplos/
+		* asplos-result-expected/
+			* cached/
+
+NOTE: These program can run within much less time in faster processors.
+
+Please contact [dananjayamahesh@gmail.com](dananjayamahesh@gmail.com) if you have any question or issue.
