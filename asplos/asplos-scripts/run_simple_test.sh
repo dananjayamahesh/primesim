@@ -19,7 +19,7 @@ initial_size=1000
 benchmark=hashmap #deafult run all
 optional_alt="" #only for the 
 
-mode="test"
+mode="simpletest"
 
 echo $benchmark
 
