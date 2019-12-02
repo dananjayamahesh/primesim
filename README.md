@@ -136,7 +136,7 @@ LRP Paper Sample Programs (Run only Once)
 * ./run_all.sh singlet 
 	* (single thread with cached mode. Figure 7 
 	* Estimated runtime: within few hours
-* These programs corresponding to a up-to-date sample version of programs (that can run within hours) that we used to generate result of the paper. Also, these programs only run once. To take the averages you need to change the repeat variable. Please be aware that changing some parameters can result in completely different configuration. 
+* These programs corresponding to a up-to-date sample version of programs (that can run within hours) that we used to generate result of the paper. Also, these programs only run once. To take the averages you need to change the repeat variable. Therefore, in some cases, output may be different to the figures shown in the paper.
 
 Output of LRP Programs
 -----------------------
