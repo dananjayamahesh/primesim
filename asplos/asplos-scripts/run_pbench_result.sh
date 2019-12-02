@@ -3,7 +3,7 @@ echo $PRIME_PATH
 #balanced, addony, mremoved. THIS SHOULD BE BENCHTYPE.
 #optype=balanced
 
-mode=uncached
+mode=cached2
 num_threads=32
 #mode=multi-t
 #mode=uncached
@@ -47,7 +47,7 @@ script_directory=${prime_output}/asplos-scripts
 #change this with the single t.
 python ${script_directory}/run_exec_time_norm.py ${DATA_FILE} ${EXEC_FILE}
 #single t use normal.
-python ${script_directory}/run_wb_crit.py ${DATA2_FILE} ${WBC_FILE}
+python ${script_directory}/run_wb_crit_norm.py ${DATA2_FILE} ${WBC_FILE}
 
 #After all run.
 #Average-

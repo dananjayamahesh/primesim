@@ -94,6 +94,12 @@ do
 						echo "optype rate changed"
               		  	optype=regular
               		  	optional_alt="-A"
+              		
+              		elif [ "${bench}" == "skiplist" ]; then
+						echo "optype rate changed"
+              		  	optype=regular
+              		  	optional_alt=""
+              		  	#How about alternative
               		else
               			optype=balanced
               			optional_alt=""

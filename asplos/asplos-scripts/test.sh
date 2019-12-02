@@ -4,6 +4,25 @@ echo $PRIME_PATH
 #make -B
 #balanced, addony, mremoved. THIS SHOULD BE BENCHTYPE.
 #optype=balanced
+bench=hashmap
+                optype=balanced
+                optional_alt=""
+                if [ "${bench}" == "linkedlist" ]; then
+            echo "optype rate changed"
+                      optype=regular
+                      optional_alt="-A"
+                      #How about alternative                  
+                  elif [ "${bench}" == "skiplist" ]; then
+            echo "optype rate changed"
+                      optype=regular
+                      optional_alt=""
+                      #How about alternative
+                  else
+                    optional_alt=""
+                    optype=balanced
+                fi
+
+echo "$bench $optype $optional_alt"
 
 prime_output=${PRIME_PATH}/asplos
 output_directory=${prime_output}/asplos-output/cached

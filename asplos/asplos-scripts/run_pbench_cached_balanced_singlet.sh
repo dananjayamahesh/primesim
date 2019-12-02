@@ -23,6 +23,7 @@ optype=balanced
 alter="-A"
 max_operations=100000 #=nb_threads*per_thread_ops
 ops_pp=96000 #if ops >10000 please set to 10000
+ops_pp=48000 #if ops >10000 please set to 10000
 urate=100 #syncbench update rate
 lfd_size=64000
 rate2=64000

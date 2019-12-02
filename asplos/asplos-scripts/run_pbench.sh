@@ -68,6 +68,15 @@ else
 	echo "operations Per Process              : [$ops_pp]"
 fi
 
+#Operation Per process
+if [ -z "$6" ]; then
+    # Code for the case that the user didn't pass a third argument
+    echo "Max LFD Size  (default)    : [$lfd_size]"
+else
+	lfd_size=$6
+	echo "Max LFD Size              : [$lfd_size]"
+fi
+
 echo "_${benchmark}_"
 
 if [ "${benchmark}" == "all" ] ; then
