@@ -70,7 +70,7 @@ do
 		do
 				
 				#for bench in  linkedlist
-				for bench in  hashmap bstree skiplist lfqueue2 lfqueue linkedlist
+				for bench in  linkedlist hashmap bstree skiplist lfqueue2
 				#for bench in  hashmap bstree skiplist lfqueue2 linkedlist lfqueue
 				#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
 				#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
