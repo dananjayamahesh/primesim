@@ -124,10 +124,18 @@ Example Run
 
 LRP Paper Sample Programs (Run only Once) 
 ------------------------------------------------
-* ./run_all.sh cached (Cached mode with 32 threads. Estimated runtime : 8-15hrs in our setup)
-* ./run_all.sh uncached (Uncached mode with 32 threads. Estimated runtime : 10-16hrs)
-* ./run_all.sh multit (16 threads with cached mode. Estimated runtime : 8-12hrs )
-* ./run_all.sh singlet (single thread with cached mode . Estimated runtime: within few hours)
+* ./run_all.sh cached 
+	* Cached mode with 32 threads. Figure 4,5
+	* Estimated runtime : 8-15hrs in our setup
+* ./run_all.sh uncached 
+	* Uncached mode with 32 threads. Figure 6
+	* Estimated runtime : 10-16hrs
+* ./run_all.sh multit 
+	* 16 threads with cached mode. Figure 7
+	* Estimated runtime : 8-12hrs 
+* ./run_all.sh singlet 
+	* (single thread with cached mode. Figure 7 
+	* Estimated runtime: within few hours
 * These programs corresponding to a up-to-date sample version of programs (that can run within hours) that we used to generate result of the paper. Also, these programs only run once. To take the averages you need to change the repeat variable. Please be aware that changing some parameters can result in completely different configuration. 
 
 Output of LRP Programs
