@@ -36,19 +36,23 @@ export PATH=${HOME}/repos/software/pin-2.14-71313-gcc.4.4.7-linux:$PATH
 #export PINPATH=/home/mahesh/mahesh/edinburgh/repos/softwares/pin/pin-3.2-81205-gcc-linux
 #export PATH=/home/mahesh/mahesh/edinburgh/repos/softwares/pin/pin-3.2-81205-gcc-linux:$PATH
 
+#OpenMPI Intallation Path
+#export PATH="$PATH:/usr/bin"
+#export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/lib64/"
+
 # path to libmpi.so in OpenMPI library, set it to the correct path with the same 
 # format as below (including those backslashes and quotes). Besides, you need to 
 # make sure the library file and the default mpic++ used in the Makefile are of 
 # the same version
-#export OPENMPI_LIB_PATH=\"\\\"/usr/lib/libmpi.so.12\\\"\"
 
+#export OPENMPI_LIB_PATH=\"\\\"/usr/lib/libmpi.so.12\\\"\"
 #export OPENMPI_LIB_PATH=\"\\\"/usr/local/lib/libmpi.so\\\"\"
 export OPENMPI_LIB_PATH=\"\\\"/usr/lib64/libmpi.so\\\"\"
 # path to libxml2 , set it to the correct path
 export LIBXML2_PATH=/usr/include/libxml2
 
 # path to PARSEC benchmarks, set it to the correct path if you want to run PARSEC
-export PARSEC_PATH=${HOME}/repos/parsec-3.0
+# export PARSEC_PATH=${HOME}/repos/parsec-3.0
 
 # set path
 export PATH=$PRIME_PATH/tools:$PATH
