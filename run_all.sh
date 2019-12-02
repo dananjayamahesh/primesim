@@ -91,13 +91,22 @@ else
 	echo "operations Per Process              : [$ops_pp]"
 fi
 
-
+#Maximum Size of the Lock-free data structure
 if [ -z "$6" ]; then
+    # Code for the case that the user didn't pass a third argument
+    echo "Max LFD Size  (default)    : [$lfd_size]"
+else
+	lfd_size=$6
+	echo "Max LFD Size             : [$lfd_size]"
+fi
+
+#Type of benchmark configurations. Keep intact for now.
+if [ -z "$7" ]; then
     # Code for the case that the user didn't pass a third argument
     echo "bench size (default) : [$bench_size]"
     echo "bench type (default) : [$optype]"
 else
-	bench_size=$6
+	bench_size=$7
 	echo "bench size : [$bench_size]"
 	echo "bench type : [$optype]"
 	#change benchsize according to the 
@@ -135,7 +144,7 @@ elif [ "${pmode}" == "singlet" ]; then
 
 else #Generic name # Program name miust be given. It should be different to standard modes.
 	echo "Generic Progrm is running $pmode"	
-	./asplos/asplos-scripts/run_pbench.sh $pmode $benchmark $num_threads $repeat $ops_pp
+	./asplos/asplos-scripts/run_pbench.sh $pmode $benchmark $num_threads $repeat $ops_pp $lfd_size
 
 fi
 
