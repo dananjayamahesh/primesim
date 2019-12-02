@@ -24,6 +24,6 @@ Build Open MPI using apt-get
 * sudo apt-get install openmpi-bin openmpi-common libopenmpi1.3 libopenmpi-dbg libopenmpi-dev
 
 
-Locate the libmpi.so or similar file.
--------------------------------------
+Locate the libmpi.so or similar file
+------------------------------------
 * please find the libmpi.so file 
