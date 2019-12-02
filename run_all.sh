@@ -123,7 +123,10 @@ chmod 777 asplos/asplos-scripts/*
 
 #simple version of (updated) benchmarks used to generate figures in the paper.
 #Figure 4 and 5
-if [ "${pmode}" == "test" ]; then
+if [ "${pmode}" == "simple-test" ]; then
+	./asplos/asplos-scripts/run_simple_test.sh
+
+elif [ "${pmode}" == "test" ]; then
 	./asplos/asplos-scripts/run_test.sh
 
 elif [ "${pmode}" == "cached" ]; then
@@ -154,5 +157,3 @@ fi
 echo "Start Simulations"
 echo "Running $file_path"
 echo "Finished Running"
-
-
