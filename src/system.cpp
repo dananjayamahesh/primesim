@@ -2311,7 +2311,7 @@ int System::epochPersistWithPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_
                         //asplos-after: counting the average number of cachelines per epoch that is flushing
                         if(line_cur->max_epoch_id >= 40000){
                             //Error
-                            cerr<<"Error: PF overflows: only for PF. This is not for standard BB or LRP.\n";
+                            //cerr<<"Error: PF overflows: only for PF. This is not for standard BB or LRP.\n";
                             //printf("Errorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
                             return -1;
                         }
