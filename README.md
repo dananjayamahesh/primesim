@@ -108,10 +108,10 @@ Customizing Scripts to Run Different Configurations
 ---------------------------------------------------
 * Finally to show the customizability and flexibility of using LRP, we show how to run a cutom programs.
 * ./run_all.sh  [program_name]  [ benchmark]   [num_threads]  [repeat]
-	* **program_name**: name you for the result directory. Please put something other than cached, uncached, multit, singlet, test. e.g. my_prog
-	* **benchmark**: name of the benchmark. "all" runs all benchmaks: linkedlist, hashmap, bstree, skiplist, lfqueue. If you want to run a specific benchmark please specify it. E.g. hashmap
-	* **num_threads**: Number of threads you want to run your benchmarks. E.g. 8
-	* **repeat**: In case we want to run same benchmark for multiple times, we need to specify repeat_run. E.g. 2. Then the final output cintains the average values of all runs.
+	* **program_name**: name you for the result directory. Please put something other than cached, uncached, multit, singlet, test. e.g. my_prog (Default example_prog)
+	* **benchmark**: name of the benchmark. "all" runs all benchmaks: linkedlist, hashmap, bstree, skiplist, lfqueue. If you want to run a specific benchmark please specify it. E.g. hashmap (Default=all)
+	* **num_threads**: Number of threads you want to run your benchmarks. E.g. 8 (Default=8)
+	* **repeat**: In case we want to run same benchmark for multiple times, we need to specify repeat_run. E.g. 2. Then the final output cintains the average values of all runs. (Default=2)
 * *When increasing those values simulation time is also rapidly increasing.*
 
 Example Run
