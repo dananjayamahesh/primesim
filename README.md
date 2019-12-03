@@ -65,15 +65,16 @@ Simple Test for MPI and Pin
 ---------------------------
 * mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ls
 * Please also check pin. You can test both with the following test.
-
+* Run this script to check if the all components are working.
+	* **sh run_all.sh simple-test**
 
 Test and Run the Framework
 ---------------------------
 * This is just to make sure all the software/frameworks are working fine.
 * Please make sure that you have write persmission for the prime directory
 * chmod 777 run_all.sh
-* ./run_all.sh test 
-* This is most likely to be failed because of the follwing reasons.
+* **./run_all.sh test** 
+
 
 
 Possible Issues/Errors and Fix(Please go to next section if no errors)
@@ -82,12 +83,11 @@ Possible Issues/Errors and Fix(Please go to next section if no errors)
 	* sudo apt-get install libxml2-dev (please check [here](https://askubuntu.com/questions/733169/how-to-install-libxml2-in-ubuntu-15-10))
 * MPI Errors: libmpi.so path not found. Please check OPENMPI_LIB_PATH in env.sh and check if the path is in the right path.
 	* Please check the env.sh and make sure libmpi.so file is in the correct path.
-	* If not working, you need to build from the source.
-	* 
+	* Please check build_all.sh and env.sh file.
+	* Reinstall Opem MPI, edit env.sh and source env.sh.
 * please check the MPI_THREAD_MULTIPLE flag. Most of the time it is not set by default. In case, you have to reinstall MPI with the flag set (--enable-mpi-thread-multiple).
 * Run **"ompi_info | grep -i thread"**. It should say yes. (Thread support: posix (MPI_THREAD_MULTIPLE: yes, OPAL support: yes, OMPI progress: no, ORTE progress: yes, Event lib: yes))
-* echo 0 > /proc/sys/kernel/yama/ptrace_scop . If you are asked to do this, please do it. 
-
+* echo 0 > /proc/sys/kernel/yama/ptrace_scop . If you are asked to do this, please do it.  You may need to do this as root. (su && echo 0 > /proc/sys/kernel/yama/ptrace_scop)
 
 
 Output Result Format
