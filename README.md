@@ -42,41 +42,71 @@ Our Setup
 * AMD server with 64 CPUs (2 threads per core) with AMD Opteron(tm) Processor 6376 x86_64, 2.3 GHz.
 * 16GiB in memory is enough
 
-Download LRP and Build
-----------------------
+
+### Installation ![alt text](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Logo Title Text 1")
+
+Option 1: Build from DOI or other sources
+-----------------------------------------
+* Run the script provided. 
+* **sh build_lrp_all.sh**
+	* This will create lrp+primesim and all the required software.I.e. 
+		* primsim
+		* software
+	* Setup the environment on primesim/env.sh
+	* compile lrp and pbench and generate binaries.
+	* You can continue with the common-steps and experimental-workflow.
+
+
+Option 2: Download LRP Source and Build (Preferred)
+-----------------------------------------
 * git clone https://github.com/dananjayamahesh/primesim.git
 * cd primesim
 * git checkout dimp
 * (make sure you are in the dimp branch which is LRP)
 
-How to Build and Vompile LRP (PRiME)
+
+Build all and compile automatically
+-----------------------------------
+* please check build_all.sh and run,
+* **sh build_all.sh**
+	* This creates software directory outside your primesim path with openmpi and pin.
+	* Compile lrp and pbench and generate binaries.
+
+Option 3: Build Manually 
+------------------------
+* This might be helpful if you already have some software like open MPI. 
+* Install all software dependencies manually.
+	* Check **build_all.sh** as well env.sh.
+
+
+### Common Steps (From primesim path) ![alt text](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Logo Title Text 1")
+
+Compile LRP (PRiME)
 --------------------------
-* Install all software dependencies manullay. 
-	* Check **build_all.sh** as well.
-* Modify **env.sh** to set those environment variables to be the correct paths.(Important)
+* check and modify **env.sh** to set those environment variables to be the correct paths.(Important)
 * source env.sh
 * make -B
 
-How to Compile Benchmarks (PBench)
+Compile Benchmarks (PBench)
 ----------------------------
 * cd pbench/syncbench
 * make -B
 * cd ../..
 
-Simple Test for MPI and Pin
----------------------------
+
+### Experimental Workflow ![alt text](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Logo Title Text 1")
+
+Simple Test for MPI,Pin and LRP
+-------------------------------
 * mpiexec --verbose --display-map --display-allocation -mca btl_sm_use_knem 0 -np 1 ls
-* Please also check pin. You can test both with the following test.
-* Run this script to check if the all components are working.
-	* **sh run_all.sh simple-test**
+* Run this script to check if all components are working.
+
+* **sh run_all.sh simple-test**
 
 Test and Run the Framework
 ---------------------------
 * This is just to make sure all the software/frameworks are working fine.
-* Please make sure that you have write persmission for the prime directory
-* chmod 777 run_all.sh
 * **sh run_all.sh test** 
-
 
 
 Possible Issues/Errors and Fix(Please go to next section if no errors)
@@ -131,6 +161,9 @@ Example Run
 * ths commad will run program called my_prog twice with all benchmarks on 8 threads and generate average output in the result directory asplos/asplos-results/my_prog. (You can find results of each run inside the folder asplos/asplos-results/my_prog/run-x)
 * Please check run_all.sh file for more information. It is flexible to change other paramters as well.
 * NOTE: if you run without any parameters it runs with defaults values. e.g program_name=example_prog
+
+
+### LRP Tests ![alt text](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Logo Title Text 1")
 
 LRP Paper Sample Programs (Run only Once) 
 ------------------------------------------------
