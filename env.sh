@@ -27,11 +27,12 @@
 
 
 # home directory for PriME, set it to the correct path
-export PRIME_PATH=${HOME}/repos/primesim
+export LRP=export LRP=$(cd .. && pwd && cd primesim/)
+export PRIME_PATH=${LRP}/primesim
 
 # home directory for Pin, set it to the correct path
-export PINPATH=${HOME}/repos/software/pin-2.14-71313-gcc.4.4.7-linux
-export PATH=${HOME}/repos/software/pin-2.14-71313-gcc.4.4.7-linux:$PATH
+export PINPATH=${LRP}/software/pin-2.14-71313-gcc.4.4.7-linux
+export PATH=${LRP}/software/pin-2.14-71313-gcc.4.4.7-linux:$PATH
 
 #export PINPATH=/home/mahesh/mahesh/edinburgh/repos/softwares/pin/pin-3.2-81205-gcc-linux
 #export PATH=/home/mahesh/mahesh/edinburgh/repos/softwares/pin/pin-3.2-81205-gcc-linux:$PATH
@@ -45,9 +46,13 @@ export PATH=${HOME}/repos/software/pin-2.14-71313-gcc.4.4.7-linux:$PATH
 # make sure the library file and the default mpic++ used in the Makefile are of 
 # the same version
 
+export PATH="$PATH:/usr/local/bin"
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib/"
+
+#export OPENMPI_LIB_PATH=\"\\\"/usr/local/lib/libmpi.so\\\"\"
 #export OPENMPI_LIB_PATH=\"\\\"/usr/lib/libmpi.so.12\\\"\"
 #export OPENMPI_LIB_PATH=\"\\\"/usr/local/lib/libmpi.so\\\"\"
-export OPENMPI_LIB_PATH=\"\\\"/usr/lib64/libmpi.so\\\"\"
+export OPENMPI_LIB_PATH=\"\\\"/usr/local/lib/libmpi.so\\\"\"
 # path to libxml2 , set it to the correct path
 export LIBXML2_PATH=/usr/include/libxml2
 
