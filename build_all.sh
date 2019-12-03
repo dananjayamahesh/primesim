@@ -1,14 +1,17 @@
-
 cd ..
+
+export LRP=$PWD
+echo $LRP
 #source "export LRP="$PWD""
 mkdir software
 cd software
+
 
 #Open MPI
 wget "https://download.open-mpi.org/release/open-mpi/v3.0/openmpi-3.0.0.tar.gz"
 tar -xvf openmpi-3.0.0.tar.gz
 cd openmpi-3.0.0
-./configure --prefix=/usr/local --enable-mpi-thread-multiple
+./configure --prefix=${LRP}/software/ompi --enable-mpi-thread-multiple
 
 make all install
 
@@ -20,7 +23,15 @@ tar -xvf pin-2.14-71313-gcc.4.4.7-linux.tar.gz
 cd ..
 
 #Libxml2
-sudo apt-get install libxml2-dev
+echo -n "Do you want to install Libxml2 (y/n)? "
+read answer
+	if [ "$answer" != "${answer#[Yy]}" ] ;then
+    		echo Yes
+    		apt-get install libxml2-dev
+	else
+   		echo No		 
+	fi
+#sudo apt-get install libxml2-dev
 
 git clone https://github.com/dananjayamahesh/primesim.git
 cd primesim

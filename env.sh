@@ -27,7 +27,7 @@
 
 
 # home directory for PriME, set it to the correct path
-export LRP=export LRP=$(cd .. && pwd && cd primesim/)
+export LRP=$(cd .. && pwd && cd primesim/)
 export PRIME_PATH=${LRP}/primesim
 
 # home directory for Pin, set it to the correct path
