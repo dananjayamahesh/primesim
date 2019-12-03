@@ -27,12 +27,11 @@ Directory structure
 
 Requirements for LRP
 --------------------
-
 * We recommend you to install these software manually. But you can also use **build_all.sh**
-* gcc v4.8 or higher is recommended 
+* gcc v4.8 (tested) or higher is recommended 
 * Intel Pin tested under v2.14 71313 (Download [here](https://software.intel.com/sites/landingpage/pintool/downloads/pin-2.14-71313-gcc.4.4.7-linux.tar.gz) )
 * OpenMPI tested under v3.0.0 (Download [here](https://download.open-mpi.org/release/open-mpi/v3.0/openmpi-3.0.0.tar.gz)) 
-	* Need to enable MPI_THREAD_MULTIPLE which can be done by adding --enable-mpi-thread-multiple option during installation. If you already have OPEN MPI you can chek this by running "ompi_info | grep -i thread" command. We recommend to install Open MPI with all required packages like libmpi. Please follow the [MPI_README.md](https://github.com/dananjayamahesh/primesim/blob/dimp/README.md) for more information. 
+	* Need to enable MPI_THREAD_MULTIPLE which can be done by adding --enable-mpi-thread-multiple option during installation. If you already have OPEN MPI you can chek this by running "ompi_info | grep -i thread" command. If not you have to install openmpi. Please follow the [MPI_README.md](https://github.com/dananjayamahesh/primesim/blob/dimp/MPI_README.md) for more information. 
 * libxml2 tested under v2.9.1
 * Python 2.7 or above
 * GNU bash, version 4.2.46(2)-release (x86_64-redhat-linux-gnu)
@@ -84,8 +83,9 @@ Possible Issues/Errors and Fix(Please go to next section if no errors)
 --------------------------------------------------------------
 * libxml2 file path not found. Plase check if your libxml2 path in the env.sh is right.
 	* sudo apt-get install libxml2-dev (please check [here](https://askubuntu.com/questions/733169/how-to-install-libxml2-in-ubuntu-15-10))
-* MPI Errors: libmpi.so path not found. Please check OPENMPI_LIB_PATH in env.sh and check if the path is in the right path.
+* MPI Errors: libmpi.so path not found or similar MPI ERRORs. Please check OPENMPI_LIB_PATH in env.sh and check if the path is in the right path. [MPI_README.md](https://github.com/dananjayamahesh/primesim/blob/dimp/MPI_README.md)
 	* Please check the env.sh and make sure libmpi.so file is in the correct path.
+	* Also make sure your PATH and LD_LIBRARY_PATH have been set to correct locations.
 	* Please check build_all.sh and env.sh file.
 	* Reinstall Opem MPI, edit env.sh and source env.sh.
 * please check the MPI_THREAD_MULTIPLE flag. Most of the time it is not set by default. In case, you have to reinstall MPI with the flag set (--enable-mpi-thread-multiple).
