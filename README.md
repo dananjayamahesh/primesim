@@ -28,6 +28,7 @@ Directory structure
 Requirements for LRP
 --------------------
 
+* We recommend you to install these software manually. But you can also use **build_all.sh**
 * gcc v4.8 or higher is recommended 
 * Intel Pin tested under v2.14 71313 (Download [here](https://software.intel.com/sites/landingpage/pintool/downloads/pin-2.14-71313-gcc.4.4.7-linux.tar.gz) )
 * OpenMPI tested under v3.0.0 (Download [here](https://download.open-mpi.org/release/open-mpi/v3.0/openmpi-3.0.0.tar.gz)) 
@@ -49,9 +50,11 @@ Download LRP and Build
 * git checkout dimp
 * (make sure you are in the dimp branch which is LRP)
 
-How to compile LRP (PRiME)
+How to Build and Vompile LRP (PRiME)
 --------------------------
-* Open and modify env.sh to set those environment variables to be the correct paths.(Important)
+* Install all software dependencies manullay. 
+	* Check **build_all.sh** as well.
+* Modify **env.sh** to set those environment variables to be the correct paths.(Important)
 * source env.sh
 * make -B
 
