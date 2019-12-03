@@ -30,15 +30,16 @@ if [ -d "$FILE" ]; then
     echo "$FILE Path (libxml2) exist"
 
 else
-	echo -n "Do you want to install Libxml2 (y/n)? "
-	read answer
-	answer="Y"
-		if [ "$answer" != "${answer#[Yy]}" ] ;then
-	    		echo Yes
-	    		sudo apt-get install libxml2-dev
-		else
-	   		echo No		 
-		fi
+	sudo apt-get install libxml2-dev
+	#echo -n "Do you want to install Libxml2 (y/n)? "
+	#read answer
+	#answer="Y"
+	#	if [ "$answer" != "${answer#[Yy]}" ] ;then
+	 #   		echo Yes
+	#    		sudo apt-get install libxml2-dev
+	#	else
+	#   		echo No		 
+	#	fi
 fi
 
 #sudo apt-get install libxml2-dev
@@ -51,7 +52,7 @@ cd primesim
 #########################################################
 source env.sh
 #########################################################
-
+source env.sh
 #Please check your libxml2
 echo "Building Prime and LRP"
 make -B
