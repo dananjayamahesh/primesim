@@ -15,6 +15,8 @@ cd openmpi-3.0.0
 
 make all install
 
+#Make sure that libmpi.so exists
+
 cd ..
 
 #PIn
@@ -23,19 +25,27 @@ tar -xvf pin-2.14-71313-gcc.4.4.7-linux.tar.gz
 cd ..
 
 #Libxml2
-echo -n "Do you want to install Libxml2 (y/n)? "
-read answer
-	if [ "$answer" != "${answer#[Yy]}" ] ;then
-    		echo Yes
-    		apt-get install libxml2-dev
-	else
-   		echo No		 
-	fi
+$FILE="/usr/include/libxml2"
+if [ -d "$FILE" ]; then
+    echo "$FILE Path (libxml2) exist"
+
+else
+	echo -n "Do you want to install Libxml2 (y/n)? "
+	read answer
+	answer="Y"
+		if [ "$answer" != "${answer#[Yy]}" ] ;then
+	    		echo Yes
+	    		sudo apt-get install libxml2-dev
+		else
+	   		echo No		 
+		fi
+fi
+
 #sudo apt-get install libxml2-dev
 
-git clone https://github.com/dananjayamahesh/primesim.git
+#git clone https://github.com/dananjayamahesh/primesim.git
 cd primesim
-git checkout dimp
+#git checkout dimp
 
 #Make sure all the paths are correct
 #########################################################
@@ -56,3 +66,5 @@ cd ../..
 echo "Finished Building Benchmarks: PBench"
 echo "Build-Complete"
 
+#RUN a simple test
+#sh run_all.sh simple-test
