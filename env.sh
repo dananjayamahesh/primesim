@@ -46,13 +46,14 @@ export PATH=${LRP}/software/pin-2.14-71313-gcc.4.4.7-linux:$PATH
 # make sure the library file and the default mpic++ used in the Makefile are of 
 # the same version
 
-export PATH="$PATH:/usr/local/bin"
-export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib/"
+export PATH="$PATH:${LRP}/software/ompi/bin"
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${LRP}/software/ompi/lib/"
+export OPENMPI_LIB_PATH=\"\\\"${LRP}/software/ompi/lib/libmpi.so\\\"\"
 
 #export OPENMPI_LIB_PATH=\"\\\"/usr/local/lib/libmpi.so\\\"\"
 #export OPENMPI_LIB_PATH=\"\\\"/usr/lib/libmpi.so.12\\\"\"
 #export OPENMPI_LIB_PATH=\"\\\"/usr/local/lib/libmpi.so\\\"\"
-export OPENMPI_LIB_PATH=\"\\\"/usr/local/lib/libmpi.so\\\"\"
+#export OPENMPI_LIB_PATH=\"\\\"/usr/local/lib/libmpi.so\\\"\"
 # path to libxml2 , set it to the correct path
 export LIBXML2_PATH=/usr/include/libxml2
 
