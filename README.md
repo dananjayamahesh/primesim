@@ -73,7 +73,7 @@ Test and Run the Framework
 * This is just to make sure all the software/frameworks are working fine.
 * Please make sure that you have write persmission for the prime directory
 * chmod 777 run_all.sh
-* **./run_all.sh test** 
+* **sh run_all.sh test** 
 
 
 
@@ -114,7 +114,7 @@ Output Result Format
 Customizing Scripts to Run Different Configurations
 ---------------------------------------------------
 * Finally to show the customizability and flexibility of using LRP, we show how to run a cutom programs.
-* ./run_all.sh  [program_name]  [ benchmark]   [num_threads]  [repeat]
+* **sh run_all.sh  [program_name]  [ benchmark]   [num_threads]  [repeat]**
 	* **program_name**: name you for the result directory. Please put something other than cached, uncached, multit, singlet, test. e.g. my_prog (Default example_prog)
 	* **benchmark**: name of the benchmark. "all" runs all benchmaks: linkedlist, hashmap, bstree, skiplist, lfqueue. If you want to run a specific benchmark please specify it. E.g. hashmap (Default=all)
 	* **num_threads**: Number of threads you want to run your benchmarks. E.g. 8 (Default=8)
@@ -123,7 +123,7 @@ Customizing Scripts to Run Different Configurations
 
 Example Run
 ---------------------
-* ./run_all.sh my_prog all 8 2
+* **sh run_all.sh my_prog all 8 2**
 
 * ths commad will run program called my_prog twice with all benchmarks on 8 threads and generate average output in the result directory asplos/asplos-results/my_prog. (You can find results of each run inside the folder asplos/asplos-results/my_prog/run-x)
 * Please check run_all.sh file for more information. It is flexible to change other paramters as well.
@@ -131,16 +131,16 @@ Example Run
 
 LRP Paper Sample Programs (Run only Once) 
 ------------------------------------------------
-* ./run_all.sh cached 
+* sh run_all.sh cached 
 	* Cached mode with 32 threads. Figure 4,5
 	* Estimated runtime : 8-15hrs in our setup
-* ./run_all.sh uncached 
+* sh run_all.sh uncached 
 	* Uncached mode with 32 threads. Figure 6
 	* Estimated runtime : 10-16hrs
-* ./run_all.sh multit 
+* sh run_all.sh multit 
 	* 16 threads with cached mode. Figure 7
 	* Estimated runtime : 8-12hrs 
-* ./run_all.sh singlet 
+* sh run_all.sh singlet 
 	* (single thread with cached mode. Figure 7 
 	* Estimated runtime: within few hours
 * These programs corresponding to a up-to-date sample version of programs (that can run within hours) that we used to generate result of the paper. Also, these programs only run once. To take the averages you need to change the repeat variable. Therefore, in some cases, output may be different to the figures shown in the paper.
