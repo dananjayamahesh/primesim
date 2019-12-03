@@ -145,6 +145,13 @@ elif [ "${pmode}" == "multit" ]; then
 elif [ "${pmode}" == "singlet" ]; then
 	./asplos/asplos-scripts/run_pbench_cached_balanced_singlet.sh #Thread number? #Should be singlet
 
+#Figure 7  # signle
+elif [ "${pmode}" == "all" ]; then
+	./asplos/asplos-scripts/run_pbench_cached_balanced.sh
+	./asplos/asplos-scripts/run_pbench_uncached_balanced.sh
+	./asplos/asplos-scripts/run_pbench_cached_balanced_multit.sh
+	./asplos/asplos-scripts/run_pbench_cached_balanced_singlet.sh
+	
 else #Generic name # Program name miust be given. It should be different to standard modes.
 	echo "Generic Progrm is running $pmode"	
 	./asplos/asplos-scripts/run_pbench.sh $pmode $benchmark $num_threads $repeat $ops_pp $lfd_size
