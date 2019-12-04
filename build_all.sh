@@ -31,15 +31,15 @@ if [ -d "$FILE" ]; then
 
 else
 	sudo apt-get install libxml2-dev
-	#echo -n "Do you want to install Libxml2 (y/n)? "
-	#read answer
+	echo -n "Do you want to install Libxml2 (y/n)? "
+	read answer
 	#answer="Y"
-	#	if [ "$answer" != "${answer#[Yy]}" ] ;then
-	 #   		echo Yes
-	#    		sudo apt-get install libxml2-dev
-	#	else
-	#   		echo No		 
-	#	fi
+		if [ "$answer" != "${answer#[Yy]}" ] ;then
+	   		echo Yes
+	    		sudo apt-get install libxml2-dev
+		else
+	   		echo No		 
+		fi
 fi
 
 #sudo apt-get install libxml2-dev
@@ -66,6 +66,8 @@ make -B
 cd ../..
 echo "Finished Building Benchmarks: PBench"
 echo "Build-Complete"
+
+echo "You are in the primesim path. run [sh run_all.sh simple-test]"
 
 #RUN a simple test
 #sh run_all.sh simple-test
