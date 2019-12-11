@@ -47,6 +47,7 @@ Our Setup
 
 Option 1: Build from DOI or other sources
 -----------------------------------------
+* Access doi [here]( https://doi.org/10.5281/zenodo.3562964)
 * Run the script provided. 
 * **sh build_lrp_all.sh**
 	* This will create lrp+primesim and all the required software.I.e. 
