@@ -1,40 +1,37 @@
 echo $PRIME_PATH
+echo "Cached Singlet Mode"
 #make -B
 #balanced, addony, mremoved. THIS SHOULD BE BENCHTYPE.
 #optype=balanced
-echo "Cached Standard Mode"
 
-#zfix is the pf 40000 fix
-mode="zfix-cached-balanced-2000-32"
+mode="zfix-singlet-cached-64000-1q"
 
 prime_output=${PRIME_PATH}/asplos_final
 output_directory=${prime_output}/asplos-output/${mode}
 
 echo $output_directory
 
-repeat=2 #for averages
-num_threads=32
-#num_threads="1 8 16" #number of threads --all
+repeat=3 #for averages
+num_threads=1 #number of threads --all
 config=small # < 100000 workloads
 op_t=balanced #optional
 optype=balanced
 
+#Repeat for averages
 #Configurations
 #num_threads=32
 alter="-A"
-max_operations=100000 #=nb_threads*per_thread_ops < 100000
-#ops_pp=3000
-ops_pp=2000
-#ops_pp=8000
+max_operations=100000 #=nb_threads*per_thread_ops
+ops_pp=96000 #if ops >10000 please set to 10000
+#ops_pp=96000 #if ops >10000 please set to 10000
+ops_pp=64000 #if ops >10000 please set to 10000
 urate=100 #syncbench update rate
 lfd_size=64000
 rate2=64000
 initial_size=1000
-benchmark=all #if all run all
-
-optional_alt="" #should enabled only for the linkedlist. balanced may take time.
-
-#Repeat for averages
+benchmark=linkedlist
+optional_alt=""
+ops_pp=2000
 for r in `seq 1 $repeat`
 do
 	CONF_NAME=run-${r}
@@ -43,8 +40,7 @@ do
 	DIMP2_FILE=${output_directory}/stat2.txt
 	DATA_FILE=${output_directory}/${CONF_NAME}/data_cpi.txt
 	DATA2_FILE=${output_directory}/${CONF_NAME}/data_meta.txt
-		
-
+	
 	if [ ! -d ${CONF_PATH} ] 
 		rm -rf ${CONF_PATH}
 	 	mkdir -p ${CONF_PATH}
@@ -65,18 +61,18 @@ do
 	> ${DATA2_FILE}
 	
 	#Original rate = initial size =1000/
-	for rate in ${initial_size} 
+	for rate in 1000 
 	do
 	
 	for threads in ${num_threads}
 	do
 		#for operations in 1000 4000
 	    #for threads in 1 8 16 32
-	    for operations in ${ops_pp}
+	    for operations in ${ops_pp} 
 		do
 				
-				#for bench in  linkeldist
-				for bench in  hashmap bstree skiplist lfqueue2 lfqueue linkedlist
+				#for bench in  linkedlist
+				for bench in  lfqueue2 lfqueue
 				#for bench in  hashmap bstree skiplist lfqueue2 linkedlist lfqueue
 				#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2
 				#for bench in linkedlist hashmap bstree skiplist lfqueue lfqueue2 locklist
@@ -100,11 +96,14 @@ do
 						echo "optype rate changed"
               		  	optype=regular
               		  	optional_alt="-A"
-              		  	#How about alternative              		
+              		  	#Should enable the -A as well.
+              		else
+              			optype=balanced
+              			optional_alt=""
             		fi
 
             		now=$(date +"%T")
-					echo "Start time : $now  -> ${bench} ${optype} ${num_threads} : name: ${mode}" >> ${TIME_FILE}	
+					echo "${bench} ${optype} ${num_threads} Start time : $now" >> ${TIME_FILE}	
 	
 					#for pmodel in 7
 					for pmodel in 0 8 3 7 4 6
@@ -165,6 +164,7 @@ do
 	EXEC_FILE=${RESULT_CONF}/exec_time.csv
 	WBC_FILE=${RESULT_CONF}/wb_crit.csv
 	WBC_NORM_FILE=${RESULT_CONF}/wb_crit_norm.csv
+
 	
 	if [ ! -d ${RESULT_CONF} ] 
 		rm -rf ${RESULT_CONF}
@@ -178,10 +178,8 @@ do
 	script_directory=${prime_output}/asplos-scripts
 	
 	python ${script_directory}/run_exec_time_norm.py ${DATA_FILE} ${EXEC_FILE}
-
-
+	
 	python ${script_directory}/run_wb_crit_norm.py ${DATA2_FILE} ${WBC_NORM_FILE}
-	#later
 	python ${script_directory}/run_wb_crit.py ${DATA2_FILE} ${WBC_FILE}
 	#############################################################################
 
@@ -191,7 +189,6 @@ done
 
 echo 'LRP Simulation End'
 echo 'Taking Averages of $repeat Runs'
-
 python ${script_directory}/run_averages.py ${result_directory} run exec_time.csv $repeat ${result_directory}
 python ${script_directory}/run_averages.py ${result_directory} run wb_crit.csv $repeat ${result_directory}
 python ${script_directory}/run_averages.py ${result_directory} run wb_crit_norm.csv $repeat ${result_directory}

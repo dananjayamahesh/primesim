@@ -4,7 +4,7 @@ echo $PRIME_PATH
 #optype=balanced
 
 #regular workloads.
-mode="zfix-cached-regular-2000-all"
+mode="zfix-cached-regular-2000-32"
 
 prime_output=${PRIME_PATH}/asplos_final
 output_directory=${prime_output}/asplos-output/${mode}
@@ -12,8 +12,8 @@ output_directory=${prime_output}/asplos-output/${mode}
 echo $output_directory
 
 repeat=1 #repeat 
-#num_threads=32
-num_threads="1 8 16"
+num_threads=32
+#num_threads="1 8 16"
 config=small #large set takes a lot of time to run.
 
 #Configurations

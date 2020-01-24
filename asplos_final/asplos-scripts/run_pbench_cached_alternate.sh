@@ -2,7 +2,7 @@ echo $PRIME_PATH
 #make -B
 #balanced, addony, mremoved. THIS SHOULD BE BENCHTYPE.
 #optype=balanced
-mode="zfix-cached-alternate-2000-all"
+mode="zfix-cached-alternate-2000-32"
 
 prime_output=${PRIME_PATH}/asplos_final
 output_directory=${prime_output}/asplos-output/${mode}
@@ -10,8 +10,8 @@ output_directory=${prime_output}/asplos-output/${mode}
 echo $output_directory
 
 repeat=2
-#num_threads=32
-num_threads="1 8 16"
+num_threads=32
+#num_threads="1 8 16"
 config=small
 optype=regular
 
