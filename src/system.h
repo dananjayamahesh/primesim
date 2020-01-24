@@ -94,6 +94,7 @@ class System
         int epochPersist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
         int epochPersistWithPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
         int epochPersistWithoutPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_cur, int req_core_id, int psrc);
+        int epochPersistWithPFGen(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc);
         int fullFlush(int64_t clk_timer, Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc);
         int releaseFlush(int64_t clk_timer, Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc);
         int releaseFlushWithPF(int64_t clk_timer, Cache *cache_cur, SyncLine * syncline, Line *line_call, int rel_epoch_id, int req_core_id, int psrc);

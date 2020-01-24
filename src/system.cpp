@@ -2268,14 +2268,14 @@ int System::epochPersistWithPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_
                         //asplos-after: et_lowest_epoch_id: proactive_flushing
                         if(proactive_flushing && (line_cur->max_epoch_id == et_lowest_epoch_id)){
 
-                            //if((pf_flag % 4) <= 2){ //%75 percent of the first epoch. reduce the overhead by 10%
+                            if((pf_flag % 4) <= 1){ //%75 percent of the first epoch. reduce the overhead by 10%
                                 ins_mem.lazy_wb =true; //new lazy write-backs: no delay is added.
                                 cache_cur->all_pf_persists++;
                                 //counters.                            
                                 if (psrc==0) cache_cur->vis_pf_persists++; //Intra
                                 else if (psrc==1)   cache_cur->evi_pf_persists++; //Intra
                                 else if (psrc==2) cache_cur->inter_pf_persists++; //inter
-                            //}  
+                            }  
                             pf_flag++;                     
 
                         }                       
@@ -2359,6 +2359,289 @@ int System::epochPersistWithPF(int64_t clk_timer, Cache *cache_cur, InsMem *ins_
     cache_cur->num_nzero_epochs_flushed += total_epochs_flushed; //Totoal non-zeor epochs flushed //conflicting epochs.
     if(largest_epoch_size > cache_cur->largest_epoch_size) cache_cur->largest_epoch_size = largest_epoch_size; //cacheline_size.
     
+    //if(cache_cur->largest_epoch_id_flushed < largest_max_epoch_id) cache_cur->largest_epoch_id_flushed = largest_max_epoch_id;
+    //then it is better to get the breakdown to intra-inter seperately. NEXT step:
+
+    //Counts
+    if(core_id == req_core_id){
+        //asplos-after: psrc: 0-visibility conflics, 1-evictions         
+        if(persist_count>0){
+             cache_cur->intra_conflicts++;
+
+             if(psrc==VIS){
+                cache_cur->intra_vis_conflicts++;
+             }else if(psrc == EVI){
+                cache_cur->intra_evi_conflicts++;
+                if(line_call->state==M) cache_cur->intra_evi_M_conflicts++;
+                //else cache_cur->intra_evi_E_conflicts++;
+             }
+        }
+
+        cache_cur->intra_allconflicts++;
+        if(line_call->state == M) cache_cur->intra_M_allconflicts++;
+
+        if(psrc==VIS){
+               cache_cur->intra_vis_allconflicts++;
+        }else if(psrc == EVI){
+                cache_cur->intra_evi_allconflicts++;
+                if(line_call->state==M) cache_cur->intra_evi_M_allconflicts++;
+                //else cache_cur->intra_evi_E_allconflicts++;
+        }
+
+        cache_cur->intra_persists += persist_count;
+        cache_cur->intra_persist_cycles += delay[core_id]; //Not correct, but not effects the core
+
+        //psrc?
+        if(psrc==VIS){
+            cache_cur->intra_vis_persists += persist_count;
+            cache_cur->intra_vis_persist_cycles += delay[core_id];
+        }
+        else if(psrc==EVI){            
+            cache_cur->intra_evi_persists += persist_count;
+            cache_cur->intra_evi_persist_cycles += delay[core_id];
+            if(line_call->state == M) cache_cur->intra_evi_M_persists += persist_count;
+            //else cache_cur->intra_evi_E_persists += persist_count;
+        } 
+
+        cache_cur->critical_conflict_persists += persist_count; //Should be equal to both intra-thread and inter-thread
+        cache_cur->critical_conflict_persist_cycles += delay[core_id]; //Delay
+
+        cache_cur->write_back_count += persist_count;
+        cache_cur->write_back_delay += delay[core_id];
+
+        cache_cur->critical_write_back_count += persist_count;   //Write will be added later in the thread.
+        cache_cur->critical_write_back_delay += delay[core_id];
+        
+    }else{
+
+        //asplos-after: psrc: 2-writebacks
+        if(persist_count>0){
+             cache_cur->inter_conflicts++;
+             if(line_call->state==M)cache_cur->inter_M_conflicts++;
+             //else cache_cur->inter_E_conflicts++;
+
+        }  
+        cache_cur->inter_allconflicts++;
+            if(line_call->state==M) cache_cur->inter_M_allconflicts++;
+            //else cache_cur->inter_E_allconflicts++;
+
+        cache_cur->inter_persists += persist_count;
+        cache_cur->inter_persist_cycles += delay[core_id]; 
+
+        if(line_call->state == M) cache_cur->inter_M_persists += persist_count;
+        //else cache_cur->inter_E_persists += persist_count;
+        //New
+        cache_cur->write_back_count += persist_count+1;
+        cache_cur->noncritical_write_back_count += persist_count+1; //Is this true
+
+        cache_cur->write_back_delay += delay[core_id]+1;
+        cache_cur->noncritical_write_back_delay += delay[core_id]+1;
+        
+        cache[0][req_core_id]->external_critical_wb_count += persist_count;
+        cache[0][req_core_id]->external_critical_wb_delay += delay[core_id];  
+    }
+
+
+    //Buffered Eopch Persistence
+    #ifdef DEBUG
+    printf("Number of persists (Buffered Epoch Persistency END): %d \n", persist_count); 
+    #endif
+    cache_cur->incPersistDelay(delay[core_id]);
+    return delay[core_id];
+}
+
+int System::epochPersistWithPFGen(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *line_call, int req_core_id, int psrc){ //calling 
+    
+    //after-asplos
+    //persist source: psrc: 0-same-block, 1-evctions/replacements, 2-inter-thread/writebacks
+
+    //Buffered Epoch Persistency on caches
+    int conflict_epoch_id = line_call->max_epoch_id; //Not sure! Check
+    #ifdef DEBUG
+    printf("Buffered Epoch Persistency Cache:%d Conflict Epoch:%d \n", req_core_id, conflict_epoch_id);
+    #endif
+    int delay_flush = 0;
+    delay_flush++;
+    int core_id = cache_cur->getId(); int cache_id = cache_cur->getId();
+    Line *line_cur;
+    int timer = clk_timer;  //timing int timer = 0;
+
+    //timing
+    //delay_tmp[core_id] = 0;
+    //int start_delay = 0;
+    //delay[core_id] = 0;   //Check this. Need to chaneg.  
+    if(core_id != req_core_id){
+        delay[core_id]  = 0;
+    }
+
+    delay_tmp[core_id] = delay[core_id];
+    int start_delay = delay_tmp[core_id];
+    delay_llc[core_id] = 0; return_delay[core_id] = 0; return_timer[core_id]= 0;
+
+    //delay_tmp[core_id] += delay[core_id];
+    //start_delay = delay_tmp[core_id];
+
+    int level = cache_cur->getLevel(); 
+    int persist_count =0;
+
+    //Check thi: method-local intialization
+    
+    /*final-asplos
+    uint64_t writes_per_epoch [40000];
+    bool is_epoch_checked [40000]; //This can be improved with last epoch checked. Without keeping 10000 size which is a waste.
+    //int last_checked_epoch = 0; //this could be set global.
+
+    for(int ei=0;ei<40000;ei++){
+        writes_per_epoch[ei] = 0;
+        is_epoch_checked[ei] = false;
+    }
+
+    int lowest_epoch_id = 40000;    
+    int largest_max_epoch_id = 0;
+    */ //final-asplos
+
+    //asplos-after: build the epoch table from the cache?. Can be implemented as a linkedlist or hashmap. But not good.
+    //asplos-after: we need to know what to flush. Building Epoch table
+    int et_lowest_epoch_id = 40000; //lowest epoch id.
+    // /int et_lowest_epoch_size = 0;
+    
+    for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {            
+        for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) { 
+            InsMem ins_mem;
+            line_cur = cache_cur->directAccess(i,j,&ins_mem);
+            if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M)){ //dirty-lines
+                //asplos-after: only need the lowest epoch id and size.
+                if(line_cur->max_epoch_id < conflict_epoch_id){    
+                    if(line_cur->max_epoch_id < et_lowest_epoch_id) et_lowest_epoch_id = line_cur->max_epoch_id;
+                    //lowest epoch first epoch to be flushed.
+                }
+            }
+        }
+    }
+
+    //Proactive Flushing (PF): reduce the conflicts. allow lazy write-backs and coalecsing inside the cache-line.
+
+    //Actual flush: min epoch id flushed = et_lowest_epoch_id
+    int pf_flag=0;
+
+    for (uint64_t i = 0; i < cache_cur->getNumSets(); i++) {            
+        for (uint64_t j = 0; j < cache_cur->getNumWays(); j++) {                
+                //printf("A Epoch %d\n", rel_epoch_id);
+                InsMem ins_mem;
+                line_cur = cache_cur->directAccess(i,j,&ins_mem);    
+                            
+                if(line_cur != NULL && line_cur !=line_call && (line_cur->state==M)){ //|| line_cur->state==E  //Need to think about E here
+                    //Only dirty data
+                    //if(line_cur->max_epoch_id <= conflict_epoch_id){ //Epoch Id < conflictigng epoch id - similar to full flush
+                    if(line_cur->max_epoch_id < conflict_epoch_id){    
+
+                    #ifdef DEBUG
+                    printf("[Release Persist] [%lu][%lu] Min-%d Max-%d Dirty-%d Addr-0x%lx State-%d Atom-%d \n", 
+                    i,j, line_cur->min_epoch_id, line_cur->max_epoch_id, line_cur->dirty, line_cur->tag, line_cur->state, line_cur->atom_type);                                        
+                    #endif
+                        ins_mem.mem_type = WB;   
+                        ins_mem.atom_type = NON;                                             
+                        ins_mem.lazy_wb =false;
+                        //asplos-after: et_lowest_epoch_id: proactive_flushing
+                        if(proactive_flushing && (line_cur->max_epoch_id == et_lowest_epoch_id)){
+
+                            if((pf_flag % 4) <= 1){ //%75 percent of the first epoch. reduce the overhead by 10%
+                                ins_mem.lazy_wb =true; //new lazy write-backs: no delay is added.
+                                cache_cur->all_pf_persists++;
+                                //counters.                            
+                                if (psrc==0) cache_cur->vis_pf_persists++; //Intra
+                                else if (psrc==1)   cache_cur->evi_pf_persists++; //Intra
+                                else if (psrc==2) cache_cur->inter_pf_persists++; //inter
+                            }  
+                            pf_flag++;                     
+
+                        }                       
+
+                        //timing- delay[core_id] = start_delay;
+                        delay[core_id] = start_delay;
+                        //involes writebacks.
+                        
+                        line_cur->state = mesi_directory(cache_cur->parent, level+1, 
+                                          cache_id*cache_level[level].share/cache_level[level+1].share, 
+                                          core_id, &ins_mem, timer + delay[core_id]);
+
+                        
+                        ins_mem.lazy_wb =false;
+
+                        //FUTURE NOTE: also we can do eager when epoch count>20000 or the limit. 
+
+                        //timing-
+                        delay_tmp[core_id] += delay[core_id]; //delay[core_id] = start_delay;
+                        timer += return_delay[core_id]; //delay[core_id] = delay_tmp[core_id];
+                        //delay_tmp[core_id] += delay[core_id];
+                        //timer += return_delay[core_id];
+
+                        //delay[core_id] = return_delay[core_id];
+                        
+                        cache_cur->incPersistCount();
+                        persist_count++;   
+                        cache_cur->all_persists++;                        
+
+                        //delay_tmp[core_id] += delay[core_id];
+                        //cache_cur->all_pf_persists++;
+
+                        //asplos-after: counting the average number of cachelines per epoch that is flushing
+                        if(line_cur->max_epoch_id >= 40000){
+                            //Error
+                            //cerr<<"Error: PF overflows: only for PF. This is not for standard BB or LRP.\n";
+                            //printf("Errorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
+                            //return -1;
+                        }
+
+                        /* final-asplos
+                        if(!is_epoch_checked[line_cur->max_epoch_id ]) is_epoch_checked[line_cur->max_epoch_id]=true;
+                        writes_per_epoch[line_cur->max_epoch_id]++;
+
+                        if(line_cur->max_epoch_id < lowest_epoch_id) lowest_epoch_id = line_cur->max_epoch_id;
+                        if(line_cur->max_epoch_id > largest_max_epoch_id) largest_max_epoch_id = line_cur->max_epoch_id;
+                        */
+
+                        //bug fixed. this must come after the above.
+                        line_cur->dirty = 0;
+                        line_cur->state = I; //changed the 
+                        line_cur->min_epoch_id = 0;
+                        line_cur->max_epoch_id = 0;
+
+                    }
+                }
+        }
+    } 
+
+    //Check. Need to flush the calling line as well
+    //printf("Here \n");
+    delay[core_id] = delay_tmp[core_id];
+
+    //asplos-after: distinct epochs that is flushed and the amount of writes in the lowest epoch id
+    //1. average number of writes in the minimum epoch.
+    
+
+    /*final asplos--------
+    uint64_t lowest_epoch_size = writes_per_epoch[lowest_epoch_id];//persists per lowest id epoch
+    if(persist_count>0) cache_cur->nzero_conflicts++; // meaning that size of the lowest epoch id is not zero.
+    uint64_t total_epochs_flushed = 0;    
+    uint64_t largest_epoch_size = 0;
+
+    for(int e = lowest_epoch_id;e<=largest_max_epoch_id;e++){
+        if(is_epoch_checked[e]){
+            if(writes_per_epoch[e]>0){
+                total_epochs_flushed++;
+                if(writes_per_epoch[e]>largest_epoch_size) largest_epoch_size=writes_per_epoch[e];
+            }
+        }
+    }    
+    //find epoch flushes per conflict
+    cache_cur->lowest_epoch_size += lowest_epoch_size;
+    if(lowest_epoch_size > cache_cur->largest_lowest_epoch_size) cache_cur->largest_lowest_epoch_size = lowest_epoch_size;
+    cache_cur->num_epochs_flushed += (largest_max_epoch_id-lowest_epoch_id+1); //Totoal non-zeor epochs flushed //conflicting epochs.
+    cache_cur->num_nzero_epochs_flushed += total_epochs_flushed; //Totoal non-zeor epochs flushed //conflicting epochs.
+    if(largest_epoch_size > cache_cur->largest_epoch_size) cache_cur->largest_epoch_size = largest_epoch_size; //cacheline_size.
+    */ //final asplos-----------
+
     //if(cache_cur->largest_epoch_id_flushed < largest_max_epoch_id) cache_cur->largest_epoch_id_flushed = largest_max_epoch_id;
     //then it is better to get the breakdown to intra-inter seperately. NEXT step:
 
@@ -2990,7 +3273,7 @@ int System::persist(int64_t clk_timer, Cache *cache_cur, InsMem *ins_mem, Line *
         if(!proactive_flushing)
             delay_tmp = epochPersist(clk_timer, cache_cur, ins_mem, line_cur, req_core_id, psrc); //need to add calling cacheline
         else 
-            delay_tmp = epochPersistWithPF(clk_timer, cache_cur, ins_mem, line_cur, req_core_id, psrc); //need to add calling cacheline
+            delay_tmp = epochPersistWithPFGen(clk_timer, cache_cur, ins_mem, line_cur, req_core_id, psrc); //need to add calling cacheline
 
 
         #ifdef DEBUG
