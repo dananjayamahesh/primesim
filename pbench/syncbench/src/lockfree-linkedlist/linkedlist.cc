@@ -31,6 +31,11 @@ node_t *new_node(val_t val, node_t *next, int transactional)
     node->load1=(long)val+1;    
     #endif
 
+    #ifdef B4_MALLOC
+    node->load1= (load_t*)malloc(sizeof(load_t));
+    *(node->load1)= (long)val+1; 
+    #endif
+
     #ifdef B8
     node->load1=(long)val+1;    
     node->load2=(long)val+2;  

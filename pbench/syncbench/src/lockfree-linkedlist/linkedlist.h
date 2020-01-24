@@ -64,7 +64,7 @@ typedef intptr_t val_t;
 //#define 4B
 //#define 8B
 
-#define B8
+#define B4_MALLOC //B8
 //#define B8_MALLOC
 
 //#define 64B
@@ -89,6 +89,10 @@ typedef struct node {
 
 	#ifdef B4
 	load_t load1;
+	#endif
+
+	#ifdef B4_MALLOC
+	load_t * load1;
 	#endif
 
 	#ifdef B8

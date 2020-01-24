@@ -64,7 +64,7 @@ typedef intptr_t val_t;
 //#define 4B
 //#define 8B
 
-#define B8
+#define B8_MALLOC
 //#define B8_MALLOC
 
 //#define 64B

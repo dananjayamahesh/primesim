@@ -62,7 +62,7 @@ typedef intptr_t val_t;
 #define VAL_MAX                         INT_MAX
 
 //#define B4
-#define B8_MALLOC
+#define B16_MALLOC //B8_MALLOC
 //#define B96
 
 //#define B4

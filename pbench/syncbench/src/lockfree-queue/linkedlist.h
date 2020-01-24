@@ -65,7 +65,7 @@ typedef intptr_t val_t;
 //#define B4 - Original result for run11-paper
 //#define B96 38-40
 
-#define B8_MALLOC
+#define B16_MALLOC //B8_MALLOC
 
 //#define B4
 
