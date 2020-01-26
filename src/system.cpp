@@ -4227,7 +4227,7 @@ void System::report(ofstream* result, ofstream* stat)
  
    uint64_t all_persists_tot =0, all_pf_persists_tot=0, vis_pf_persists_tot = 0, evi_pf_persists_tot=0, inter_pf_persists_tot=0; 
    uint64_t invals_tot = 0, invals_M_tot = 0, invals_E_tot = 0, shares_tot = 0, shares_M_tot = 0, shares_E_tot = 0;
-   double lrp_ratio=0.5, bep_ratio=0.8;
+   double lrp_ratio=0.5, bep_ratio=1;//Not used
    //RET
    uint64_t atom_clk_timestamp_tot=0, clk_timestamp_tot=0, ret_add_tot=0, ret_delete_tot=0, ret_delete_lower_tot=0, ret_lookup_tot=0, ret_intra_lookup_tot = 0, ret_inter_lookup_tot = 0;
 
@@ -4535,17 +4535,17 @@ void System::report(ofstream* result, ofstream* stat)
         *result << "External Write-Backs count and delay " <<  external_clwb << " \t" << delay_external_clwb << endl;
         *result << "Eviction count and delay " <<  natural_clwb << " \t" << delay_natural_clwb << endl;
         *result << "Write-Backs count and delay (all) " <<  all_natural_clwb << " \t" << delay_all_natural_clwb << endl;
-        
+        //Not Used fields-only for initial testing.
         uint64_t conflicting_nat_wb = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?natural_clwb*lrp_ratio: all_natural_clwb*bep_ratio);
-        uint64_t conflicting_nat_wb_cycle = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?delay_natural_clwb*lrp_ratio: delay_all_natural_clwb*bep_ratio);
-
-        uint64_t conflicting_nat_wb2 = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?natural_clwb*lrp_ratio: all_natural_clwb*0.9);
-        uint64_t conflicting_nat_wb_cycle2 = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?delay_natural_clwb*lrp_ratio: delay_all_natural_clwb*0.9);
+        uint64_t conflicting_nat_wb_cycle = 0;
+        //Not Used fields-only for initial testing.
+        uint64_t conflicting_nat_wb2 = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?natural_clwb*lrp_ratio: all_natural_clwb*bep_ratio);
+        uint64_t conflicting_nat_wb_cycle2 = 0;
 
         *result << "Conflicting natural Evictions/Write-Backs count and delay " << conflicting_nat_wb << " \t" << conflicting_nat_wb_cycle << endl;
-
+        //Not Used fields-only for initial testing.
         uint64_t tot_writeback_conflicts = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?intra_evi_persists_tot: intra_evi_M_allconflicts_tot); //same as nat_wb
-        uint64_t tot_evi_conflicts = (pmodel==0)? 0: ((pmodel==3 || pmodel==8)?intra_evi_M_conflicts_tot: intra_evi_M_allconflicts_tot);
+        uint64_t tot_evi_conflicts = 0;
 
         *result << "Sync Write-Backs count and delay " <<  sync_clwb << " \t" << delay_sync_clwb << endl;
         *result << "Critical Persist count and delay " <<  critical_persist_wb << " \t" << critical_persist_wb << endl;
