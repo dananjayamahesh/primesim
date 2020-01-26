@@ -3,7 +3,7 @@
 
 LRP is integrated to the PriME simulator.  PriME is an execution-driven x86 simulator for manycore architectures. It is capable of simulating 1000+ cores with rich cache hierarchies, coherence protocols and On-chip Network. It is capable of running both multi-threaded and multi-programmed workloads. Moreover, it can distribute multi-programmed workloads into multiple host machines and communicate via OpenMPI.
 
-Note- this is not cycle accurate and a preliminary prototype of the idea.
+Note that this is not cycle accurate and a preliminary prototype of the idea.
 
 Directory structure
 -------------------
