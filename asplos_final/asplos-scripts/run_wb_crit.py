@@ -134,7 +134,8 @@ def main():
                     
                     #intra_crit_all =  intra_persist_tot+intra_vis_conflicts_tot+conflict_evi_persists
                     #intra_crit_all =  intra_persist_tot+intra_vis_conflicts_tot+(intra_evi_M_conflicts_tot+(intra_evi_M_persists_tot*0.1) if(persist_model==0) else 0)
-                    intra_crit_all =  intra_persist_tot+intra_vis_conflicts_tot + (intra_evi_M_conflicts_tot if(persist_model==0) else 0)
+                    #intra_crit_all =  intra_persist_tot+intra_vis_conflicts_tot + (intra_evi_M_conflicts_tot if(persist_model==0) else 0)
+                    intra_crit_all =  intra_persist_tot+intra_vis_conflicts_tot + intra_evi_M_conflicts_tot
 
                     non_conflict_evictions = intra_all-intra_crit_all
     

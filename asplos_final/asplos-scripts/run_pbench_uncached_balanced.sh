@@ -181,7 +181,7 @@ do
 	script_directory=${prime_output}/asplos-scripts
 	
 	python ${script_directory}/run_exec_time_norm.py ${DATA_FILE} ${EXEC_FILE}
-	python ${script_directory}/run_wb_crit_norm.py ${DATA2_FILE} ${WBC_NORM_FILE}
+	#python ${script_directory}/run_wb_crit_norm.py ${DATA2_FILE} ${WBC_NORM_FILE}
 
 	python ${script_directory}/run_wb_crit.py ${DATA2_FILE} ${WBC_FILE}
 	#############################################################################
@@ -194,4 +194,4 @@ echo 'LRP Simulation End'
 echo 'Taking Averages of $repeat Runs'
 python ${script_directory}/run_averages.py ${result_directory} run exec_time.csv $repeat ${result_directory}
 python ${script_directory}/run_averages.py ${result_directory} run wb_crit.csv $repeat ${result_directory}
-python ${script_directory}/run_averages.py ${result_directory} run wb_crit_norm.csv $repeat ${result_directory}
+#python ${script_directory}/run_averages.py ${result_directory} run wb_crit_norm.csv $repeat ${result_directory}

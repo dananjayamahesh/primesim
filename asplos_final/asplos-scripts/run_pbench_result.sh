@@ -50,7 +50,7 @@ script_directory=${prime_output}/asplos-scripts
 #change this with the single t.
 python ${script_directory}/run_exec_time_norm.py ${DATA_FILE} ${EXEC_FILE}
 #single t use normal.
-python ${script_directory}/run_wb_crit_norm.py ${DATA2_FILE} ${WBC_NORM_FILE}
+#python ${script_directory}/run_wb_crit_norm.py ${DATA2_FILE} ${WBC_NORM_FILE}
 
 python ${script_directory}/run_wb_crit.py ${DATA2_FILE} ${WBC_FILE}
 
@@ -61,6 +61,6 @@ python ${script_directory}/run_wb_total.py ${DATA2_FILE} ${WBC_TOTAL_FILE}
 echo 'taking averages'
 python ${script_directory}/run_averages.py ${result_directory} run exec_time.csv 1 ${result_directory}
 python ${script_directory}/run_averages.py ${result_directory} run wb_crit.csv 1 ${result_directory}
-python ${script_directory}/run_averages.py ${result_directory} run wb_crit_norm.csv 1 ${result_directory}
+#python ${script_directory}/run_averages.py ${result_directory} run wb_crit_norm.csv 1 ${result_directory}
 
 python ${script_directory}/run_averages.py ${result_directory} run wb_total.csv 1 ${result_directory}
