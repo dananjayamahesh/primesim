@@ -3,7 +3,7 @@
 
 LRP is integrated to the PriME simulator.  PriME is an execution-driven x86 simulator for manycore architectures. It is capable of simulating 1000+ cores with rich cache hierarchies, coherence protocols and On-chip Network. It is capable of running both multi-threaded and multi-programmed workloads. Moreover, it can distribute multi-programmed workloads into multiple host machines and communicate via OpenMPI.
 
-Note: This repository contains only the up-to-date improved version of the LRP software, not any of the old versions.
+Note- this is not cycle accurate and a preliminary prototype of the idea.
 
 Directory structure
 -------------------
@@ -123,80 +123,5 @@ Possible Issues/Errors and Fix(Please go to next section if no errors)
 * Run **"ompi_info | grep -i thread"**. It should say yes. (Thread support: posix (MPI_THREAD_MULTIPLE: yes, OPAL support: yes, OMPI progress: no, ORTE progress: yes, Event lib: yes))
 * echo 0 > /proc/sys/kernel/yama/ptrace_scop . If you are asked to do this, please do it.  You may need to do this as root. (su && echo 0 > /proc/sys/kernel/yama/ptrace_scop)
 
-
-Output Result Format
--------------------------
-* LRP output two parameters: 
-	* Execution Time normalized to the ideal (exec_time.csv)
-	* Percentage of Critical Path Writeback  (wb_crit.csv)
-* When you run a program, e.g. **test**, LRP generates follwing directories inside asplos-result/ and asplos-output path
-	* asplos/
-		* asplos-results/
-			* **test**/
-				* run-1/
-				* run-2/
-				* **exec_time.csv**
-				* **wb_crit.csv**
-		* asplos-output/
-			* **test**/
-				* run-1/
-				* run-2/
-* Two .csv files contain average values of two outputs: **normalized execution time** (exec_time.csv) to ideal and percentage of **critical path writebacks** (wb_crit.csv).
-*  In case of running multiple times, you will see run-1, run-2 ... run-x.  And csv files inside directory give averages of all runs while each directory contains the result of each run.
-
-
-Customizing Scripts to Run Different Configurations
----------------------------------------------------
-* Finally to show the customizability and flexibility of using LRP, we show how to run a cutom programs.
-* **sh run_all.sh  [program_name]  [ benchmark]   [num_threads]  [repeat]**
-	* **program_name**: name you for the result directory. Please put something other than cached, uncached, multit, singlet, test. e.g. my_prog (Default example_prog)
-	* **benchmark**: name of the benchmark. "all" runs all benchmaks: linkedlist, hashmap, bstree, skiplist, lfqueue. If you want to run a specific benchmark please specify it. E.g. hashmap (Default=all)
-	* **num_threads**: Number of threads you want to run your benchmarks. E.g. 8 (Default=8)
-	* **repeat**: In case we want to run same benchmark for multiple times, we need to specify repeat_run. E.g. 2. Then the final output cintains the average values of all runs. (Default=2)
-* *When increasing those values simulation time is also rapidly increasing.*
-
-Example Run
----------------------
-* **sh run_all.sh my_prog all 8 2**
-
-* ths commad will run program called my_prog twice with all benchmarks on 8 threads and generate average output in the result directory asplos/asplos-results/my_prog. (You can find results of each run inside the folder asplos/asplos-results/my_prog/run-x)
-* Please check run_all.sh file for more information. It is flexible to change other paramters as well.
-* NOTE: if you run without any parameters it runs with defaults values. e.g program_name=example_prog
-
-
-### LRP Tests ![alt text](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Logo Title Text 1")
-
-LRP Paper Sample Programs (Run only Once) 
-------------------------------------------------
-* sh run_all.sh cached 
-	* Cached mode with 32 threads. Figure 4,5
-	* Estimated runtime : 8-15hrs in our setup
-* sh run_all.sh uncached 
-	* Uncached mode with 32 threads. Figure 6
-	* Estimated runtime : 10-16hrs
-* sh run_all.sh multit 
-	* 16 threads with cached mode. Figure 7
-	* Estimated runtime : 8-12hrs 
-* sh run_all.sh singlet 
-	* (single thread with cached mode. Figure 7 
-	* Estimated runtime: within few hours
-* These programs corresponding to a up-to-date sample version of programs (that can run within hours) that we used to generate result of the paper. Also, these programs only run once. To take the averages you need to change the repeat variable. Therefore, in some cases, output may be different to the figures shown in the paper.
-
-Output of LRP Programs
------------------------
-
-* OUTPUT: FOr every single run, as exaplined before, lrp creates a output and result folder inside asplos-output/ and asplos-result. Inside that folder you will find exec_time.csv and wb_crit.csv output files. E.g.
-	* asplos/
-		* asplos-result/
-			* cached
-				* run-1/
-				* exec_time.csv
-				* wb_crit.csv
-* You can find the **expected results** inside **asplos/asplos-results-expected** folder for each run. E.g.
-	* asplos/
-		* asplos-result-expected/
-			* cached/
-
-NOTE: These program can run within much less time in faster processors.
 
 Please contact [dananjayamahesh@gmail.com](dananjayamahesh@gmail.com) if you have any question or issue.
